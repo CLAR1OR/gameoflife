@@ -80,12 +80,12 @@ export function CategoryDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? "Edit Category" : "New Category"}
+              {isEditing ? "Edit Skill" : "New Skill"}
             </DialogTitle>
             <DialogDescription>
               {isEditing
-                ? "Update your skill category."
-                : "Create a new skill category to organize your skills."}
+                ? "Update your skill."
+                : "Create a new skill. You\u2019ll add subskills inside its tree."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -134,7 +134,7 @@ export function CategoryDialog({
                 ? "Saving..."
                 : isEditing
                   ? "Save Changes"
-                  : "Create Category"}
+                  : "Create Skill"}
             </Button>
           </DialogFooter>
         </form>

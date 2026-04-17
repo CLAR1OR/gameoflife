@@ -128,3 +128,14 @@
     @apply font-sans;
   }
 }
+
+/* Keep default cursor visible in React Flow canvas */
+.react-flow__pane {
+  cursor: default !important;
+}
+.react-flow__pane:active {
+  cursor: grabbing !important;
+}
+.react-flow__node {
+  cursor: pointer !important;
+}

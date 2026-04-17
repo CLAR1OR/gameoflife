@@ -59,13 +59,13 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Skills</CardDescription>
+            <CardDescription>Subskills</CardDescription>
             <CardTitle className="text-3xl">{totalSkills.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Categories</CardDescription>
+            <CardDescription>Skills</CardDescription>
             <CardTitle className="text-3xl">{categories.length}</CardTitle>
           </CardHeader>
         </Card>
@@ -73,7 +73,7 @@ export default async function DashboardPage() {
 
       {categories.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-3">Your Skill Trees</h2>
+          <h2 className="text-lg font-semibold mb-3">Your Skills</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((cat) => (
               <Link key={cat.id} href={`/skills/${cat.id}`}>
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
                   <CardContent>
                     <Badge variant="secondary">
                       {cat.skillCount}{" "}
-                      {cat.skillCount === 1 ? "skill" : "skills"}
+                      {cat.skillCount === 1 ? "subskill" : "subskills"}
                     </Badge>
                   </CardContent>
                 </Card>
@@ -101,13 +101,13 @@ export default async function DashboardPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground mb-3">
-              You haven&apos;t created any skill categories yet.
+              You haven&apos;t created any skills yet.
             </p>
             <Link
               href="/skills"
               className="text-primary underline hover:text-primary/80"
             >
-              Create your first skill tree &rarr;
+              Create your first skill &rarr;
             </Link>
           </CardContent>
         </Card>

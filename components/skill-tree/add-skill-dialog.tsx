@@ -87,17 +87,17 @@ export function AddSkillDialog({
       <DialogContent className="sm:!max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add Skill</DialogTitle>
+            <DialogTitle>Add Subskill</DialogTitle>
             <DialogDescription>
-              Define a skill and its milestones. Completing milestones earns XP.
+              Define a subskill and its milestones. Completing milestones earns XP.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-2">
-              <Label htmlFor="skill-name">Skill Name</Label>
+              <Label htmlFor="skill-name">Subskill Name</Label>
               <Input
                 id="skill-name"
-                placeholder="e.g., French"
+                placeholder="e.g., Reading easy books"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -107,7 +107,7 @@ export function AddSkillDialog({
               <Label htmlFor="skill-desc">Description (optional)</Label>
               <Input
                 id="skill-desc"
-                placeholder="e.g., Learning French language"
+                placeholder="e.g., Understanding written French"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -116,6 +116,9 @@ export function AddSkillDialog({
             {existingSkills.length > 0 && (
               <div className="space-y-2">
                 <Label>Prerequisites (optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Select subskills that must be leveled up first.
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {existingSkills.map((s) => (
                     <button
@@ -197,7 +200,7 @@ export function AddSkillDialog({
           </div>
           <DialogFooter>
             <Button type="submit" disabled={loading || !name.trim()}>
-              {loading ? "Adding..." : "Add Skill"}
+              {loading ? "Adding..." : "Add Subskill"}
             </Button>
           </DialogFooter>
         </form>

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryDialog } from "./category-dialog";
 import { deleteCategory } from "@/modules/skills/actions";
 
-type CategoryWithCount = {
+type SkillWithCount = {
   id: string;
   name: string;
   description: string | null;
@@ -26,24 +26,24 @@ type CategoryWithCount = {
 export function CategoryList({
   categories,
 }: {
-  categories: CategoryWithCount[];
+  categories: SkillWithCount[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] =
-    useState<CategoryWithCount | null>(null);
+  const [editingSkill, setEditingSkill] =
+    useState<SkillWithCount | null>(null);
 
-  function handleEdit(category: CategoryWithCount) {
-    setEditingCategory(category);
+  function handleEdit(skill: SkillWithCount) {
+    setEditingSkill(skill);
     setDialogOpen(true);
   }
 
   function handleCreate() {
-    setEditingCategory(null);
+    setEditingSkill(null);
     setDialogOpen(true);
   }
 
   async function handleDelete(categoryId: string) {
-    if (!confirm("Delete this category and all its skills?")) return;
+    if (!confirm("Delete this skill and all its subskills?")) return;
     await deleteCategory(categoryId);
   }
 
@@ -68,7 +68,7 @@ export function CategoryList({
               </CardHeader>
               <CardContent>
                 <Badge variant="secondary">
-                  {cat.skillCount} {cat.skillCount === 1 ? "skill" : "skills"}
+                  {cat.skillCount} {cat.skillCount === 1 ? "subskill" : "subskills"}
                 </Badge>
               </CardContent>
             </Link>
@@ -79,7 +79,7 @@ export function CategoryList({
                 className="h-7 px-2 text-xs"
                 onClick={(e) => {
                   e.preventDefault();
-                  handleEdit(cat);
+                  handleEdit(cat as SkillWithCount);
                 }}
               >
                 Edit
@@ -105,7 +105,7 @@ export function CategoryList({
         >
           <div className="text-center text-muted-foreground">
             <span className="text-3xl block mb-1">+</span>
-            <span className="text-sm">New Category</span>
+            <span className="text-sm">New Skill</span>
           </div>
         </Card>
       </div>
@@ -113,7 +113,7 @@ export function CategoryList({
       <CategoryDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        category={editingCategory}
+        category={editingSkill}
       />
     </>
   );

@@ -24,7 +24,7 @@ export default async function SkillTreePage({
           href="/skills"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          &larr; Back to categories
+          &larr; Back to skills
         </Link>
       </div>
       <SkillTreeView

@@ -132,7 +132,7 @@ export function SkillTreeView({
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold tracking-tight">{categoryName}</h1>
         <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-          Add Skill
+          Add Subskill
         </Button>
       </div>
 
@@ -141,9 +141,9 @@ export function SkillTreeView({
           {initialSkills.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <p className="text-lg">No skills yet</p>
+                <p className="text-lg">No subskills yet</p>
                 <p className="text-sm mt-1">
-                  Click &quot;Add Skill&quot; to create your first skill in this
+                  Click &quot;Add Subskill&quot; to start building this skill
                   tree.
                 </p>
               </div>
