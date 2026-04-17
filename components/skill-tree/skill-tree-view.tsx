@@ -162,9 +162,9 @@ export function SkillTreeView({
               minZoom={0.3}
               maxZoom={2}
             >
-              <Background gap={20} size={1} />
-              <Controls />
-              <MiniMap nodeStrokeWidth={3} className="!bg-muted/50" />
+              <Background gap={20} size={1} color="#1e2044" />
+              <Controls className="!bg-card !border-border !text-foreground [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-accent" />
+              <MiniMap nodeStrokeWidth={3} className="!bg-card !border-border" />
             </ReactFlow>
           )}
         </div>

@@ -69,10 +69,10 @@ export function MilestonePanel({ skill }: { skill: SkillWithPrerequisites }) {
   }
 
   return (
-    <div className="w-80 border-l bg-card p-4 overflow-y-auto">
+    <div className="w-80 border-l border-border/50 bg-sidebar p-4 overflow-y-auto">
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">{skill.name}</h2>
+          <h2 className="text-lg font-semibold text-glow">{skill.name}</h2>
           {skill.description && (
             <p className="text-sm text-muted-foreground mt-0.5">
               {skill.description}
@@ -173,7 +173,7 @@ export function MilestonePanel({ skill }: { skill: SkillWithPrerequisites }) {
                     >
                       {m.name}
                     </span>
-                    <span className="text-[10px] text-muted-foreground ml-1.5">
+                    <span className="text-[10px] text-xp ml-1.5 font-mono">
                       {m.xpReward} XP
                     </span>
                   </div>

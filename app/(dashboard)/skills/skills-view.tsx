@@ -41,14 +41,15 @@ function SkillCard({
   onDelete: () => void;
   onStatusChange: (status: "active" | "background" | "inactive") => void;
 }) {
+  const isActive = skill.status === "active";
   return (
-    <Card className="group relative">
+    <Card className={`group relative transition-all hover:border-glow/30 ${isActive ? "border-glow/30 glow-green" : ""}`}>
       <Link href={`/skills/${skill.id}`}>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{skill.icon ?? "📚"}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{skill.icon ?? "📚"}</span>
             <div className="flex-1">
-              <CardTitle className="text-lg">{skill.name}</CardTitle>
+              <CardTitle className={`text-lg ${isActive ? "text-glow" : ""}`}>{skill.name}</CardTitle>
               {skill.description && (
                 <CardDescription className="line-clamp-2">
                   {skill.description}
@@ -58,7 +59,7 @@ function SkillCard({
           </div>
         </CardHeader>
         <CardContent>
-          <Badge variant="secondary">
+          <Badge variant="secondary" className={isActive ? "border-glow/20 text-glow bg-glow/10" : ""}>
             {skill.skillCount}{" "}
             {skill.skillCount === 1 ? "subskill" : "subskills"}
           </Badge>
@@ -169,10 +170,10 @@ function TemplateCard({
     0
   );
   return (
-    <Card className="group relative border-dashed">
+    <Card className="group relative border-dashed border-glow-purple/20 hover:border-glow-purple/40 transition-all">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{template.icon}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">{template.icon}</span>
           <div className="flex-1">
             <CardTitle className="text-lg">{template.name}</CardTitle>
             <CardDescription className="line-clamp-2">
@@ -252,8 +253,8 @@ export function SkillsView({
       {/* Active Skills */}
       <section>
         <div className="flex items-center gap-3 mb-3">
-          <h2 className="text-lg font-semibold">Active Focus</h2>
-          <Badge variant="secondary" className="text-xs">
+          <h2 className="text-lg font-semibold text-glow uppercase tracking-wide">⚔️ Active Focus</h2>
+          <Badge variant="outline" className="text-xs text-glow border-glow/30">
             {active.length}/3
           </Badge>
         </div>
@@ -278,7 +279,7 @@ export function SkillsView({
 
       {/* Background Skills */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Background</h2>
+        <h2 className="text-lg font-semibold mb-3 text-glow-purple uppercase tracking-wide">🛡️ Background</h2>
         {background.length === 0 && active.length === 0 && inactive.length === 0 && (
           <p className="text-sm text-muted-foreground mb-3">
             Skills you&apos;re working on but not focusing on this month.
@@ -300,7 +301,7 @@ export function SkillsView({
       {/* Inactive / Available */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Available Skills</h2>
+          <h2 className="text-lg font-semibold uppercase tracking-wide">📜 Available Skills</h2>
           <Button size="sm" variant="outline" onClick={handleCreate}>
             Create Custom Skill
           </Button>

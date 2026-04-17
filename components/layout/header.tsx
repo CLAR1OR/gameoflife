@@ -33,12 +33,14 @@ export function Header() {
   }
 
   return (
-    <header className="flex h-14 items-center justify-between border-b px-6">
+    <header className="flex h-14 items-center justify-between border-b border-border/50 px-6">
       <div />
       <DropdownMenu>
-        <DropdownMenuTrigger className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-accent">
+        <DropdownMenuTrigger className="relative flex h-9 w-9 items-center justify-center rounded-full border border-glow/30 hover:border-glow/60 hover:glow-green transition-all">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs bg-glow/10 text-glow font-bold">
+              {initials}
+            </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">

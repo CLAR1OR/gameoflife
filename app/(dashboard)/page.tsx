@@ -48,30 +48,30 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">
-        Welcome back, {session.user.name}
+        Welcome back, <span className="text-glow">{session.user.name}</span>
       </h1>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card className="border-xp/20">
           <CardHeader className="pb-2">
-            <CardDescription>Total XP</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardDescription className="text-xp/70 uppercase text-xs tracking-wider">Total XP</CardDescription>
+            <CardTitle className="text-3xl font-mono text-xp">
               {totalXp.toLocaleString()}
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="border-glow/20">
           <CardHeader className="pb-2">
-            <CardDescription>Active Focus</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardDescription className="text-glow/70 uppercase text-xs tracking-wider">Active Focus</CardDescription>
+            <CardTitle className="text-3xl font-mono text-glow">
               {activeSkills.length}/3
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="border-glow-purple/20">
           <CardHeader className="pb-2">
-            <CardDescription>Subskills</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardDescription className="text-glow-purple/70 uppercase text-xs tracking-wider">Subskills</CardDescription>
+            <CardTitle className="text-3xl font-mono text-glow-purple">
               {totalSubskills.length}
             </CardTitle>
           </CardHeader>
@@ -84,7 +84,7 @@ export default async function DashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {activeSkills.map((cat) => (
               <Link key={cat.id} href={`/skills/${cat.id}`}>
-                <Card className="hover:bg-accent/50 transition-colors border-primary/30">
+                <Card className="hover:border-glow/40 transition-all border-glow/20 glow-green">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">{cat.icon ?? "📚"}</span>

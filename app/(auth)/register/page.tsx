@@ -47,7 +47,7 @@ export default function RegisterPage() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Game of Life</CardTitle>
+        <CardTitle className="text-2xl text-glow glow-green-text">Game of Life</CardTitle>
         <CardDescription>Create your account</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

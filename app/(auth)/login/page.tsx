@@ -45,7 +45,7 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Game of Life</CardTitle>
+        <CardTitle className="text-2xl text-glow glow-green-text">Game of Life</CardTitle>
         <CardDescription>Sign in to your account</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
