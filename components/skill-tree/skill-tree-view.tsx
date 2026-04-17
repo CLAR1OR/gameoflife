@@ -128,8 +128,8 @@ export function SkillTreeView({
   }, [setNodes]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col h-[calc(100vh-7rem)] -mx-6" style={{ width: "calc(100% + 3rem)" }}>
+      <div className="flex items-center justify-between mb-4 px-6">
         <h1 className="text-2xl font-bold tracking-tight">{categoryName}</h1>
         <Button size="sm" onClick={() => setAddDialogOpen(true)}>
           Add Subskill

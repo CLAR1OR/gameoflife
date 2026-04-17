@@ -15,6 +15,7 @@ export type SkillTemplate = {
   name: string;
   description: string;
   icon: string;
+  coverImage: string;
   subskills: SubskillTemplate[];
 };
 
@@ -23,6 +24,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     id: "cooking",
     name: "Cooking",
     description: "From kitchen basics to confident home cook",
+    coverImage: "linear-gradient(135deg, #c2410c 0%, #ea580c 40%, #f97316 100%)",
     icon: "🍳",
     subskills: [
       {

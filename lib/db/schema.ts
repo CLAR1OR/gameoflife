@@ -64,6 +64,7 @@ export const skillCategory = sqliteTable("skill_category", {
   color: text("color"),
   status: text("status", { enum: ["active", "background", "inactive"] }).notNull().default("inactive"),
   templateId: text("template_id"),
+  coverImage: text("cover_image"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),

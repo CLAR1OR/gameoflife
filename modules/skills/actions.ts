@@ -128,6 +128,7 @@ export async function activateTemplate(templateId: string) {
       name: template.name,
       description: template.description,
       icon: template.icon,
+      coverImage: template.coverImage,
       status: "inactive",
       templateId: template.id,
     })
