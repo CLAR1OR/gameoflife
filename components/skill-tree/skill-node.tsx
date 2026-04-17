@@ -12,6 +12,8 @@ export type SkillNodeData = {
   currentXp: number;
   description: string | null;
   isSelected: boolean;
+  milestonesCompleted: number;
+  milestonesTotal: number;
 };
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -32,7 +34,14 @@ const BORDER_COLORS: Record<number, string> = {
 
 function SkillNodeComponent({ data }: NodeProps) {
   const nodeData = data as unknown as SkillNodeData;
-  const { name, level, currentXp, isSelected } = nodeData;
+  const {
+    name,
+    level,
+    currentXp,
+    isSelected,
+    milestonesCompleted,
+    milestonesTotal,
+  } = nodeData;
   const isLocked = level === 0;
   const progressInfo = xpForNextLevel(currentXp);
 
@@ -53,12 +62,19 @@ function SkillNodeComponent({ data }: NodeProps) {
         </span>
       </div>
 
-      <Badge
-        variant="secondary"
-        className={`mt-1.5 text-[10px] px-1.5 py-0 ${LEVEL_COLORS[level] ?? ""}`}
-      >
-        {getLevelName(level)}
-      </Badge>
+      <div className="flex items-center gap-1.5 mt-1.5">
+        <Badge
+          variant="secondary"
+          className={`text-[10px] px-1.5 py-0 ${LEVEL_COLORS[level] ?? ""}`}
+        >
+          {getLevelName(level)}
+        </Badge>
+        {!isLocked && milestonesTotal > 0 && (
+          <span className="text-[10px] text-muted-foreground">
+            {milestonesCompleted}/{milestonesTotal}
+          </span>
+        )}
+      </div>
 
       {!isLocked && progressInfo && (
         <div className="mt-2">
@@ -71,7 +87,7 @@ function SkillNodeComponent({ data }: NodeProps) {
 
       {!isLocked && !progressInfo && (
         <span className="text-[10px] text-amber-600 mt-1 block font-medium">
-          {currentXp} XP
+          {currentXp} XP — Mastered
         </span>
       )}
 

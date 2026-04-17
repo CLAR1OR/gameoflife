@@ -15,12 +15,12 @@ import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import { SkillNode, type SkillNodeData } from "./skill-node";
 import { AddSkillDialog } from "./add-skill-dialog";
-import { LogSessionDialog } from "./log-session-dialog";
+import { MilestonePanel } from "./milestone-panel";
 import { Button } from "@/components/ui/button";
 import type { SkillWithPrerequisites } from "@/modules/skills/types";
 
 const NODE_WIDTH = 160;
-const NODE_HEIGHT = 100;
+const NODE_HEIGHT = 110;
 
 const nodeTypes = { skill: SkillNode };
 
@@ -60,6 +60,7 @@ function layoutNodes(
 
   const nodes: Node[] = skills.map((s) => {
     const pos = g.node(s.id);
+    const completedMs = s.milestones.filter((m) => m.completed).length;
     return {
       id: s.id,
       type: "skill",
@@ -73,6 +74,8 @@ function layoutNodes(
         currentXp: s.currentXp,
         description: s.description,
         isSelected: false,
+        milestonesCompleted: completedMs,
+        milestonesTotal: s.milestones.length,
       } satisfies SkillNodeData,
     };
   });
@@ -89,14 +92,15 @@ export function SkillTreeView({
   categoryName: string;
   skills: SkillWithPrerequisites[];
 }) {
-  const { nodes: initialNodes, edges: initialEdges } =
-    useMemo(() => layoutNodes(initialSkills), [initialSkills]);
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(
+    () => layoutNodes(initialSkills),
+    [initialSkills]
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [logDialogOpen, setLogDialogOpen] = useState(false);
 
   const selectedSkill = initialSkills.find((s) => s.id === selectedSkillId);
 
@@ -127,55 +131,45 @@ export function SkillTreeView({
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold tracking-tight">{categoryName}</h1>
-        <div className="flex gap-2">
-          {selectedSkill && selectedSkill.level > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLogDialogOpen(true)}
-            >
-              Log XP for {selectedSkill.name}
-            </Button>
-          )}
-          <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-            Add Skill
-          </Button>
-        </div>
+        <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+          Add Skill
+        </Button>
       </div>
 
-      <div className="flex-1 rounded-lg border bg-background">
-        {initialSkills.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <p className="text-lg">No skills yet</p>
-              <p className="text-sm mt-1">
-                Click &quot;Add Skill&quot; to create your first skill in this
-                tree.
-              </p>
+      <div className="flex flex-1 rounded-lg border bg-background overflow-hidden">
+        <div className="flex-1">
+          {initialSkills.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <p className="text-lg">No skills yet</p>
+                <p className="text-sm mt-1">
+                  Click &quot;Add Skill&quot; to create your first skill in this
+                  tree.
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
-            nodeTypes={nodeTypes}
-            fitView
-            fitViewOptions={{ padding: 0.3 }}
-            minZoom={0.3}
-            maxZoom={2}
-          >
-            <Background gap={20} size={1} />
-            <Controls />
-            <MiniMap
-              nodeStrokeWidth={3}
-              className="!bg-muted/50"
-            />
-          </ReactFlow>
-        )}
+          ) : (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onNodeClick={onNodeClick}
+              onPaneClick={onPaneClick}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.3 }}
+              minZoom={0.3}
+              maxZoom={2}
+            >
+              <Background gap={20} size={1} />
+              <Controls />
+              <MiniMap nodeStrokeWidth={3} className="!bg-muted/50" />
+            </ReactFlow>
+          )}
+        </div>
+
+        {selectedSkill && <MilestonePanel skill={selectedSkill} />}
       </div>
 
       <AddSkillDialog
@@ -184,14 +178,6 @@ export function SkillTreeView({
         categoryId={categoryId}
         existingSkills={initialSkills}
       />
-
-      {selectedSkill && (
-        <LogSessionDialog
-          open={logDialogOpen}
-          onOpenChange={setLogDialogOpen}
-          skill={selectedSkill}
-        />
-      )}
     </div>
   );
 }

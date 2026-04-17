@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { skillCategory, skill, skillPrerequisite } from "@/lib/db/schema";
+import { skillCategory, skill } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 
 export async function getCategoriesByUser(userId: string) {
@@ -43,16 +43,10 @@ export async function getSkillsByCategory(categoryId: string, userId: string) {
           prerequisite: true,
         },
       },
+      milestones: {
+        orderBy: (m, { asc }) => [asc(m.sortOrder)],
+      },
     },
   });
   return skills;
-}
-
-export async function getPrerequisitesForSkill(skillId: string) {
-  return db.query.skillPrerequisite.findMany({
-    where: (sp, { eq }) => eq(sp.skillId, skillId),
-    with: {
-      prerequisite: true,
-    },
-  });
 }

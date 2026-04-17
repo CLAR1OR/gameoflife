@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { skillCategory, skill, skillPrerequisite, xpSession } from "@/lib/db/schema";
+import { skillCategory, skill, skillPrerequisite, milestone, xpSession } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
@@ -84,8 +84,11 @@ export async function createSkill(data: {
   name: string;
   description?: string;
   prerequisiteIds?: string[];
+  milestones?: { name: string; xpReward: number }[];
 }) {
   const session = await requireSession();
+  const hasPrereqs = data.prerequisiteIds && data.prerequisiteIds.length > 0;
+
   const [newSkill] = await db
     .insert(skill)
     .values({
@@ -93,24 +96,31 @@ export async function createSkill(data: {
       userId: session.user.id,
       name: data.name,
       description: data.description ?? null,
-      level: 1,
+      level: hasPrereqs ? 0 : 1,
     })
     .returning();
 
-  if (data.prerequisiteIds?.length) {
+  if (hasPrereqs) {
     await db.insert(skillPrerequisite).values(
-      data.prerequisiteIds.map((prereqId) => ({
+      data.prerequisiteIds!.map((prereqId) => ({
         skillId: newSkill.id,
         prerequisiteId: prereqId,
         requiredLevel: 1,
       }))
     );
-    // If skill has prerequisites, it starts locked (level 0)
-    await db
-      .update(skill)
-      .set({ level: 0 })
-      .where(eq(skill.id, newSkill.id));
-    newSkill.level = 0;
+  }
+
+  // Create milestones
+  if (data.milestones?.length) {
+    await db.insert(milestone).values(
+      data.milestones.map((m, i) => ({
+        skillId: newSkill.id,
+        userId: session.user.id,
+        name: m.name,
+        xpReward: m.xpReward,
+        sortOrder: i,
+      }))
+    );
   }
 
   revalidatePath(`/skills/${data.categoryId}`);
@@ -150,56 +160,88 @@ export async function deleteSkill(skillId: string) {
 }
 
 // =====================
-// XP / SESSION ACTIONS
+// MILESTONE ACTIONS
 // =====================
 
-export async function logXpSession(data: {
+export async function addMilestone(data: {
   skillId: string;
-  xpGained: number;
-  duration?: number;
-  note?: string;
+  name: string;
+  xpReward: number;
 }) {
   const session = await requireSession();
 
-  // Get current skill state
-  const currentSkill = await db.query.skill.findFirst({
+  // Verify skill belongs to user
+  const sk = await db.query.skill.findFirst({
     where: (s, { and: a, eq: e }) =>
       a(e(s.id, data.skillId), e(s.userId, session.user.id)),
   });
+  if (!sk) throw new Error("Skill not found");
 
-  if (!currentSkill) throw new Error("Skill not found");
-  if (currentSkill.level === 0) throw new Error("Skill is locked");
-
-  // Log the session
-  await db.insert(xpSession).values({
-    userId: session.user.id,
-    skillId: data.skillId,
-    xpGained: data.xpGained,
-    duration: data.duration ?? null,
-    note: data.note ?? null,
+  // Get current max sort order
+  const existing = await db.query.milestone.findMany({
+    where: (m, { eq: e }) => e(m.skillId, data.skillId),
   });
 
-  // Update skill XP and recalculate level
-  const newXp = currentSkill.currentXp + data.xpGained;
-  const oldLevel = currentSkill.level;
+  const [ms] = await db
+    .insert(milestone)
+    .values({
+      skillId: data.skillId,
+      userId: session.user.id,
+      name: data.name,
+      xpReward: data.xpReward,
+      sortOrder: existing.length,
+    })
+    .returning();
+
+  revalidatePath(`/skills/${sk.categoryId}`);
+  return ms;
+}
+
+export async function completeMilestone(milestoneId: string) {
+  const session = await requireSession();
+
+  const ms = await db.query.milestone.findFirst({
+    where: (m, { and: a, eq: e }) =>
+      a(e(m.id, milestoneId), e(m.userId, session.user.id)),
+    with: { skill: true },
+  });
+
+  if (!ms) throw new Error("Milestone not found");
+  if (ms.completed) return { leveledUp: false, unlocked: [] as string[], newLevel: ms.skill.level, newXp: ms.skill.currentXp };
+  if (ms.skill.level === 0) throw new Error("Skill is locked");
+
+  // Mark milestone completed
+  await db
+    .update(milestone)
+    .set({ completed: true, completedAt: new Date() })
+    .where(eq(milestone.id, milestoneId));
+
+  // Grant XP to the skill
+  const newXp = ms.skill.currentXp + ms.xpReward;
+  const oldLevel = ms.skill.level;
   const newLevel = calculateLevel(newXp);
 
   await db
     .update(skill)
-    .set({
-      currentXp: newXp,
-      level: newLevel,
-      updatedAt: new Date(),
-    })
-    .where(eq(skill.id, data.skillId));
+    .set({ currentXp: newXp, level: newLevel, updatedAt: new Date() })
+    .where(eq(skill.id, ms.skill.id));
+
+  // Log the XP session for activity feed
+  await db.insert(xpSession).values({
+    userId: session.user.id,
+    skillId: ms.skill.id,
+    milestoneId: milestoneId,
+    xpGained: ms.xpReward,
+    note: ms.name,
+  });
 
   // Check if any downstream skills got unlocked
   let unlocked: string[] = [];
   if (newLevel > oldLevel) {
-    unlocked = await checkAndUnlockDependents(data.skillId, newLevel);
+    unlocked = await checkAndUnlockDependents(ms.skill.id, newLevel);
   }
 
-  revalidatePath(`/skills/${currentSkill.categoryId}`);
+  revalidatePath(`/skills/${ms.skill.categoryId}`);
 
   return {
     newXp,
@@ -207,14 +249,80 @@ export async function logXpSession(data: {
     newLevel,
     leveledUp: newLevel > oldLevel,
     unlocked,
+    milestoneName: ms.name,
+    xpGained: ms.xpReward,
   };
 }
+
+export async function uncompleteMilestone(milestoneId: string) {
+  const session = await requireSession();
+
+  const ms = await db.query.milestone.findFirst({
+    where: (m, { and: a, eq: e }) =>
+      a(e(m.id, milestoneId), e(m.userId, session.user.id)),
+    with: { skill: true },
+  });
+
+  if (!ms) throw new Error("Milestone not found");
+  if (!ms.completed) return;
+
+  // Unmark milestone
+  await db
+    .update(milestone)
+    .set({ completed: false, completedAt: null })
+    .where(eq(milestone.id, milestoneId));
+
+  // Remove XP
+  const newXp = Math.max(0, ms.skill.currentXp - ms.xpReward);
+  const newLevel = calculateLevel(newXp);
+
+  await db
+    .update(skill)
+    .set({ currentXp: newXp, level: newLevel, updatedAt: new Date() })
+    .where(eq(skill.id, ms.skill.id));
+
+  // Remove the xp session log for this milestone
+  await db
+    .delete(xpSession)
+    .where(eq(xpSession.milestoneId, milestoneId));
+
+  revalidatePath(`/skills/${ms.skill.categoryId}`);
+}
+
+export async function deleteMilestone(milestoneId: string) {
+  const session = await requireSession();
+
+  const ms = await db.query.milestone.findFirst({
+    where: (m, { and: a, eq: e }) =>
+      a(e(m.id, milestoneId), e(m.userId, session.user.id)),
+    with: { skill: true },
+  });
+
+  if (!ms) throw new Error("Milestone not found");
+
+  // If it was completed, remove the XP
+  if (ms.completed) {
+    const newXp = Math.max(0, ms.skill.currentXp - ms.xpReward);
+    const newLevel = calculateLevel(newXp);
+    await db
+      .update(skill)
+      .set({ currentXp: newXp, level: newLevel, updatedAt: new Date() })
+      .where(eq(skill.id, ms.skill.id));
+  }
+
+  await db.delete(milestone).where(eq(milestone.id, milestoneId));
+
+  revalidatePath(`/skills/${ms.skill.categoryId}`);
+}
+
+// =====================
+// INTERNAL HELPERS
+// =====================
 
 async function checkAndUnlockDependents(
   prerequisiteId: string,
   prerequisiteLevel: number
 ): Promise<string[]> {
-  // Find skills that depend on this prerequisite
   const dependents = await db.query.skillPrerequisite.findMany({
     where: (sp, { eq }) => eq(sp.prerequisiteId, prerequisiteId),
     with: { skill: true },
@@ -222,10 +330,9 @@ async function checkAndUnlockDependents(
 
   const unlocked: string[] = [];
   for (const dep of dependents) {
-    if (dep.skill.level !== 0) continue; // Already unlocked
+    if (dep.skill.level !== 0) continue;
     if (prerequisiteLevel < dep.requiredLevel) continue;
 
-    // Check ALL prerequisites for this skill
     const allPrereqs = await db.query.skillPrerequisite.findMany({
       where: (sp, { eq }) => eq(sp.skillId, dep.skillId),
       with: { prerequisite: true },

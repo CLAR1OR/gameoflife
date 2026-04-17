@@ -94,12 +94,24 @@ export const skillPrerequisite = sqliteTable(
   ]
 );
 
+export const milestone = sqliteTable("milestone", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  skillId: text("skill_id").notNull().references(() => skill.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  xpReward: integer("xp_reward").notNull().default(25),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const xpSession = sqliteTable("xp_session", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   skillId: text("skill_id").notNull().references(() => skill.id, { onDelete: "cascade" }),
+  milestoneId: text("milestone_id").references(() => milestone.id, { onDelete: "set null" }),
   xpGained: integer("xp_gained").notNull(),
-  duration: integer("duration"),
   note: text("note"),
   loggedAt: integer("logged_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
@@ -113,6 +125,7 @@ export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   skillCategories: many(skillCategory),
   skills: many(skill),
+  milestones: many(milestone),
   xpSessions: many(xpSession),
 }));
 
@@ -134,6 +147,7 @@ export const skillRelations = relations(skill, ({ one, many }) => ({
   user: one(user, { fields: [skill.userId], references: [user.id] }),
   prerequisites: many(skillPrerequisite, { relationName: "skillPrerequisites" }),
   dependents: many(skillPrerequisite, { relationName: "prerequisiteOf" }),
+  milestones: many(milestone),
   xpSessions: many(xpSession),
 }));
 
@@ -150,7 +164,13 @@ export const skillPrerequisiteRelations = relations(skillPrerequisite, ({ one })
   }),
 }));
 
+export const milestoneRelations = relations(milestone, ({ one }) => ({
+  skill: one(skill, { fields: [milestone.skillId], references: [skill.id] }),
+  user: one(user, { fields: [milestone.userId], references: [user.id] }),
+}));
+
 export const xpSessionRelations = relations(xpSession, ({ one }) => ({
   user: one(user, { fields: [xpSession.userId], references: [user.id] }),
   skill: one(skill, { fields: [xpSession.skillId], references: [skill.id] }),
+  milestone: one(milestone, { fields: [xpSession.milestoneId], references: [milestone.id] }),
 }));
