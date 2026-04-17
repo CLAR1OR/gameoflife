@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { calculateLevel } from "@/lib/xp";
+import { getTemplate } from "@/lib/skill-templates";
 
 // =====================
 // CATEGORY ACTIONS
@@ -26,6 +27,7 @@ export async function createCategory(data: {
       description: data.description ?? null,
       icon: data.icon ?? null,
       color: data.color ?? null,
+      status: "background",
     })
     .returning();
 
@@ -75,8 +77,117 @@ export async function deleteCategory(categoryId: string) {
   revalidatePath("/skills");
 }
 
+export async function setSkillStatus(
+  categoryId: string,
+  status: "active" | "background" | "inactive"
+) {
+  const session = await requireSession();
+
+  // Enforce max 3 active skills
+  if (status === "active") {
+    const activeCount = await db.query.skillCategory.findMany({
+      where: (cat, { and: a, eq: e }) =>
+        a(e(cat.userId, session.user.id), e(cat.status, "active")),
+    });
+    if (activeCount.length >= 3) {
+      throw new Error("You can have at most 3 active skills. Move one to background first.");
+    }
+  }
+
+  await db
+    .update(skillCategory)
+    .set({ status, updatedAt: new Date() })
+    .where(
+      and(
+        eq(skillCategory.id, categoryId),
+        eq(skillCategory.userId, session.user.id)
+      )
+    );
+
+  revalidatePath("/skills");
+  revalidatePath("/");
+}
+
+export async function activateTemplate(templateId: string) {
+  const session = await requireSession();
+  const template = getTemplate(templateId);
+  if (!template) throw new Error("Template not found");
+
+  // Check if user already has this template
+  const existing = await db.query.skillCategory.findFirst({
+    where: (cat, { and: a, eq: e }) =>
+      a(e(cat.userId, session.user.id), e(cat.templateId, templateId)),
+  });
+  if (existing) throw new Error("You already have this skill");
+
+  // Create the category
+  const [category] = await db
+    .insert(skillCategory)
+    .values({
+      userId: session.user.id,
+      name: template.name,
+      description: template.description,
+      icon: template.icon,
+      status: "inactive",
+      templateId: template.id,
+    })
+    .returning();
+
+  // Create all subskills
+  const skillMap = new Map<string, string>(); // name → id
+  for (const sub of template.subskills) {
+    const hasPrereqs = sub.prerequisiteNames && sub.prerequisiteNames.length > 0;
+    const [newSkill] = await db
+      .insert(skill)
+      .values({
+        categoryId: category.id,
+        userId: session.user.id,
+        name: sub.name,
+        description: sub.description ?? null,
+        level: hasPrereqs ? 0 : 1,
+      })
+      .returning();
+    skillMap.set(sub.name, newSkill.id);
+  }
+
+  // Create prerequisites
+  for (const sub of template.subskills) {
+    if (!sub.prerequisiteNames?.length) continue;
+    const skillId = skillMap.get(sub.name)!;
+    for (const prereqName of sub.prerequisiteNames) {
+      const prereqId = skillMap.get(prereqName);
+      if (prereqId) {
+        await db.insert(skillPrerequisite).values({
+          skillId,
+          prerequisiteId: prereqId,
+          requiredLevel: 1,
+        });
+      }
+    }
+  }
+
+  // Create milestones
+  for (const sub of template.subskills) {
+    const skillId = skillMap.get(sub.name)!;
+    if (sub.milestones.length > 0) {
+      await db.insert(milestone).values(
+        sub.milestones.map((m, i) => ({
+          skillId,
+          userId: session.user.id,
+          name: m.name,
+          xpReward: m.xpReward,
+          sortOrder: i,
+        }))
+      );
+    }
+  }
+
+  revalidatePath("/skills");
+  return category;
+}
+
 // =====================
-// SKILL ACTIONS
+// SUBSKILL ACTIONS
 // =====================
 
 export async function createSkill(data: {

@@ -18,6 +18,7 @@ export default async function DashboardPage() {
   const userId = session.user.id;
 
   const categories = await getCategoriesByUser(userId);
+  const activeSkills = categories.filter((c) => c.status === "active");
 
   const [totalXpResult] = await db
     .select({ total: sum(skill.currentXp) })
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
     .where(eq(skill.userId, userId));
   const totalXp = Number(totalXpResult?.total ?? 0);
 
-  const totalSkills = await db
+  const totalSubskills = await db
     .select({ id: skill.id })
     .from(skill)
     .where(eq(skill.userId, userId));
@@ -54,30 +55,36 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total XP</CardDescription>
-            <CardTitle className="text-3xl">{totalXp.toLocaleString()}</CardTitle>
+            <CardTitle className="text-3xl">
+              {totalXp.toLocaleString()}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Active Focus</CardDescription>
+            <CardTitle className="text-3xl">
+              {activeSkills.length}/3
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Subskills</CardDescription>
-            <CardTitle className="text-3xl">{totalSkills.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Skills</CardDescription>
-            <CardTitle className="text-3xl">{categories.length}</CardTitle>
+            <CardTitle className="text-3xl">
+              {totalSubskills.length}
+            </CardTitle>
           </CardHeader>
         </Card>
       </div>
 
-      {categories.length > 0 && (
+      {activeSkills.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-3">Your Skills</h2>
+          <h2 className="text-lg font-semibold mb-3">Current Focus</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((cat) => (
+            {activeSkills.map((cat) => (
               <Link key={cat.id} href={`/skills/${cat.id}`}>
-                <Card className="hover:bg-accent/50 transition-colors">
+                <Card className="hover:bg-accent/50 transition-colors border-primary/30">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">{cat.icon ?? "📚"}</span>
@@ -97,17 +104,17 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {categories.length === 0 && (
+      {activeSkills.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground mb-3">
-              You haven&apos;t created any skills yet.
+              You haven&apos;t set any active focus skills yet.
             </p>
             <Link
               href="/skills"
               className="text-primary underline hover:text-primary/80"
             >
-              Create your first skill &rarr;
+              Choose your focus &rarr;
             </Link>
           </CardContent>
         </Card>

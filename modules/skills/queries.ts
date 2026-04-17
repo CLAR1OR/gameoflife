@@ -11,6 +11,8 @@ export async function getCategoriesByUser(userId: string) {
       description: skillCategory.description,
       icon: skillCategory.icon,
       color: skillCategory.color,
+      status: skillCategory.status,
+      templateId: skillCategory.templateId,
       sortOrder: skillCategory.sortOrder,
       createdAt: skillCategory.createdAt,
       updatedAt: skillCategory.updatedAt,
@@ -49,4 +51,14 @@ export async function getSkillsByCategory(categoryId: string, userId: string) {
     },
   });
   return skills;
+}
+
+export async function getActivatedTemplateIds(userId: string): Promise<string[]> {
+  const categories = await db.query.skillCategory.findMany({
+    where: (cat, { and: a, eq: e }) => a(e(cat.userId, userId)),
+    columns: { templateId: true },
+  });
+  return categories
+    .map((c) => c.templateId)
+    .filter((id): id is string => id !== null);
 }

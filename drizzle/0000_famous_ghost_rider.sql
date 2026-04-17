@@ -65,6 +65,8 @@ CREATE TABLE `skill_category` (
 	`description` text,
 	`icon` text,
 	`color` text,
+	`status` text DEFAULT 'inactive' NOT NULL,
+	`template_id` text,
 	`sort_order` integer DEFAULT 0 NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
