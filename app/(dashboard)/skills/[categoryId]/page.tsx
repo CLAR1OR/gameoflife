@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth-server";
 import { getCategoryById, getSkillsByCategory } from "@/modules/skills/queries";
 import { SkillTreeView } from "@/components/skill-tree/skill-tree-view";
+import { SkillStageHeader } from "@/components/skill-tree/skill-stage-header";
 
 export default async function SkillTreePage({
   params,
@@ -18,8 +19,8 @@ export default async function SkillTreePage({
   const skills = await getSkillsByCategory(categoryId, session.user.id);
 
   return (
-    <div className="h-full">
-      <div className="mb-2">
+    <div>
+      <div className="mb-3">
         <Link
           href="/skills"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -27,9 +28,14 @@ export default async function SkillTreePage({
           &larr; Back to skills
         </Link>
       </div>
+      <SkillStageHeader
+        skillName={category.name}
+        coverImage={category.coverImage}
+        icon={category.icon}
+        subskills={skills}
+      />
       <SkillTreeView
         categoryId={category.id}
-        categoryName={`${category.icon ?? ""} ${category.name}`}
         skills={skills}
       />
     </div>
