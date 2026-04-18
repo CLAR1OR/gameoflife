@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { SkillWithPrerequisites } from "@/modules/skills/types";
@@ -134,21 +133,17 @@ export function SkillStageHeader({
                 key={badgeNum}
                 className="relative flex flex-col items-center gap-1"
               >
-                <div
-                  className={`relative h-16 w-16 transition-all ${
+                <img
+                  src={
+                    earned ? `/badge${badgeNum}.png` : `/badge${badgeNum}not.png`
+                  }
+                  alt={`Stage ${badgeNum} ${earned ? "earned" : "locked"}`}
+                  className={`h-16 w-16 object-contain transition-all ${
                     earned
-                      ? "drop-shadow-[0_0_8px_rgba(0,255,136,0.4)]"
-                      : "grayscale brightness-50 opacity-40"
+                      ? "drop-shadow-[0_0_8px_rgba(0,255,136,0.5)]"
+                      : "opacity-70"
                   }`}
-                >
-                  <Image
-                    src={`/badge${badgeNum}.png`}
-                    alt={`Stage ${badgeNum} badge`}
-                    width={64}
-                    height={64}
-                    className="object-contain"
-                  />
-                </div>
+                />
                 <span
                   className={`text-[10px] font-mono uppercase tracking-wider ${
                     earned ? "text-glow" : "text-white/30"
