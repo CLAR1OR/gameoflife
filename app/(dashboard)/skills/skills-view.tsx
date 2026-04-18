@@ -182,9 +182,9 @@ function EmptyFocusSlot() {
 }
 
 // =====================
-// Regular card for background/inactive skills
+// Square tile for background/inactive skills
 // =====================
-function SkillCard({
+function SkillTile({
   skill,
   onEdit,
   onDelete,
@@ -195,45 +195,105 @@ function SkillCard({
   onDelete: () => void;
   onStatusChange: (status: "active" | "background" | "inactive") => void;
 }) {
+  const cover = resolveCoverImage({
+    templateId: skill.templateId,
+    coverImage: skill.coverImage,
+  });
+  const background =
+    cover || `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
+  const isBackground = skill.status === "background";
+  const accentColor = isBackground ? "glow-purple" : "muted-foreground";
+
   return (
-    <Card className="group relative transition-all hover:border-glow/30">
-      <Link href={`/skills/${skill.id}`}>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">{skill.icon ?? "📚"}</span>
-            <div className="flex-1">
-              <CardTitle className="text-lg">{skill.name}</CardTitle>
-              {skill.description && (
-                <CardDescription className="line-clamp-2">
-                  {skill.description}
-                </CardDescription>
-              )}
-            </div>
+    <Link href={`/skills/${skill.id}`} className="block group">
+      <div
+        className={`relative aspect-square w-full rounded-xl overflow-hidden border transition-all hover:scale-[1.03] ${
+          isBackground
+            ? "border-glow-purple/30 hover:border-glow-purple/60"
+            : "border-border/60 hover:border-border"
+        }`}
+      >
+        {/* Cover image with greyscale filter */}
+        <div
+          className={`absolute inset-0 transition-all ${
+            isBackground
+              ? "grayscale-[60%] group-hover:grayscale-[30%] brightness-75"
+              : "grayscale-[90%] brightness-50 group-hover:grayscale-[70%] group-hover:brightness-60"
+          }`}
+          style={{ background }}
+        />
+
+        {/* Scrim */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+
+        {/* Content */}
+        <div className="relative h-full flex flex-col justify-between p-3">
+          <div className="flex items-start justify-between">
+            <span className="text-3xl drop-shadow-lg">
+              {skill.icon ?? "📚"}
+            </span>
+            {isBackground && (
+              <Badge
+                variant="outline"
+                className="border-glow-purple/40 text-glow-purple bg-black/50 text-[9px] font-mono px-1.5 py-0"
+              >
+                ACTIVE
+              </Badge>
+            )}
           </div>
-        </CardHeader>
-        <CardContent>
-          <Badge variant="secondary">
-            {skill.skillCount} {skill.skillCount === 1 ? "subskill" : "subskills"}
-          </Badge>
-        </CardContent>
-      </Link>
-      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <StatusButtons status={skill.status} onStatusChange={onStatusChange} />
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={(e) => { e.preventDefault(); onEdit(); }}>
-          Edit
-        </Button>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive" onClick={(e) => { e.preventDefault(); onDelete(); }}>
-          Delete
-        </Button>
+          <div>
+            <h3
+              className={`text-sm font-bold leading-tight drop-shadow-lg ${
+                isBackground ? "text-white" : "text-white/80"
+              }`}
+            >
+              {skill.name}
+            </h3>
+            <span className="text-[10px] text-white/50 font-mono block mt-0.5">
+              {skill.skillCount}{" "}
+              {skill.skillCount === 1 ? "subskill" : "subskills"}
+            </span>
+          </div>
+        </div>
+
+        {/* Hover actions */}
+        <div className="absolute top-2 left-2 right-2 flex flex-wrap justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <StatusButtons
+            status={skill.status}
+            onStatusChange={onStatusChange}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] bg-black/60 text-white/80 hover:text-white hover:bg-black/80"
+            onClick={(e) => {
+              e.preventDefault();
+              onEdit();
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] bg-black/60 text-red-400 hover:text-red-300 hover:bg-black/80"
+            onClick={(e) => {
+              e.preventDefault();
+              onDelete();
+            }}
+          >
+            Del
+          </Button>
+        </div>
       </div>
-    </Card>
+    </Link>
   );
 }
 
 // =====================
-// Template card for available templates
+// Square tile for available templates
 // =====================
-function TemplateCard({
+function TemplateTile({
   template,
   onActivate,
 }: {
@@ -245,28 +305,44 @@ function TemplateCard({
     0
   );
   return (
-    <Card className="group relative border-dashed border-glow-purple/20 hover:border-glow-purple/40 transition-all">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{template.icon}</span>
-          <div className="flex-1">
-            <CardTitle className="text-lg">{template.name}</CardTitle>
-            <CardDescription className="line-clamp-2">
-              {template.description}
-            </CardDescription>
+    <div className="group relative aspect-square w-full rounded-xl overflow-hidden border-2 border-dashed border-glow-purple/30 hover:border-glow-purple/60 transition-all">
+      {/* Cover image with greyscale */}
+      <div
+        className="absolute inset-0 grayscale-[70%] brightness-60 group-hover:grayscale-[40%] group-hover:brightness-75 transition-all"
+        style={{ background: template.coverImage }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+
+      {/* Content */}
+      <div className="relative h-full flex flex-col justify-between p-3">
+        <div className="flex items-start justify-between">
+          <span className="text-3xl drop-shadow-lg">{template.icon}</span>
+          <Badge
+            variant="outline"
+            className="border-glow-purple/40 text-glow-purple bg-black/50 text-[9px] font-mono px-1.5 py-0"
+          >
+            TEMPLATE
+          </Badge>
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white leading-tight drop-shadow-lg">
+            {template.name}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-white/50 font-mono">
+            <span>{template.subskills.length} sub</span>
+            <span>·</span>
+            <span>{totalMilestones} m</span>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="flex items-center gap-2">
-        <Badge variant="outline">{template.subskills.length} subskills</Badge>
-        <Badge variant="outline">{totalMilestones} milestones</Badge>
-      </CardContent>
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button size="sm" className="h-7 text-xs" onClick={onActivate}>
-          Add to my skills
+      </div>
+
+      {/* Add button (centered on hover) */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+        <Button size="sm" className="h-8 text-xs" onClick={onActivate}>
+          + Add Skill
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -359,14 +435,12 @@ export function SkillsView({
         <h2 className="text-lg font-semibold mb-3 text-glow-purple uppercase tracking-wide">
           🛡️ Background
         </h2>
-        {background.length === 0 && active.length === 0 && inactive.length === 0 && (
-          <p className="text-sm text-muted-foreground mb-3">
-            Skills you&apos;re working on but not focusing on this month.
-          </p>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <p className="text-sm text-muted-foreground mb-3">
+          Skills you&apos;re working on but not focusing on this month.
+        </p>
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {background.map((s) => (
-            <SkillCard
+            <SkillTile
               key={s.id}
               skill={s}
               onEdit={() => handleEdit(s)}
@@ -390,9 +464,9 @@ export function SkillsView({
         <p className="text-sm text-muted-foreground mb-3">
           Pre-built skill trees you can add, or create your own.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {inactive.map((s) => (
-            <SkillCard
+            <SkillTile
               key={s.id}
               skill={s}
               onEdit={() => handleEdit(s)}
@@ -401,7 +475,7 @@ export function SkillsView({
             />
           ))}
           {availableTemplates.map((t) => (
-            <TemplateCard
+            <TemplateTile
               key={t.id}
               template={t}
               onActivate={() => handleActivateTemplate(t.id)}
