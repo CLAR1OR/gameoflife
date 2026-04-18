@@ -18,7 +18,7 @@ import {
   activateTemplate,
 } from "@/modules/skills/actions";
 import { toast } from "sonner";
-import type { SkillTemplate } from "@/lib/skill-templates";
+import { resolveCoverImage, type SkillTemplate } from "@/lib/skill-templates";
 
 type SkillWithCount = {
   id: string;
@@ -27,6 +27,7 @@ type SkillWithCount = {
   icon: string | null;
   color: string | null;
   coverImage: string | null;
+  templateId: string | null;
   status: string;
   skillCount: number;
 };
@@ -70,9 +71,9 @@ function StatusButtons({
 }
 
 // =====================
-// Banner card for active/focused skills
+// Vertical banner for active/focused skills
 // =====================
-function BannerCard({
+function FocusBanner({
   skill,
   onEdit,
   onDelete,
@@ -83,46 +84,100 @@ function BannerCard({
   onDelete: () => void;
   onStatusChange: (status: "active" | "background" | "inactive") => void;
 }) {
-  const gradient = skill.coverImage || `linear-gradient(135deg, #1a1b35 0%, #2a2d52 100%)`;
+  const cover = resolveCoverImage({
+    templateId: skill.templateId,
+    coverImage: skill.coverImage,
+  });
+  const background =
+    cover || `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
+
   return (
     <Link href={`/skills/${skill.id}`} className="block group">
       <div
-        className="relative h-44 rounded-xl overflow-hidden border border-glow/20 glow-green transition-all hover:border-glow/40"
-        style={{ background: gradient }}
+        className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden border-2 border-glow/30 glow-green transition-all hover:border-glow/60 hover:scale-[1.02]"
+        style={{ background }}
       >
-        {/* Large watermark emoji */}
-        <div className="absolute -right-4 -bottom-4 text-[8rem] leading-none opacity-20 select-none pointer-events-none">
+        {/* Watermark emoji (top-right, faded into background) */}
+        <div className="absolute -right-6 -top-6 text-[6rem] leading-none opacity-15 select-none pointer-events-none">
           {skill.icon ?? "📚"}
         </div>
-        {/* Dark scrim for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-        {/* Content */}
+
+        {/* Bottom-to-top scrim for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/10" />
+
+        {/* Glowing border shimmer on hover */}
+        <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-glow/20 pointer-events-none" />
+
+        {/* Content — bottom anchored */}
         <div className="relative h-full flex flex-col justify-end p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">{skill.icon ?? "📚"}</span>
-            <h3 className="text-xl font-bold text-white">{skill.name}</h3>
-          </div>
+          <span className="text-4xl mb-2 drop-shadow-lg">
+            {skill.icon ?? "📚"}
+          </span>
+          <h3 className="text-xl font-bold text-white leading-tight drop-shadow-lg">
+            {skill.name}
+          </h3>
           {skill.description && (
-            <p className="text-sm text-white/70 mb-2 line-clamp-1">
+            <p className="text-xs text-white/70 mt-1 line-clamp-2">
               {skill.description}
             </p>
           )}
-          <Badge variant="outline" className="w-fit border-white/30 text-white/80 text-xs">
-            {skill.skillCount} {skill.skillCount === 1 ? "subskill" : "subskills"}
-          </Badge>
+          <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between gap-2">
+            <Badge
+              variant="outline"
+              className="border-glow/40 text-glow bg-black/40 text-[10px] font-mono"
+            >
+              ⚔️ FOCUSED
+            </Badge>
+            <span className="text-[10px] text-white/50 font-mono">
+              {skill.skillCount}{" "}
+              {skill.skillCount === 1 ? "subskill" : "subskills"}
+            </span>
+          </div>
         </div>
+
         {/* Hover actions */}
-        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <StatusButtons status={skill.status} onStatusChange={onStatusChange} />
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-white/80 hover:text-white" onClick={(e) => { e.preventDefault(); onEdit(); }}>
+        <div className="absolute top-3 left-3 right-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <StatusButtons
+            status={skill.status}
+            onStatusChange={onStatusChange}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs bg-black/60 text-white/80 hover:text-white hover:bg-black/80"
+            onClick={(e) => {
+              e.preventDefault();
+              onEdit();
+            }}
+          >
             Edit
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-400 hover:text-red-300" onClick={(e) => { e.preventDefault(); onDelete(); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs bg-black/60 text-red-400 hover:text-red-300 hover:bg-black/80"
+            onClick={(e) => {
+              e.preventDefault();
+              onDelete();
+            }}
+          >
             Delete
           </Button>
         </div>
       </div>
     </Link>
+  );
+}
+
+// Empty slot placeholder
+function EmptyFocusSlot() {
+  return (
+    <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-2 transition-all hover:border-border hover:bg-muted/30">
+      <span className="text-6xl text-muted-foreground/30">?</span>
+      <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground/50">
+        Open Slot
+      </span>
+    </div>
   );
 }
 
@@ -279,22 +334,23 @@ export function SkillsView({
             {active.length}/3
           </Badge>
         </div>
-        {active.length === 0 && (
-          <p className="text-sm text-muted-foreground mb-3">
-            No active skills yet. Focus on 1-3 skills each month by clicking
-            &quot;Focus&quot; on a skill below.
-          </p>
-        )}
-        <div className="space-y-3">
-          {active.map((s) => (
-            <BannerCard
-              key={s.id}
-              skill={s}
-              onEdit={() => handleEdit(s)}
-              onDelete={() => handleDelete(s.id)}
-              onStatusChange={(st) => handleStatusChange(s.id, st)}
-            />
-          ))}
+        <p className="text-sm text-muted-foreground mb-4">
+          Your monthly priorities. Focus on 1-3 skills at a time.
+        </p>
+        <div className="grid grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => {
+            const s = active[i];
+            if (!s) return <EmptyFocusSlot key={`empty-${i}`} />;
+            return (
+              <FocusBanner
+                key={s.id}
+                skill={s}
+                onEdit={() => handleEdit(s)}
+                onDelete={() => handleDelete(s.id)}
+                onStatusChange={(st) => handleStatusChange(s.id, st)}
+              />
+            );
+          })}
         </div>
       </section>
 

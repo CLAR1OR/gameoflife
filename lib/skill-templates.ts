@@ -24,7 +24,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     id: "cooking",
     name: "Cooking",
     description: "From kitchen basics to confident home cook",
-    coverImage: "linear-gradient(135deg, #c2410c 0%, #ea580c 40%, #f97316 100%)",
+    coverImage: "url('/cooking.webp') center/cover",
     icon: "🍳",
     subskills: [
       {
@@ -124,4 +124,15 @@ export function getTemplate(id: string): SkillTemplate | undefined {
 
 export function getAvailableTemplates(): SkillTemplate[] {
   return SKILL_TEMPLATES;
+}
+
+export function resolveCoverImage(skill: {
+  templateId: string | null;
+  coverImage: string | null;
+}): string | null {
+  if (skill.templateId) {
+    const template = getTemplate(skill.templateId);
+    if (template) return template.coverImage;
+  }
+  return skill.coverImage;
 }

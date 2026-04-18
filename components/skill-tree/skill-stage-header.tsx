@@ -2,6 +2,7 @@
 
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { resolveCoverImage } from "@/lib/skill-templates";
 import type { SkillWithPrerequisites } from "@/modules/skills/types";
 
 const STAGE_NAMES = [
@@ -19,14 +20,17 @@ const TOTAL_STAGES = 6;
 export function SkillStageHeader({
   skillName,
   coverImage,
+  templateId,
   icon,
   subskills,
 }: {
   skillName: string;
   coverImage: string | null;
+  templateId: string | null;
   icon: string | null;
   subskills: SkillWithPrerequisites[];
 }) {
+  const resolvedCover = resolveCoverImage({ templateId, coverImage });
   // Aggregate stats across all subskills
   const totalMilestones = subskills.reduce(
     (sum, s) => sum + s.milestones.length,
@@ -64,7 +68,8 @@ export function SkillStageHeader({
         : 0;
   const milestonesToNext = Math.max(0, milestonesAtNextStage - completedMilestones);
 
-  const gradient = coverImage || `linear-gradient(135deg, #1a1b35 0%, #2a2d52 100%)`;
+  const gradient =
+    resolvedCover || `linear-gradient(135deg, #1a1b35 0%, #2a2d52 100%)`;
 
   return (
     <div

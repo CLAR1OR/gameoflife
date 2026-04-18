@@ -31,6 +31,7 @@ export default async function SkillTreePage({
       <SkillStageHeader
         skillName={category.name}
         coverImage={category.coverImage}
+        templateId={category.templateId}
         icon={category.icon}
         subskills={skills}
       />
