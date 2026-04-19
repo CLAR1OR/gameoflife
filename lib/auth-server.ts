@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { auth } from "./auth";
 
 export async function getSession() {
@@ -8,10 +9,17 @@ export async function getSession() {
   return session;
 }
 
+/**
+ * Require a valid session for a server component or action.
+ *
+ * If the cookie is missing or points at a session that no longer exists
+ * in the DB (e.g. after a dev DB reset), this redirects to /login instead
+ * of throwing — giving the user a clean way back in.
+ */
 export async function requireSession() {
   const session = await getSession();
   if (!session) {
-    throw new Error("Unauthorized");
+    redirect("/login");
   }
   return session;
 }
