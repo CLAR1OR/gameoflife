@@ -1037,6 +1037,193 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       },
     ],
   },
+  {
+    id: "bjj",
+    name: "Brazilian Jiu-Jitsu",
+    description: "From surviving on the bottom to finishing from anywhere",
+    icon: "🥋",
+    coverImage: "linear-gradient(135deg, #050505 0%, #0f172a 40%, #14532d 100%)",
+    subskills: [
+      // =====================
+      // FOUNDATIONS
+      // =====================
+      {
+        name: "Fundamentals & Movement",
+        description: "Shrimps, bridges, breakfalls — the body mechanics underneath everything",
+        milestones: [
+          { name: "Do 20 shrimps (hip escapes) in each direction consecutively", xpReward: 75 },
+          { name: "Do 20 bridges with full hip extension", xpReward: 50 },
+          { name: "Safely breakfall from a kneeling position", xpReward: 75 },
+          { name: "Execute forward and backward rolls over each shoulder", xpReward: 100 },
+          { name: "Perform a technical stand-up cleanly", xpReward: 75 },
+          { name: "Hold base in both knee-up and turtle against pressure", xpReward: 100 },
+          { name: "Attend 10 fundamentals classes", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Base Positions & Awareness",
+        description: "Know every position and the hierarchy between them",
+        prerequisiteNames: ["Fundamentals & Movement"],
+        milestones: [
+          { name: "Name and demonstrate mount, side, back, guard, half guard, turtle, knee-on-belly, north-south", xpReward: 100 },
+          { name: "Explain the position hierarchy (and why)", xpReward: 75 },
+          { name: "Identify your current position during a live roll", xpReward: 100 },
+          { name: "Apply proper posture and frames in 5 bad positions", xpReward: 100 },
+          { name: "Transition through 5 positions in sequence smoothly", xpReward: 125 },
+          { name: "Know the key grip and hand-fighting principles", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Takedowns",
+        description: "Get the fight to the ground on your terms",
+        prerequisiteNames: ["Fundamentals & Movement"],
+        milestones: [
+          { name: "Execute a single-leg takedown", xpReward: 100 },
+          { name: "Execute a double-leg takedown", xpReward: 100 },
+          { name: "Execute a judo throw (o-goshi, osoto-gari, or similar)", xpReward: 100 },
+          { name: "Pull guard safely with a grip break and control", xpReward: 75 },
+          { name: "Defend 3 takedown attempts with sprawl or scramble", xpReward: 100 },
+          { name: "Take a resisting partner down and establish position 5 times", xpReward: 125 },
+        ],
+      },
+
+      // =====================
+      // SURVIVE → ESCAPE
+      // =====================
+      {
+        name: "Escapes",
+        description: "Get out of mount, side, back, and turtle",
+        prerequisiteNames: ["Base Positions & Awareness"],
+        milestones: [
+          { name: "Execute the upa (bridge-and-roll) mount escape 10 times live", xpReward: 100 },
+          { name: "Execute the elbow-knee mount escape 10 times live", xpReward: 100 },
+          { name: "Recover guard from side control 10 times live", xpReward: 100 },
+          { name: "Escape back control (handfight, peel grips, get hooks out)", xpReward: 100 },
+          { name: "Escape turtle to guard or standing", xpReward: 100 },
+          { name: "Survive and escape 5 times in live rolls", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // GUARD FAMILY
+      // =====================
+      {
+        name: "Closed Guard",
+        description: "The bread-and-butter bottom position — attacks and sweeps",
+        prerequisiteNames: ["Base Positions & Awareness"],
+        milestones: [
+          { name: "Establish closed guard and break your opponent's posture", xpReward: 75 },
+          { name: "Finish a cross collar choke from closed guard", xpReward: 100 },
+          { name: "Finish an armbar from closed guard", xpReward: 100 },
+          { name: "Finish a triangle choke from closed guard", xpReward: 100 },
+          { name: "Sweep from closed guard (scissor, hip bump, or flower)", xpReward: 100 },
+          { name: "Chain 3 attacks together in closed guard", xpReward: 75 },
+          { name: "Hold closed guard for 2 minutes against a resisting partner", xpReward: 50 },
+        ],
+      },
+      {
+        name: "Half Guard",
+        description: "The most played position in modern BJJ",
+        prerequisiteNames: ["Closed Guard"],
+        milestones: [
+          { name: "Establish a proper knee-shield half guard", xpReward: 75 },
+          { name: "Sweep with the underhook from half guard", xpReward: 100 },
+          { name: "Sweep with the knee-shield", xpReward: 100 },
+          { name: "Defend and recover from top-half-guard attacks", xpReward: 100 },
+          { name: "Use half guard to recover full guard", xpReward: 100 },
+          { name: "Win or hold 2 minutes from half guard", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Open Guards",
+        description: "Spider, De La Riva, butterfly, lasso — the modern game",
+        prerequisiteNames: ["Closed Guard"],
+        milestones: [
+          { name: "Play butterfly guard and land a butterfly sweep", xpReward: 100 },
+          { name: "Play spider guard with grips and hook control", xpReward: 100 },
+          { name: "Play De La Riva guard", xpReward: 100 },
+          { name: "Play lasso guard", xpReward: 100 },
+          { name: "Chain between 2 open guards fluidly", xpReward: 100 },
+          { name: "Sweep a resisting partner from an open guard 5 times", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // DOMINATE → SUBMIT
+      // =====================
+      {
+        name: "Guard Passing",
+        description: "Get past guards and into dominant top positions",
+        prerequisiteNames: ["Escapes"],
+        milestones: [
+          { name: "Perform a toreando (bullfighter) pass", xpReward: 100 },
+          { name: "Perform a knee-slice pass", xpReward: 100 },
+          { name: "Perform a stack pass against closed guard", xpReward: 100 },
+          { name: "Defeat grips and pass open guards (spider / DLR)", xpReward: 100 },
+          { name: "Pass and stabilize in side control", xpReward: 100 },
+          { name: "Pass a resisting partner 5 times during rolling", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Pinning & Top Control",
+        description: "Keep them where you put them",
+        prerequisiteNames: ["Guard Passing"],
+        milestones: [
+          { name: "Hold side control for 2 minutes against resistance", xpReward: 100 },
+          { name: "Hold mount for 1 minute against resistance", xpReward: 100 },
+          { name: "Hold back control (seat belt + hooks) for 1 minute", xpReward: 100 },
+          { name: "Transition between top positions without losing control", xpReward: 100 },
+          { name: "Apply and maintain knee-on-belly", xpReward: 75 },
+          { name: "Establish the mount hierarchy (S-mount, technical mount)", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Submissions",
+        description: "Chokes and joint locks — the finish",
+        prerequisiteNames: ["Pinning & Top Control", "Closed Guard"],
+        milestones: [
+          { name: "Finish a rear naked choke from back control", xpReward: 100 },
+          { name: "Finish an armbar from mount or guard", xpReward: 100 },
+          { name: "Finish a triangle choke in live rolling", xpReward: 100 },
+          { name: "Finish a kimura", xpReward: 75 },
+          { name: "Finish a guillotine", xpReward: 75 },
+          { name: "Chain submission attempts (A → B → C)", xpReward: 75 },
+          { name: "Tap 5 partners with 5 different submissions", xpReward: 75 },
+        ],
+      },
+
+      // =====================
+      // LIVE TRAINING & COMPETITION
+      // =====================
+      {
+        name: "Rolling & Sparring",
+        description: "Live training — where skill actually develops",
+        prerequisiteNames: ["Escapes", "Closed Guard"],
+        milestones: [
+          { name: "Complete 10 rolling sessions (5+ minutes each)", xpReward: 75 },
+          { name: "Roll with someone bigger or more experienced", xpReward: 75 },
+          { name: "Do positional sparring (start in a bad position, escape)", xpReward: 100 },
+          { name: "Roll a full class using only ONE technique", xpReward: 75 },
+          { name: "Log 50 total rolls", xpReward: 125 },
+          { name: "Tap 3 similar-level partners in a single session", xpReward: 75 },
+          { name: "Attend 50 training sessions", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Competition & Mental Game",
+        description: "Test yourself against strangers who want to beat you",
+        prerequisiteNames: ["Rolling & Sparring", "Submissions"],
+        milestones: [
+          { name: "Enter your first BJJ tournament", xpReward: 150 },
+          { name: "Win a match at any competition", xpReward: 125 },
+          { name: "Compete in 3+ tournaments", xpReward: 125 },
+          { name: "Develop and write down a personal competition game plan", xpReward: 75 },
+          { name: "Recover mentally from a loss and compete again", xpReward: 75 },
+          { name: "Win a tournament division or medal", xpReward: 50 },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {
