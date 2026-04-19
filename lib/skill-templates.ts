@@ -1290,6 +1290,206 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       { name: "Black Belt Mindset", description: "Mastered every branch of BJJ", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
+  {
+    id: "fitness",
+    name: "Fitness",
+    description: "From first push-up to peak physical condition",
+    icon: "💪",
+    coverImage: "linear-gradient(135deg, #0a0a0a 0%, #450a0a 45%, #dc2626 100%)",
+    subskills: [
+      // =====================
+      // ROOT
+      // =====================
+      {
+        name: "Foundations & Form",
+        description: "Consistency, basic movement, and tracking",
+        milestones: [
+          { name: "Learn proper breathing and bracing", xpReward: 75 },
+          { name: "Hold a perfect plank for 60 seconds", xpReward: 75 },
+          { name: "Complete a full-body dynamic warm-up routine", xpReward: 75 },
+          { name: "Establish a 3+ sessions/week schedule for 4 weeks", xpReward: 100 },
+          { name: "Track your workouts for 30 consecutive days", xpReward: 100 },
+          { name: "Complete a baseline fitness assessment (measurements, tests)", xpReward: 75 },
+          { name: "Complete 20 workouts of any kind", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // KNOWLEDGE BRANCH
+      // =====================
+      {
+        name: "Theoretical Foundations",
+        description: "The science behind training — know why, not just how",
+        prerequisiteNames: ["Foundations & Form"],
+        milestones: [
+          { name: "Read a foundational book (e.g. Starting Strength, Science of Strength Training)", xpReward: 125 },
+          { name: "Learn the difference between strength, hypertrophy, and endurance adaptations", xpReward: 75 },
+          { name: "Understand progressive overload and how to program it", xpReward: 100 },
+          { name: "Learn how to read a training program and modify it", xpReward: 75 },
+          { name: "Know the major muscle groups and their functions", xpReward: 100 },
+          { name: "Understand biomechanics of the main compound lifts", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Nutrition & Recovery",
+        description: "Training only works if you fuel and recover",
+        prerequisiteNames: ["Theoretical Foundations"],
+        milestones: [
+          { name: "Track your food for 2 weeks to know your baseline", xpReward: 100 },
+          { name: "Hit a specific macro split for 4 weeks", xpReward: 100 },
+          { name: "Sleep 7-9 hours consistently for 30 days", xpReward: 100 },
+          { name: "Prep meals in advance for 4 weeks straight", xpReward: 75 },
+          { name: "Complete a successful body recomposition (measurable)", xpReward: 150 },
+          { name: "Integrate recovery practices (foam rolling, mobility, deloads)", xpReward: 75 },
+        ],
+      },
+
+      // =====================
+      // STRENGTH BRANCH
+      // =====================
+      {
+        name: "Strength Training Fundamentals",
+        description: "The barbell big four plus accessories",
+        prerequisiteNames: ["Foundations & Form"],
+        milestones: [
+          { name: "Squat with good form (bodyweight, then loaded)", xpReward: 100 },
+          { name: "Deadlift with good form", xpReward: 100 },
+          { name: "Bench press with good form", xpReward: 100 },
+          { name: "Overhead press with good form", xpReward: 75 },
+          { name: "Bent-over or Pendlay row with good form", xpReward: 75 },
+          { name: "Complete a 5x5 program for 8 weeks", xpReward: 100 },
+          { name: "Hit beginner strength standards (BW squat, 1.5x BW DL, 0.75x BW bench)", xpReward: 50 },
+        ],
+      },
+      {
+        name: "Calisthenics & Bodyweight",
+        description: "Master your own body — anywhere, anytime",
+        prerequisiteNames: ["Foundations & Form"],
+        milestones: [
+          { name: "Do 20 consecutive push-ups", xpReward: 75 },
+          { name: "Do 10 strict pull-ups", xpReward: 100 },
+          { name: "Do 20 bodyweight squats without rest", xpReward: 50 },
+          { name: "Do 20 dips on parallel bars", xpReward: 75 },
+          { name: "Pistol squats — 5 clean reps each leg", xpReward: 100 },
+          { name: "Hold a wall-supported handstand for 30 seconds", xpReward: 100 },
+          { name: "Achieve a muscle-up OR L-sit hold", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Advanced Lifting",
+        description: "Intermediate-to-advanced strength, programming, competition",
+        prerequisiteNames: ["Strength Training Fundamentals", "Theoretical Foundations"],
+        milestones: [
+          { name: "Hit intermediate standards (1x BW OHP, 1.5x BW bench, 2x BW DL, 1.5x BW squat)", xpReward: 150 },
+          { name: "Run a periodized program (5/3/1, Texas Method, Sheiko, etc.)", xpReward: 100 },
+          { name: "Video-record and analyze your heavy lifts", xpReward: 75 },
+          { name: "Train Olympic lifts OR advanced powerlifting accessories", xpReward: 100 },
+          { name: "Compete in a local powerlifting or weightlifting meet", xpReward: 100 },
+          { name: "Hit an advanced strength standard in any lift (2x BW bench, 3x BW DL, etc.)", xpReward: 75 },
+        ],
+      },
+
+      // =====================
+      // CARDIO BRANCH
+      // =====================
+      {
+        name: "Cardio Base",
+        description: "Aerobic capacity and heart health",
+        prerequisiteNames: ["Foundations & Form"],
+        milestones: [
+          { name: "Build up to 30 minutes of continuous easy aerobic exercise", xpReward: 100 },
+          { name: "Know your max heart rate and training zones", xpReward: 75 },
+          { name: "Complete 12 cardio sessions in 4 weeks", xpReward: 100 },
+          { name: "Maintain a resting heart rate under 70 bpm", xpReward: 100 },
+          { name: "Hold zone 2 heart rate for 45 minutes", xpReward: 125 },
+          { name: "Complete a VO2 max test or estimate", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Running",
+        description: "From couch-to-5K to longer events",
+        prerequisiteNames: ["Cardio Base"],
+        milestones: [
+          { name: "Run 1 km without stopping", xpReward: 50 },
+          { name: "Run 5 km continuously", xpReward: 100 },
+          { name: "Run 10 km continuously", xpReward: 100 },
+          { name: "Run a sub-30 minute 5K", xpReward: 100 },
+          { name: "Complete a half marathon (21.1 km)", xpReward: 125 },
+          { name: "Run a full marathon OR sub-25 min 5K", xpReward: 100 },
+          { name: "Integrate proper running form cues consistently", xpReward: 25 },
+        ],
+      },
+      {
+        name: "Swimming",
+        description: "All four strokes and real distance",
+        prerequisiteNames: ["Cardio Base"],
+        milestones: [
+          { name: "Swim 100m freestyle continuously", xpReward: 100 },
+          { name: "Swim 500m continuously (any stroke)", xpReward: 100 },
+          { name: "Learn bilateral breathing in freestyle", xpReward: 75 },
+          { name: "Swim all 4 strokes proficiently (free, back, breast, butterfly)", xpReward: 100 },
+          { name: "Swim 1500m continuously", xpReward: 125 },
+          { name: "Swim a timed mile in under 40 minutes", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Conditioning",
+        description: "HIIT, metcon, and multi-modal work",
+        prerequisiteNames: ["Calisthenics & Bodyweight", "Cardio Base"],
+        milestones: [
+          { name: "Complete 10 HIIT sessions", xpReward: 100 },
+          { name: "Do a CrossFit benchmark WOD (Cindy, Fran, Murph)", xpReward: 125 },
+          { name: "Do 100 burpees for time (under 10 minutes)", xpReward: 100 },
+          { name: "Row 2km in under 8:00 minutes", xpReward: 100 },
+          { name: "Complete a multi-modal endurance event (duathlon, obstacle race)", xpReward: 75 },
+          { name: "Maintain a 3x/week conditioning schedule for 8 weeks", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // MOBILITY
+      // =====================
+      {
+        name: "Mobility & Flexibility",
+        description: "Move well, age well",
+        prerequisiteNames: ["Foundations & Form"],
+        milestones: [
+          { name: "Establish a daily 10-min mobility routine for 30 days", xpReward: 100 },
+          { name: "Touch your toes (hamstring flexibility)", xpReward: 75 },
+          { name: "Hit full squat depth with proper ankle + hip mobility", xpReward: 100 },
+          { name: "Hold a bridge or wheel pose", xpReward: 100 },
+          { name: "Achieve a front split OR full shoulder flexibility", xpReward: 125 },
+          { name: "Complete 10 yoga sessions", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CAPSTONE
+      // =====================
+      {
+        name: "Physical Goals & Performance",
+        description: "Set ambitious goals and hit them",
+        prerequisiteNames: ["Advanced Lifting", "Nutrition & Recovery"],
+        milestones: [
+          { name: "Set a specific, measurable 6-month physique or performance goal", xpReward: 75 },
+          { name: "Track and hit a 3-month intermediate goal", xpReward: 100 },
+          { name: "Complete a physique transformation with before/after photos", xpReward: 100 },
+          { name: "Complete a major endurance event OR strength PR", xpReward: 125 },
+          { name: "Achieve a visible aesthetic goal (abs, physique comp shape)", xpReward: 100 },
+          { name: "Maintain peak condition for 3+ months", xpReward: 100 },
+        ],
+      },
+    ],
+    achievements: [
+      { name: "Iron Paradise", description: "Mastered the barbell fundamentals", icon: "🏋️", trigger: { type: "subskill_mastered", subskillName: "Strength Training Fundamentals" } },
+      { name: "Marathon Runner", description: "Completed 42.2km or a sub-25 5K", icon: "🏃", trigger: { type: "subskill_mastered", subskillName: "Running" } },
+      { name: "Fish", description: "All four strokes, real distance, no stopping", icon: "🏊", trigger: { type: "subskill_mastered", subskillName: "Swimming" } },
+      { name: "Bendy", description: "Your body does what you ask it to", icon: "🧘", trigger: { type: "subskill_mastered", subskillName: "Mobility & Flexibility" } },
+      { name: "Powerlifter", description: "Hit advanced strength standards", icon: "🦾", trigger: { type: "subskill_mastered", subskillName: "Advanced Lifting" } },
+      { name: "The Machine", description: "Reached Journeyman — strong, fit, consistent", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Peak Human", description: "Mastered every branch of fitness", icon: "👑", trigger: { type: "all_mastered" } },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {
