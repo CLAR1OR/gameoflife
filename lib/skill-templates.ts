@@ -139,7 +139,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Russian Language",
     description: "From Cyrillic basics to reading Dostoevsky in the original",
     icon: "🇷🇺",
-    coverImage: "linear-gradient(135deg, #1e1b4b 0%, #7f1d1d 55%, #450a0a 100%)",
+    coverImage: "url('/russian.png') center/cover",
     subskills: [
       // =====================
       // COMPREHENSIBLE INPUT (A1 → C1)
@@ -322,7 +322,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
   name: "Piano",
   description: "From first chords to advanced concert repertoire",
   icon: "🎹",
-  coverImage: "linear-gradient(135deg, #0a0a0a 0%, #1c1917 30%, #422006 70%, #854d0e 100%)",
+  coverImage: "url('/piano.png') center/cover",
   subskills: [
     // =====================
     // FOUNDATIONS
@@ -1100,7 +1100,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Brazilian Jiu-Jitsu",
     description: "From surviving on the bottom to finishing from anywhere",
     icon: "🥋",
-    coverImage: "linear-gradient(135deg, #050505 0%, #0f172a 40%, #14532d 100%)",
+    coverImage: "url('/bjj.png') center/cover",
     subskills: [
       // =====================
       // FOUNDATIONS
