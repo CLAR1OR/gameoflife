@@ -851,6 +851,192 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       },
     ],
   },
+  {
+    id: "writing",
+    name: "Writing",
+    description: "From daily practice to publishing finished work that reaches readers",
+    icon: "✍️",
+    coverImage: "linear-gradient(135deg, #0c0a0a 0%, #2a1f15 35%, #4a3a28 65%, #8a6a3a 100%)",
+    subskills: [
+      // =====================
+      // ROOT: HABIT
+      // =====================
+      {
+        name: "Writing Habit",
+        description: "Put words down consistently — nothing happens without this",
+        milestones: [
+          { name: "Write 500 words in a single sitting", xpReward: 50 },
+          { name: "Write every day for 7 days in a row", xpReward: 75 },
+          { name: "Keep a writing journal for 30 days", xpReward: 100 },
+          { name: "Write 10,000 words total (any form)", xpReward: 100 },
+          { name: "Write every day for 30 days straight", xpReward: 125 },
+          { name: "Establish a consistent writing time and place (4-week streak)", xpReward: 75 },
+          { name: "Reach 100,000 words written across any projects", xpReward: 75 },
+        ],
+      },
+
+      // =====================
+      // CRAFT BRANCH
+      // =====================
+      {
+        name: "Craft Fundamentals",
+        description: "Sentence-level control, style, and technique",
+        prerequisiteNames: ["Writing Habit"],
+        milestones: [
+          { name: "Read a craft book end-to-end (e.g., 'On Writing', 'Bird by Bird')", xpReward: 100 },
+          { name: "Rewrite a paragraph 5 different ways to study rhythm", xpReward: 75 },
+          { name: "Eliminate adverbs and filler words from a finished piece", xpReward: 75 },
+          { name: "Practice showing vs. telling — rewrite 10 passages", xpReward: 100 },
+          { name: "Learn and apply active voice deliberately across a piece", xpReward: 75 },
+          { name: "Study and imitate 3 writers' styles in short exercises", xpReward: 100 },
+          { name: "Complete a grammar or style course", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Reading Like a Writer",
+        description: "Read books as a craftsperson, not a consumer",
+        prerequisiteNames: ["Writing Habit"],
+        milestones: [
+          { name: "Read 5 books in your target genre with craft notes", xpReward: 100 },
+          { name: "Annotate a full book for craft choices", xpReward: 100 },
+          { name: "Analyze a great essay paragraph-by-paragraph", xpReward: 75 },
+          { name: "Read 20 craft essays or interviews with writers", xpReward: 75 },
+          { name: "Keep a commonplace book of favorite passages", xpReward: 100 },
+          { name: "Read 25 books across genres and forms in a year", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Voice & Style",
+        description: "Develop writing that sounds unmistakably like you",
+        prerequisiteNames: ["Craft Fundamentals", "Reading Like a Writer"],
+        milestones: [
+          { name: "Write a personal essay that sounds like no one else", xpReward: 125 },
+          { name: "Write the same piece in 3 deliberately different styles", xpReward: 100 },
+          { name: "Identify the 5 writers who most shaped your voice", xpReward: 75 },
+          { name: "Write 10 pieces without imitating any model", xpReward: 100 },
+          { name: "Get feedback that specifically identifies your voice", xpReward: 100 },
+          { name: "Maintain a recognizable voice across 10 published pieces", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Editing & Revision",
+        description: "Where good writing actually happens",
+        prerequisiteNames: ["Craft Fundamentals"],
+        milestones: [
+          { name: "Revise a draft through at least 3 full passes", xpReward: 100 },
+          { name: "Cut 20% from a finished piece without losing meaning", xpReward: 100 },
+          { name: "Read your work aloud to catch awkwardness", xpReward: 75 },
+          { name: "Apply structured revision (big picture → line edits)", xpReward: 100 },
+          { name: "Edit someone else's draft substantively", xpReward: 100 },
+          { name: "Complete a self-editing checklist on 5 separate pieces", xpReward: 125 },
+        ],
+      },
+
+      // =====================
+      // SHORT-FORM OUTPUTS
+      // =====================
+      {
+        name: "Short Essays & Blog Posts",
+        description: "Finish and polish essays in the 500–2000 word range",
+        prerequisiteNames: ["Craft Fundamentals"],
+        milestones: [
+          { name: "Write a finished 500-word essay", xpReward: 75 },
+          { name: "Write a 1500-word opinion piece", xpReward: 100 },
+          { name: "Write 5 short essays on different topics", xpReward: 100 },
+          { name: "Write a personal essay that moves someone to reply", xpReward: 100 },
+          { name: "Write a thinkpiece that provokes genuine disagreement", xpReward: 100 },
+          { name: "Complete 20 finished short essays", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Short Stories",
+        description: "Finish stories people want to finish reading",
+        prerequisiteNames: ["Voice & Style"],
+        milestones: [
+          { name: "Finish a 1000-word flash-fiction story", xpReward: 75 },
+          { name: "Write a 3000–5000 word short story", xpReward: 100 },
+          { name: "Write stories in 3 different genres", xpReward: 125 },
+          { name: "Write a story with a plot twist that lands on readers", xpReward: 100 },
+          { name: "Develop a character readers remember after reading", xpReward: 100 },
+          { name: "Complete 10 finished short stories", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // LONG-FORM
+      // =====================
+      {
+        name: "Long-Form Nonfiction",
+        description: "Researched essays, features, journalism",
+        prerequisiteNames: ["Short Essays & Blog Posts", "Editing & Revision"],
+        milestones: [
+          { name: "Write a 3000+ word essay with a clear argument", xpReward: 100 },
+          { name: "Conduct original interviews for a piece", xpReward: 100 },
+          { name: "Write a researched feature (5000+ words)", xpReward: 150 },
+          { name: "Fact-check every claim in a non-trivial piece", xpReward: 100 },
+          { name: "Pitch a publication with a long-form idea", xpReward: 75 },
+          { name: "Take a long-form piece from research through to publication", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Novella / Novel",
+        description: "The big one — sustained fiction over 15k+ words",
+        prerequisiteNames: ["Short Stories", "Editing & Revision"],
+        milestones: [
+          { name: "Outline a full novel (or write a strong synopsis)", xpReward: 75 },
+          { name: "Write a 15,000-word novella draft", xpReward: 100 },
+          { name: "Complete a first draft of 50,000+ words (NaNoWriMo length)", xpReward: 150 },
+          { name: "Revise a novel-length manuscript fully", xpReward: 150 },
+          { name: "Get a manuscript beta-read and address the feedback", xpReward: 75 },
+          { name: "Finish a polished novel-length work ready for submission", xpReward: 50 },
+        ],
+      },
+
+      // =====================
+      // PUBLISHING + AUDIENCE
+      // =====================
+      {
+        name: "Publishing Online",
+        description: "Get finished writing into the world",
+        prerequisiteNames: ["Editing & Revision"],
+        milestones: [
+          { name: "Publish your first piece online (blog, Medium, Substack)", xpReward: 100 },
+          { name: "Build and own a writer's website or landing page", xpReward: 75 },
+          { name: "Publish 10 pieces online", xpReward: 100 },
+          { name: "Publish on 3 different platforms", xpReward: 75 },
+          { name: "Have a piece shared or discussed by strangers", xpReward: 100 },
+          { name: "Reach 1,000 total readers across your published work", xpReward: 75 },
+          { name: "Maintain a consistent publishing cadence for 3 months", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Newsletter & Audience",
+        description: "Build a direct relationship with readers",
+        prerequisiteNames: ["Publishing Online"],
+        milestones: [
+          { name: "Start a newsletter (Substack, Beehiiv, Ghost, etc.)", xpReward: 75 },
+          { name: "Send 10 newsletter issues on schedule", xpReward: 100 },
+          { name: "Reach 100 subscribers", xpReward: 100 },
+          { name: "Reach 1,000 subscribers", xpReward: 150 },
+          { name: "Sustain an open rate above 40%", xpReward: 75 },
+          { name: "Keep a consistent delivery schedule for 3+ months", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Writing Community & Feedback",
+        description: "Writers you trade critique with, publications you submit to",
+        prerequisiteNames: ["Publishing Online"],
+        milestones: [
+          { name: "Join a writing group or critique circle", xpReward: 75 },
+          { name: "Give substantive feedback to 10 other writers", xpReward: 100 },
+          { name: "Receive and incorporate feedback on 5 pieces", xpReward: 100 },
+          { name: "Submit a piece to a literary magazine or publication", xpReward: 100 },
+          { name: "Receive your first acceptance (paid or unpaid)", xpReward: 150 },
+          { name: "Collaborate on a writing project with another writer", xpReward: 75 },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {
