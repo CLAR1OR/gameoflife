@@ -475,6 +475,195 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     },
   ],
   },
+  {
+    id: "guitar",
+    name: "Guitar",
+    description: "From first chords to full songs, solos, and jamming",
+    icon: "🎸",
+    coverImage: "linear-gradient(135deg, #0a0a0a 0%, #3a2418 45%, #92400e 100%)",
+    subskills: [
+      // =====================
+      // FOUNDATIONS
+      // =====================
+      {
+        name: "Fundamentals & Posture",
+        description: "Tuning, holding, and getting clean notes out",
+        milestones: [
+          { name: "Tune the guitar by ear and with a tuner", xpReward: 75 },
+          { name: "Hold the guitar correctly sitting and standing", xpReward: 50 },
+          { name: "Name every string (EADGBE) and locate them", xpReward: 50 },
+          { name: "Do 10 minutes of finger exercises daily for a week", xpReward: 100 },
+          { name: "Play single notes cleanly (no buzzing) on all 6 strings", xpReward: 100 },
+          { name: "Move cleanly between notes on adjacent strings", xpReward: 100 },
+          { name: "Complete 10 practice sessions of 30+ minutes", xpReward: 125 },
+        ],
+      },
+
+      // =====================
+      // CHORDS BRANCH
+      // =====================
+      {
+        name: "Open Chords",
+        description: "The first 8 essential chord shapes",
+        prerequisiteNames: ["Fundamentals & Posture"],
+        milestones: [
+          { name: "Play G, C, and D cleanly", xpReward: 75 },
+          { name: "Play Em and Am cleanly", xpReward: 50 },
+          { name: "Play E, A, and Dm cleanly", xpReward: 75 },
+          { name: "Switch between G-C-D smoothly at 60 BPM", xpReward: 100 },
+          { name: "Switch between any two open chords in under 2 seconds", xpReward: 100 },
+          { name: "Play an F chord (mini or full) cleanly", xpReward: 100 },
+          { name: "Memorize all 8 essential open-chord shapes", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Barre Chords",
+        description: "E-shape, A-shape, and moving chord shapes",
+        prerequisiteNames: ["Open Chords", "Rhythm & Strumming"],
+        milestones: [
+          { name: "Play an F barre chord (E-shape) cleanly", xpReward: 100 },
+          { name: "Play major barre chords along the 6th string", xpReward: 100 },
+          { name: "Play minor barre chords (E-shape)", xpReward: 100 },
+          { name: "Play A-shape barre chords (major and minor)", xpReward: 100 },
+          { name: "Switch between open and barre chords in a song", xpReward: 100 },
+          { name: "Play a complete song using only barre chords", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // RHYTHM + FINGERPICKING
+      // =====================
+      {
+        name: "Rhythm & Strumming",
+        description: "Strumming patterns, timing, feel",
+        prerequisiteNames: ["Fundamentals & Posture"],
+        milestones: [
+          { name: "Strum downstrokes in 4/4 time to a metronome", xpReward: 75 },
+          { name: "Play a consistent down-up strumming pattern", xpReward: 75 },
+          { name: "Learn 3 common strumming patterns by name", xpReward: 100 },
+          { name: "Strum with clean palm muting", xpReward: 100 },
+          { name: "Strum in 3/4 and 6/8 time", xpReward: 75 },
+          { name: "Strum along with an original recording at tempo", xpReward: 100 },
+          { name: "Play syncopated 16th-note strumming patterns", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Fingerpicking",
+        description: "PIMA patterns, Travis picking, arpeggios",
+        prerequisiteNames: ["Open Chords"],
+        milestones: [
+          { name: "Play alternating bass on an open chord", xpReward: 75 },
+          { name: "Play a clean PIMA arpeggiated pattern", xpReward: 100 },
+          { name: "Play Travis picking on a G chord", xpReward: 100 },
+          { name: "Fingerpick through a full chord progression", xpReward: 100 },
+          { name: "Learn a fingerpicking arrangement (e.g., 'Dust in the Wind')", xpReward: 125 },
+          { name: "Play a simple classical guitar piece", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // FRETBOARD + THEORY
+      // =====================
+      {
+        name: "Fretboard Knowledge",
+        description: "Know where every note lives",
+        prerequisiteNames: ["Fundamentals & Posture"],
+        milestones: [
+          { name: "Name all notes on the 6th string (low E)", xpReward: 75 },
+          { name: "Name all notes on the 5th string (A)", xpReward: 75 },
+          { name: "Name all natural notes across all 6 strings", xpReward: 125 },
+          { name: "Identify octave patterns across the fretboard", xpReward: 100 },
+          { name: "Find any note anywhere in under 3 seconds", xpReward: 125 },
+          { name: "Map the CAGED system across the fretboard", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Scales & Theory",
+        description: "Pentatonic, modes, and chord tones",
+        prerequisiteNames: ["Fretboard Knowledge"],
+        milestones: [
+          { name: "Play the minor pentatonic scale in position 1", xpReward: 75 },
+          { name: "Play minor pentatonic in all 5 CAGED positions", xpReward: 125 },
+          { name: "Play the major scale in one position cleanly", xpReward: 75 },
+          { name: "Learn the 7 modes (Ionian, Dorian, Phrygian, etc.)", xpReward: 125 },
+          { name: "Play blues scale in 5 positions", xpReward: 100 },
+          { name: "Target chord tones while soloing over a progression", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Lead Technique",
+        description: "Bends, vibrato, slides, and licks",
+        prerequisiteNames: ["Scales & Theory"],
+        milestones: [
+          { name: "Bend a string to pitch (full and half bend)", xpReward: 100 },
+          { name: "Execute clean vibrato on a held note", xpReward: 100 },
+          { name: "Play hammer-ons and pull-offs cleanly", xpReward: 100 },
+          { name: "Slide between notes smoothly", xpReward: 75 },
+          { name: "Learn a classic guitar lick (e.g., B.B. King box)", xpReward: 100 },
+          { name: "Play a full guitar solo note-for-note", xpReward: 125 },
+        ],
+      },
+
+      // =====================
+      // REPERTOIRE LADDER
+      // =====================
+      {
+        name: "Beginner Songs",
+        description: "Your first 'I know a song!' moments",
+        prerequisiteNames: ["Open Chords", "Rhythm & Strumming"],
+        milestones: [
+          { name: "Learn 'Wonderwall' (or any 4-chord song)", xpReward: 75 },
+          { name: "Learn 'Horse With No Name' (or any 2-chord song)", xpReward: 75 },
+          { name: "Learn a full song using open chords from memory", xpReward: 100 },
+          { name: "Play along with the original recording at tempo", xpReward: 100 },
+          { name: "Learn 3 complete songs by heart", xpReward: 100 },
+          { name: "Build a set of 5 songs you can play on demand", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Intermediate Songs",
+        description: "Barre chords, riffs, and dynamics",
+        prerequisiteNames: ["Beginner Songs", "Barre Chords"],
+        milestones: [
+          { name: "Learn a song with barre chords throughout", xpReward: 100 },
+          { name: "Learn a song with a recognizable intro riff", xpReward: 125 },
+          { name: "Learn a song with a fingerpicking section", xpReward: 100 },
+          { name: "Play a full song with palm muting", xpReward: 100 },
+          { name: "Memorize a complete intermediate song", xpReward: 100 },
+          { name: "Have 3 intermediate songs polished and ready", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Advanced Songs & Solos",
+        description: "Full arrangements with lead and rhythm",
+        prerequisiteNames: ["Intermediate Songs", "Lead Technique"],
+        milestones: [
+          { name: "Learn a classic solo (e.g., 'Comfortably Numb', 'Stairway')", xpReward: 150 },
+          { name: "Learn a fingerstyle arrangement (Tommy Emmanuel-style)", xpReward: 125 },
+          { name: "Play a song with both rhythm and lead parts", xpReward: 125 },
+          { name: "Nail a technically demanding piece at tempo", xpReward: 100 },
+          { name: "Record a polished performance of an advanced piece", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // PERFORMANCE
+      // =====================
+      {
+        name: "Performance & Jamming",
+        description: "Playing with other people and for other people",
+        prerequisiteNames: ["Intermediate Songs"],
+        milestones: [
+          { name: "Play a song for a friend or family member", xpReward: 75 },
+          { name: "Jam over a blues progression with a backing track", xpReward: 100 },
+          { name: "Record and share a performance online", xpReward: 100 },
+          { name: "Jam with another musician in person", xpReward: 125 },
+          { name: "Perform at an open mic", xpReward: 125 },
+          { name: "Maintain a 30-minute live-ready set", xpReward: 75 },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {
