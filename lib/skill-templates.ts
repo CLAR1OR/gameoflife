@@ -291,6 +291,190 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       },
     ],
   },
+  {
+    id: "piano",
+  name: "Piano",
+  description: "From first chords to advanced concert repertoire",
+  icon: "🎹",
+  coverImage: "linear-gradient(135deg, #0a0a0a 0%, #1c1917 30%, #422006 70%, #854d0e 100%)",
+  subskills: [
+    // =====================
+    // FOUNDATIONS
+    // =====================
+    {
+      name: "Fundamentals & Posture",
+      description: "Sit right, know the keyboard, hear basic rhythm",
+      milestones: [
+        { name: "Sit with correct posture for a full 15-minute session", xpReward: 50 },
+        { name: "Name every key on the 88-key piano without hesitation", xpReward: 75 },
+        { name: "Play a chromatic scale across the whole keyboard", xpReward: 75 },
+        { name: "Count and clap basic rhythms (whole, half, quarter, eighth)", xpReward: 75 },
+        { name: "Play in 5-finger position with curved fingers (both hands)", xpReward: 75 },
+        { name: "Record yourself playing a simple melody (e.g., Hot Cross Buns)", xpReward: 125 },
+        { name: "Complete 10 practice sessions of 30+ minutes", xpReward: 125 },
+      ],
+    },
+
+    // =====================
+    // READING & THEORY BRANCH
+    // =====================
+    {
+      name: "Reading Music",
+      description: "Fluency with both clefs and sight-reading",
+      prerequisiteNames: ["Fundamentals & Posture"],
+      milestones: [
+        { name: "Name all treble-clef notes without pausing", xpReward: 100 },
+        { name: "Name all bass-clef notes without pausing", xpReward: 100 },
+        { name: "Identify every major and minor key signature", xpReward: 100 },
+        { name: "Sight-read a simple 8-bar piece at tempo", xpReward: 100 },
+        { name: "Sight-read a new Grade 1 piece cleanly", xpReward: 100 },
+        { name: "Sight-read a Grade 2 piece at a musical tempo", xpReward: 100 },
+      ],
+    },
+    {
+      name: "Music Theory",
+      description: "Intervals, chords, and progressions",
+      prerequisiteNames: ["Reading Music"],
+      milestones: [
+        { name: "Identify every interval (by sight and on the keyboard)", xpReward: 100 },
+        { name: "Build any major or minor triad in any key", xpReward: 100 },
+        { name: "Play all inversions of a triad fluently", xpReward: 100 },
+        { name: "Play I–IV–V–I in all 12 major keys", xpReward: 100 },
+        { name: "Play maj7, min7, and dom7 chords in all 12 keys", xpReward: 100 },
+        { name: "Harmonize a simple melody using your own chord choices", xpReward: 100 },
+      ],
+    },
+    {
+      name: "Ear Training & Improvisation",
+      description: "Play what you hear, make up what you don't",
+      prerequisiteNames: ["Music Theory"],
+      milestones: [
+        { name: "Identify all intervals by ear (ascending + descending)", xpReward: 75 },
+        { name: "Play 'Happy Birthday' by ear in any key", xpReward: 75 },
+        { name: "Identify chord qualities by ear (maj, min, dim, aug)", xpReward: 100 },
+        { name: "Improvise over a 12-bar blues for 2 minutes", xpReward: 100 },
+        { name: "Play a pop song from memory after a few listens", xpReward: 125 },
+        { name: "Improvise one chorus over a jazz-standard progression", xpReward: 125 },
+      ],
+    },
+
+    // =====================
+    // TECHNIQUE BRANCH
+    // =====================
+    {
+      name: "Scales & Arpeggios",
+      description: "The physical foundation — all 12 keys under your fingers",
+      prerequisiteNames: ["Fundamentals & Posture"],
+      milestones: [
+        { name: "Play C major scale, 2 octaves, hands together", xpReward: 50 },
+        { name: "Play all 12 major scales (one octave, hands separately)", xpReward: 100 },
+        { name: "Play all 12 major scales, 2 octaves hands together, 80 BPM", xpReward: 100 },
+        { name: "Play all 12 natural minor scales", xpReward: 100 },
+        { name: "Play major arpeggios in all 12 keys", xpReward: 100 },
+        { name: "Complete Hanon exercises 1–10 (hands together)", xpReward: 75 },
+        { name: "Play all scales cleanly at 120 BPM with metronome", xpReward: 75 },
+      ],
+    },
+    {
+      name: "Advanced Technique",
+      description: "Octaves, trills, speed, voicing",
+      prerequisiteNames: ["Scales & Arpeggios"],
+      milestones: [
+        { name: "Play an octave scale hands together (2 octaves)", xpReward: 100 },
+        { name: "Hold a controlled trill for 8 continuous seconds", xpReward: 100 },
+        { name: "Play 16th notes at 120 BPM cleanly (repeated notes)", xpReward: 100 },
+        { name: "Complete Hanon exercises 1–20", xpReward: 100 },
+        { name: "Play chromatic thirds smoothly in both hands", xpReward: 100 },
+        { name: "Learn a Czerny Op. 299 study to tempo", xpReward: 100 },
+      ],
+    },
+
+    // =====================
+    // REPERTOIRE LADDER
+    // =====================
+    {
+      name: "Beginner Repertoire",
+      description: "Your first memorized pieces",
+      prerequisiteNames: ["Reading Music"],
+      milestones: [
+        { name: "Learn 'Twinkle Twinkle Little Star' by heart", xpReward: 75 },
+        { name: "Learn 'Ode to Joy' (simple version) by heart", xpReward: 75 },
+        { name: "Learn a traditional folk tune by heart", xpReward: 75 },
+        { name: "Learn 3 easy contemporary songs", xpReward: 125 },
+        { name: "Play a pop song with chords (any hand arrangement)", xpReward: 100 },
+        { name: "Keep 5 beginner pieces memorized and performance-ready", xpReward: 150 },
+      ],
+    },
+    {
+      name: "Grade 1-2 Repertoire",
+      description: "Your first 'real' classical pieces",
+      prerequisiteNames: ["Beginner Repertoire"],
+      milestones: [
+        { name: "Learn a piece from Bach's Anna Magdalena Notebook", xpReward: 100 },
+        { name: "Learn a Burgmüller etude (Op. 100)", xpReward: 100 },
+        { name: "Learn a piece from Schumann's Album for the Young", xpReward: 100 },
+        { name: "Memorize a complete Grade 1–2 piece", xpReward: 100 },
+        { name: "Play a Grade 2 piece with proper dynamics and expression", xpReward: 100 },
+        { name: "Have 3 Grade 1–2 pieces polished and memorized", xpReward: 100 },
+      ],
+    },
+    {
+      name: "Grade 3-5 Repertoire",
+      description: "Bach Inventions, Mozart sonatinas, Chopin waltzes",
+      prerequisiteNames: ["Grade 1-2 Repertoire", "Music Theory"],
+      milestones: [
+        { name: "Learn a Bach Two-Part Invention", xpReward: 125 },
+        { name: "Learn one movement of a Clementi Sonatina", xpReward: 100 },
+        { name: "Learn a Chopin waltz (e.g., Op. 69 No. 2)", xpReward: 125 },
+        { name: "Memorize a full Grade 4–5 piece", xpReward: 100 },
+        { name: "Play a Mozart sonata first movement", xpReward: 100 },
+        { name: "Have 3 Grade 3–5 pieces polished and memorized", xpReward: 50 },
+      ],
+    },
+    {
+      name: "Grade 6-8 Repertoire",
+      description: "Chopin Nocturnes, WTC Preludes & Fugues, Beethoven sonata movements",
+      prerequisiteNames: ["Grade 3-5 Repertoire", "Advanced Technique"],
+      milestones: [
+        { name: "Learn a complete Chopin Nocturne", xpReward: 125 },
+        { name: "Learn a Bach Prelude and Fugue from the WTC", xpReward: 125 },
+        { name: "Learn a movement of a Beethoven sonata", xpReward: 125 },
+        { name: "Memorize a complete Grade 7 piece", xpReward: 100 },
+        { name: "Record a polished performance of a Grade 8 piece", xpReward: 75 },
+        { name: "Perform a Grade 8 piece for someone in person", xpReward: 50 },
+      ],
+    },
+    {
+      name: "Advanced Repertoire",
+      description: "Diploma-level: Chopin etudes, Liszt, Rachmaninoff",
+      prerequisiteNames: ["Grade 6-8 Repertoire"],
+      milestones: [
+        { name: "Learn a Chopin etude (Op. 10 or Op. 25)", xpReward: 150 },
+        { name: "Learn a Liszt piece (Consolation, Liebestraum, etc.)", xpReward: 125 },
+        { name: "Learn a Rachmaninoff prelude", xpReward: 125 },
+        { name: "Play a complete Beethoven sonata from memory", xpReward: 125 },
+        { name: "Record a diploma-level (ARCT / LRSM) performance", xpReward: 75 },
+      ],
+    },
+
+    // =====================
+    // PERFORMANCE
+    // =====================
+    {
+      name: "Performance",
+      description: "Playing for others — the real test",
+      prerequisiteNames: ["Grade 3-5 Repertoire"],
+      milestones: [
+        { name: "Play a full piece for a friend or family member", xpReward: 75 },
+        { name: "Record and share a performance online", xpReward: 100 },
+        { name: "Keep 3 pieces memorized simultaneously without forgetting", xpReward: 100 },
+        { name: "Perform at an open mic or recital", xpReward: 150 },
+        { name: "Maintain a 30-minute recital-ready repertoire", xpReward: 125 },
+        { name: "Perform a 10-minute program from memory in public", xpReward: 50 },
+      ],
+    },
+  ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {
