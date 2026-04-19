@@ -664,6 +664,193 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       },
     ],
   },
+  {
+    id: "survival",
+    name: "Survival Skills",
+    description: "Be the person who stays calm and capable when things go wrong",
+    icon: "🏕️",
+    coverImage: "linear-gradient(135deg, #0c0a07 0%, #2a1810 30%, #3d2a17 55%, #4a5d3a 100%)",
+    subskills: [
+      // =====================
+      // ROOT: PRIORITIES & MINDSET
+      // =====================
+      {
+        name: "Priorities & Mindset",
+        description: "The framework that decides what to do first",
+        milestones: [
+          { name: "Memorize the Rule of 3s (air, shelter, water, food)", xpReward: 75 },
+          { name: "Take a gear + fitness + mental readiness inventory", xpReward: 75 },
+          { name: "Practice STOP (Stop, Think, Observe, Plan) in a scenario", xpReward: 100 },
+          { name: "Spend 24 hours solo in nature with minimal gear", xpReward: 150 },
+          { name: "Study 3 real survival case studies and extract lessons", xpReward: 100 },
+          { name: "Keep a survival skills logbook for 1 month", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CORE SKILLS (parallel tracks from Mindset)
+      // =====================
+      {
+        name: "Shelter Building",
+        description: "Stay warm and dry with what you have",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Build a debris hut that sheds rain", xpReward: 100 },
+          { name: "Build a lean-to from natural materials", xpReward: 100 },
+          { name: "Pitch a tarp 3 different ways (A-frame, lean-to, diamond)", xpReward: 100 },
+          { name: "Sleep a full night in a self-built shelter", xpReward: 150 },
+          { name: "Build (or plan-test) a snow shelter (quinzee or trench)", xpReward: 75 },
+          { name: "Build a ventilated emergency shelter in under 30 minutes", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Water Procurement",
+        description: "Find, filter, and purify water in the field",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Identify 3 safe water sources in the wild", xpReward: 75 },
+          { name: "Boil water correctly to purify (1+ min rolling boil)", xpReward: 75 },
+          { name: "Use a pump or gravity water filter end-to-end", xpReward: 75 },
+          { name: "Purify water with chemical tablets", xpReward: 75 },
+          { name: "Build a solar still or transpiration bag", xpReward: 100 },
+          { name: "Find water in a dry environment using terrain cues", xpReward: 100 },
+          { name: "Carry and manage 2L of water over a full-day hike", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Fire Craft",
+        description: "Reliable fire in any conditions",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Build a fire with matches in wet conditions", xpReward: 75 },
+          { name: "Build a fire 3 times with a ferro rod", xpReward: 100 },
+          { name: "Make tinder from natural materials (birch bark, fatwood, cattail)", xpReward: 100 },
+          { name: "Build a one-match fire successfully", xpReward: 75 },
+          { name: "Start a fire with friction (bow-drill or hand-drill)", xpReward: 150 },
+          { name: "Maintain a fire for 6+ hours with active wood management", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Navigation",
+        description: "Always know where you are and where you're going",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Read a topographic map fluently", xpReward: 75 },
+          { name: "Take and follow a compass bearing over 500m", xpReward: 100 },
+          { name: "Triangulate your position on a map", xpReward: 100 },
+          { name: "Navigate a 5km off-trail route with map and compass only", xpReward: 125 },
+          { name: "Find north using the sun (stick method) and stars (Polaris)", xpReward: 100 },
+          { name: "Navigate 2km at night successfully", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Knots & Cordage",
+        description: "Rope skills and making cord from plants",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Tie 5 essential knots by heart (bowline, clove hitch, taut-line, figure-8, sheet bend)", xpReward: 100 },
+          { name: "Tie 10 knots from memory, each in under 10 seconds", xpReward: 100 },
+          { name: "Make cordage from plant fibers (nettle, yucca, or bark)", xpReward: 125 },
+          { name: "Do 3 useful lashings (square, diagonal, shear)", xpReward: 100 },
+          { name: "Complete a practical rope project (gear line, shelter frame)", xpReward: 75 },
+          { name: "Tie your key knots reliably in the dark", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Wilderness First Aid",
+        description: "Treat injuries and illness without a hospital nearby",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Complete a basic first aid course (official or equivalent)", xpReward: 150 },
+          { name: "Assemble a personal first aid kit you carry on every trip", xpReward: 75 },
+          { name: "Treat simulated wounds (bleeding, bandaging, splinting)", xpReward: 100 },
+          { name: "Recognize and respond to hypothermia and heatstroke", xpReward: 100 },
+          { name: "Manage a blister, sprain, and minor burn in the field", xpReward: 75 },
+          { name: "Complete a Wilderness First Aid or WFR course", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Bushcraft & Tools",
+        description: "Knife work, sharpening, and making tools from wood",
+        prerequisiteNames: ["Priorities & Mindset"],
+        milestones: [
+          { name: "Safely use and maintain a bushcraft knife", xpReward: 75 },
+          { name: "Sharpen a knife to shaving-sharp edge", xpReward: 100 },
+          { name: "Carve 3 useful tools from wood (spoon, pot hook, tent peg)", xpReward: 100 },
+          { name: "Use an axe or saw safely to process firewood", xpReward: 100 },
+          { name: "Make a functional primitive tool (digging stick, walking staff)", xpReward: 75 },
+          { name: "Field-repair a piece of your gear", xpReward: 75 },
+          { name: "Complete a full bushcraft craft project (wooden mug, fire kit)", xpReward: 75 },
+        ],
+      },
+
+      // =====================
+      // INTERMEDIATE / INTEGRATED
+      // =====================
+      {
+        name: "Signaling & Rescue",
+        description: "Get found when something goes wrong",
+        prerequisiteNames: ["Priorities & Mindset", "Wilderness First Aid"],
+        milestones: [
+          { name: "Carry a whistle and know the SOS pattern", xpReward: 50 },
+          { name: "Use a signal mirror to hit a distant target", xpReward: 75 },
+          { name: "Build a smoke or signal fire visible from the air", xpReward: 100 },
+          { name: "Lay ground-to-air signals with natural materials", xpReward: 100 },
+          { name: "Use a PLB or satellite messenger correctly", xpReward: 100 },
+          { name: "File a detailed trip plan before 3 separate trips", xpReward: 75 },
+          { name: "Run a self-rescue decision-making scenario", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Foraging & Plant ID",
+        description: "Safely identify and harvest wild food",
+        prerequisiteNames: ["Navigation", "Bushcraft & Tools"],
+        milestones: [
+          { name: "Identify 10 edible wild plants in your region", xpReward: 125 },
+          { name: "Identify 5 dangerous lookalikes and poisonous plants", xpReward: 100 },
+          { name: "Understand the Universal Edibility Test (and its limits)", xpReward: 75 },
+          { name: "Harvest and eat a full foraged meal (plants only)", xpReward: 150 },
+          { name: "Identify 5 medicinal plants and their uses", xpReward: 75 },
+          { name: "Build a field guide of 30+ entries for your local area", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Hunting, Fishing & Trapping",
+        description: "Wild-source protein responsibly",
+        prerequisiteNames: ["Knots & Cordage", "Foraging & Plant ID"],
+        milestones: [
+          { name: "Catch a fish with a handline or rod in the wild", xpReward: 100 },
+          { name: "Set a legal small-game snare or trap", xpReward: 100 },
+          { name: "Clean and prepare a fish from catch to pan", xpReward: 100 },
+          { name: "Hunt or trap small game legally (or complete a course)", xpReward: 125 },
+          { name: "Learn 3 primitive fishing or trapping techniques", xpReward: 75 },
+          { name: "Cook a meal you sourced yourself (any wild protein)", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CAPSTONE
+      // =====================
+      {
+        name: "Wilderness Travel",
+        description: "Multi-day trips combining every skill",
+        prerequisiteNames: [
+          "Shelter Building",
+          "Water Procurement",
+          "Fire Craft",
+          "Navigation",
+        ],
+        milestones: [
+          { name: "Plan and complete a day hike with map and compass", xpReward: 75 },
+          { name: "Complete an overnight backpacking trip", xpReward: 100 },
+          { name: "Complete a 3-day solo wilderness trip", xpReward: 150 },
+          { name: "Navigate a full off-trail route over 10km", xpReward: 100 },
+          { name: "Cross varied terrain safely (water, rocks, snow)", xpReward: 75 },
+          { name: "Manage gear and logistics over a 5+ day trip", xpReward: 100 },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {
