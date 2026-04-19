@@ -109,6 +109,32 @@ export const milestone = sqliteTable("milestone", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const habit = sqliteTable("habit", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  skillId: text("skill_id").references(() => skill.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  icon: text("icon").notNull().default("✅"),
+  xpPerCompletion: integer("xp_per_completion").notNull().default(1),
+  sortOrder: integer("sort_order").notNull().default(0),
+  archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const habitCompletion = sqliteTable(
+  "habit_completion",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    habitId: text("habit_id").notNull().references(() => habit.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // YYYY-MM-DD in user's local time
+    completedAt: integer("completed_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  },
+  (table) => [
+    uniqueIndex("habit_completion_unique").on(table.habitId, table.date),
+  ]
+);
+
 export const achievement = sqliteTable("achievement", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -150,6 +176,19 @@ export const userRelations = relations(user, ({ many }) => ({
   milestones: many(milestone),
   xpSessions: many(xpSession),
   achievements: many(achievement),
+  habits: many(habit),
+  habitCompletions: many(habitCompletion),
+}));
+
+export const habitRelations = relations(habit, ({ one, many }) => ({
+  user: one(user, { fields: [habit.userId], references: [user.id] }),
+  skill: one(skill, { fields: [habit.skillId], references: [skill.id] }),
+  completions: many(habitCompletion),
+}));
+
+export const habitCompletionRelations = relations(habitCompletion, ({ one }) => ({
+  habit: one(habit, { fields: [habitCompletion.habitId], references: [habit.id] }),
+  user: one(user, { fields: [habitCompletion.userId], references: [user.id] }),
 }));
 
 export const achievementRelations = relations(achievement, ({ one }) => ({

@@ -711,7 +711,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Survival Skills",
     description: "Be the person who stays calm and capable when things go wrong",
     icon: "🏕️",
-    coverImage: "linear-gradient(135deg, #0c0a07 0%, #2a1810 30%, #3d2a17 55%, #4a5d3a 100%)",
+    coverImage: "url('/survival.png') center/cover",
     subskills: [
       // =====================
       // ROOT: PRIORITIES & MINDSET

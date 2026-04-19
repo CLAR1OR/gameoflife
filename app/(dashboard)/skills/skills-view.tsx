@@ -30,6 +30,7 @@ type SkillWithCount = {
   templateId: string | null;
   status: string;
   skillCount: number;
+  hasHabit: boolean;
 };
 
 function StatusButtons({
@@ -122,12 +123,22 @@ function FocusBanner({
             </p>
           )}
           <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between gap-2">
-            <Badge
-              variant="outline"
-              className="border-glow/40 text-glow bg-black/40 text-[10px] font-mono"
-            >
-              ⚔️ FOCUSED
-            </Badge>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Badge
+                variant="outline"
+                className="border-glow/40 text-glow bg-black/40 text-[10px] font-mono"
+              >
+                ⚔️ FOCUSED
+              </Badge>
+              {skill.hasHabit && (
+                <Badge
+                  variant="outline"
+                  className="border-xp/40 text-xp bg-black/40 text-[10px] font-mono"
+                >
+                  🔄 HABIT
+                </Badge>
+              )}
+            </div>
             <span className="text-[10px] text-white/50 font-mono">
               {skill.skillCount}{" "}
               {skill.skillCount === 1 ? "subskill" : "subskills"}
@@ -228,18 +239,28 @@ function SkillTile({
 
         {/* Content */}
         <div className="relative h-full flex flex-col justify-between p-3">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-1">
             <span className="text-3xl drop-shadow-lg">
               {skill.icon ?? "📚"}
             </span>
-            {isBackground && (
-              <Badge
-                variant="outline"
-                className="border-glow-purple/40 text-glow-purple bg-black/50 text-[9px] font-mono px-1.5 py-0"
-              >
-                ACTIVE
-              </Badge>
-            )}
+            <div className="flex flex-col items-end gap-0.5">
+              {isBackground && (
+                <Badge
+                  variant="outline"
+                  className="border-glow-purple/40 text-glow-purple bg-black/50 text-[9px] font-mono px-1.5 py-0"
+                >
+                  ACTIVE
+                </Badge>
+              )}
+              {skill.hasHabit && (
+                <Badge
+                  variant="outline"
+                  className="border-xp/40 text-xp bg-black/50 text-[9px] font-mono px-1.5 py-0"
+                >
+                  🔄 HABIT
+                </Badge>
+              )}
+            </div>
           </div>
           <div>
             <h3

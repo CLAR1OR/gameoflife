@@ -35,6 +35,31 @@ CREATE TABLE `achievement` (
 	FOREIGN KEY (`trigger_skill_id`) REFERENCES `skill`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `habit` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`skill_id` text,
+	`name` text NOT NULL,
+	`icon` text DEFAULT '✅' NOT NULL,
+	`xp_per_completion` integer DEFAULT 1 NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`archived` integer DEFAULT false NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`skill_id`) REFERENCES `skill`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE TABLE `habit_completion` (
+	`id` text PRIMARY KEY NOT NULL,
+	`habit_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`date` text NOT NULL,
+	`completed_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`habit_id`) REFERENCES `habit`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `habit_completion_unique` ON `habit_completion` (`habit_id`,`date`);--> statement-breakpoint
 CREATE TABLE `milestone` (
 	`id` text PRIMARY KEY NOT NULL,
 	`skill_id` text NOT NULL,
