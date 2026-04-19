@@ -109,6 +109,25 @@ export const milestone = sqliteTable("milestone", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const achievement = sqliteTable("achievement", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  categoryId: text("category_id").references(() => skillCategory.id, { onDelete: "cascade" }),
+  source: text("source", { enum: ["template", "custom"] }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  icon: text("icon").notNull().default("🏆"),
+  isUnlocked: integer("is_unlocked", { mode: "boolean" }).notNull().default(false),
+  unlockedAt: integer("unlocked_at", { mode: "timestamp" }),
+  triggerType: text("trigger_type", {
+    enum: ["manual", "subskill_mastered", "stage_reached", "all_mastered"],
+  }).notNull().default("manual"),
+  triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),
+  triggerStage: integer("trigger_stage"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const xpSession = sqliteTable("xp_session", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -130,6 +149,13 @@ export const userRelations = relations(user, ({ many }) => ({
   skills: many(skill),
   milestones: many(milestone),
   xpSessions: many(xpSession),
+  achievements: many(achievement),
+}));
+
+export const achievementRelations = relations(achievement, ({ one }) => ({
+  user: one(user, { fields: [achievement.userId], references: [user.id] }),
+  category: one(skillCategory, { fields: [achievement.categoryId], references: [skillCategory.id] }),
+  triggerSkill: one(skill, { fields: [achievement.triggerSkillId], references: [skill.id] }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

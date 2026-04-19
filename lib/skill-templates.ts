@@ -10,6 +10,16 @@ export type SubskillTemplate = {
   prerequisiteNames?: string[];
 };
 
+export type TemplateAchievement = {
+  name: string;
+  description?: string;
+  icon: string;
+  trigger:
+    | { type: "subskill_mastered"; subskillName: string }
+    | { type: "stage_reached"; stage: number }
+    | { type: "all_mastered" };
+};
+
 export type SkillTemplate = {
   id: string;
   name: string;
@@ -17,6 +27,7 @@ export type SkillTemplate = {
   icon: string;
   coverImage: string;
   subskills: SubskillTemplate[];
+  achievements?: TemplateAchievement[];
 };
 
 export const SKILL_TEMPLATES: SkillTemplate[] = [
@@ -114,6 +125,13 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
           { name: "Cook a full multi-course dinner solo", xpReward: 75 },
         ],
       },
+    ],
+    achievements: [
+      { name: "First Steps", description: "Nailed the fundamentals", icon: "🔪", trigger: { type: "subskill_mastered", subskillName: "Kitchen Basics" } },
+      { name: "Home Cook", description: "You can feed yourself properly", icon: "🍝", trigger: { type: "subskill_mastered", subskillName: "Simple Meals" } },
+      { name: "Master of Flavor", description: "Salt, acid, fat, and heat are your friends", icon: "🧂", trigger: { type: "subskill_mastered", subskillName: "Sauces & Seasonings" } },
+      { name: "Halfway Home", description: "Reached Journeyman — no more recipes needed", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Kitchen Legend", description: "Mastered every branch of cooking", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
   {
@@ -289,6 +307,14 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
           { name: "Reach 10,000 words known (advanced reader level)", xpReward: 100 },
         ],
       },
+    ],
+    achievements: [
+      { name: "First Words", description: "A1 videos no longer sound like static", icon: "🔤", trigger: { type: "subskill_mastered", subskillName: "A1 Comprehensible Input" } },
+      { name: "Conversational", description: "You can follow a Russian vlogger", icon: "💬", trigger: { type: "subskill_mastered", subskillName: "B1 Comprehensible Input" } },
+      { name: "Fluent Listener", description: "Movies without subtitles — done", icon: "👂", trigger: { type: "subskill_mastered", subskillName: "C1 Comprehensible Input" } },
+      { name: "Read the Classics", description: "Finished Dostoevsky in the original", icon: "📖", trigger: { type: "subskill_mastered", subskillName: "Reading — Classics" } },
+      { name: "Polyglot Path", description: "Journeyman level — real conversations possible", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Native-like", description: "Mastered every branch of the language", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
   {
@@ -473,6 +499,14 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
         { name: "Perform a 10-minute program from memory in public", xpReward: 50 },
       ],
     },
+  ],
+  achievements: [
+    { name: "First Pieces", description: "Built a memorized beginner repertoire", icon: "🎶", trigger: { type: "subskill_mastered", subskillName: "Beginner Repertoire" } },
+    { name: "Sight Reader", description: "Sheet music reads itself now", icon: "📜", trigger: { type: "subskill_mastered", subskillName: "Reading Music" } },
+    { name: "Scale Master", description: "All 12 keys under your fingers", icon: "🎼", trigger: { type: "subskill_mastered", subskillName: "Scales & Arpeggios" } },
+    { name: "Concert Ready", description: "Chopin Nocturnes and Bach Preludes polished", icon: "🎹", trigger: { type: "subskill_mastered", subskillName: "Grade 6-8 Repertoire" } },
+    { name: "Stage Performer", description: "Played a recital from memory", icon: "🎭", trigger: { type: "subskill_mastered", subskillName: "Performance" } },
+    { name: "Virtuoso", description: "Mastered every branch of piano", icon: "👑", trigger: { type: "all_mastered" } },
   ],
   },
   {
@@ -663,6 +697,14 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
         ],
       },
     ],
+    achievements: [
+      { name: "Got the Basics", description: "Open chords are second nature", icon: "🎸", trigger: { type: "subskill_mastered", subskillName: "Open Chords" } },
+      { name: "Lead Guitarist", description: "Bends, vibrato, and licks — all yours", icon: "🎵", trigger: { type: "subskill_mastered", subskillName: "Lead Technique" } },
+      { name: "Song Catalog", description: "You have a repertoire", icon: "📻", trigger: { type: "subskill_mastered", subskillName: "Intermediate Songs" } },
+      { name: "Shred Master", description: "Full songs with both rhythm and lead parts", icon: "🔥", trigger: { type: "subskill_mastered", subskillName: "Advanced Songs & Solos" } },
+      { name: "On Stage", description: "Performed live for real people", icon: "🎤", trigger: { type: "subskill_mastered", subskillName: "Performance & Jamming" } },
+      { name: "Guitar Hero", description: "Mastered every branch of guitar", icon: "👑", trigger: { type: "all_mastered" } },
+    ],
   },
   {
     id: "survival",
@@ -850,6 +892,14 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
         ],
       },
     ],
+    achievements: [
+      { name: "Firestarter", description: "Reliable fire in any conditions", icon: "🔥", trigger: { type: "subskill_mastered", subskillName: "Fire Craft" } },
+      { name: "Pathfinder", description: "You'll never be truly lost", icon: "🧭", trigger: { type: "subskill_mastered", subskillName: "Navigation" } },
+      { name: "Field Medic", description: "You can handle injuries in the backcountry", icon: "🩹", trigger: { type: "subskill_mastered", subskillName: "Wilderness First Aid" } },
+      { name: "Self-Reliant", description: "Completed multi-day wilderness trips", icon: "🏕️", trigger: { type: "subskill_mastered", subskillName: "Wilderness Travel" } },
+      { name: "Halfway Wild", description: "Journeyman of the outdoors", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Mountain Man", description: "Mastered every branch of survival", icon: "👑", trigger: { type: "all_mastered" } },
+    ],
   },
   {
     id: "writing",
@@ -1035,6 +1085,14 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
           { name: "Collaborate on a writing project with another writer", xpReward: 75 },
         ],
       },
+    ],
+    achievements: [
+      { name: "Daily Writer", description: "Writing is a non-negotiable part of your day", icon: "✍️", trigger: { type: "subskill_mastered", subskillName: "Writing Habit" } },
+      { name: "Own Voice", description: "Your writing sounds like no one else's", icon: "🎙️", trigger: { type: "subskill_mastered", subskillName: "Voice & Style" } },
+      { name: "Short Story Author", description: "Finished 10 stories people want to read", icon: "📝", trigger: { type: "subskill_mastered", subskillName: "Short Stories" } },
+      { name: "Novelist", description: "Completed a novel-length work", icon: "📚", trigger: { type: "subskill_mastered", subskillName: "Novella / Novel" } },
+      { name: "Published", description: "Your work is out in the world", icon: "🗞️", trigger: { type: "subskill_mastered", subskillName: "Publishing Online" } },
+      { name: "Man of Letters", description: "Mastered every branch of writing", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
   {
@@ -1222,6 +1280,14 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
           { name: "Win a tournament division or medal", xpReward: 50 },
         ],
       },
+    ],
+    achievements: [
+      { name: "Survivor", description: "You can escape mount, side, and back", icon: "🛡️", trigger: { type: "subskill_mastered", subskillName: "Escapes" } },
+      { name: "Guard Player", description: "Open guards are your home", icon: "🧘", trigger: { type: "subskill_mastered", subskillName: "Open Guards" } },
+      { name: "The Passer", description: "Nobody stays in guard against you", icon: "⚡", trigger: { type: "subskill_mastered", subskillName: "Guard Passing" } },
+      { name: "Finisher", description: "You end fights with submissions", icon: "🥋", trigger: { type: "subskill_mastered", subskillName: "Submissions" } },
+      { name: "Competitor", description: "Tested yourself in real tournaments", icon: "🏆", trigger: { type: "subskill_mastered", subskillName: "Competition & Mental Game" } },
+      { name: "Black Belt Mindset", description: "Mastered every branch of BJJ", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
 ];

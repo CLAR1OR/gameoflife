@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { skillCategory, skill } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
+import { skillCategory, skill, achievement } from "@/lib/db/schema";
+import { eq, count, and, asc } from "drizzle-orm";
 
 export async function getCategoriesByUser(userId: string) {
   const categories = await db
@@ -52,6 +52,30 @@ export async function getSkillsByCategory(categoryId: string, userId: string) {
     },
   });
   return skills;
+}
+
+export async function getAchievementsByUser(userId: string) {
+  return db
+    .select()
+    .from(achievement)
+    .where(eq(achievement.userId, userId))
+    .orderBy(asc(achievement.categoryId), asc(achievement.sortOrder));
+}
+
+export async function getAchievementsByCategory(
+  categoryId: string,
+  userId: string
+) {
+  return db
+    .select()
+    .from(achievement)
+    .where(
+      and(
+        eq(achievement.categoryId, categoryId),
+        eq(achievement.userId, userId)
+      )
+    )
+    .orderBy(asc(achievement.sortOrder));
 }
 
 export async function getActivatedTemplateIds(userId: string): Promise<string[]> {

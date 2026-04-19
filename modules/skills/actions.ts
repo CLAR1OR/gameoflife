@@ -1,12 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { skillCategory, skill, skillPrerequisite, milestone, xpSession } from "@/lib/db/schema";
+import { skillCategory, skill, skillPrerequisite, milestone, xpSession, achievement } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { calculateLevel } from "@/lib/xp";
 import { getTemplate } from "@/lib/skill-templates";
+
+const TOTAL_STAGES = 6;
 
 // =====================
 // CATEGORY ACTIONS
@@ -183,7 +185,33 @@ export async function activateTemplate(templateId: string) {
     }
   }
 
+  // Create template achievements
+  if (template.achievements?.length) {
+    await db.insert(achievement).values(
+      template.achievements.map((a, i) => {
+        let triggerSkillId: string | null = null;
+        if (a.trigger.type === "subskill_mastered") {
+          triggerSkillId = skillMap.get(a.trigger.subskillName) ?? null;
+        }
+        return {
+          userId: session.user.id,
+          categoryId: category.id,
+          source: "template" as const,
+          name: a.name,
+          description: a.description ?? null,
+          icon: a.icon,
+          triggerType: a.trigger.type,
+          triggerSkillId,
+          triggerStage:
+            a.trigger.type === "stage_reached" ? a.trigger.stage : null,
+          sortOrder: i,
+        };
+      })
+    );
+  }
+
   revalidatePath("/skills");
+  revalidatePath("/achievements");
   return category;
 }
 
@@ -353,7 +381,14 @@ export async function completeMilestone(milestoneId: string) {
     unlocked = await checkAndUnlockDependents(ms.skill.id, newLevel);
   }
 
+  // Check if any achievements newly unlocked
+  const newAchievements = await checkCategoryAchievements(
+    ms.skill.categoryId,
+    session.user.id
+  );
+
   revalidatePath(`/skills/${ms.skill.categoryId}`);
+  revalidatePath("/achievements");
 
   return {
     newXp,
@@ -361,6 +396,7 @@ export async function completeMilestone(milestoneId: string) {
     newLevel,
     leveledUp: newLevel > oldLevel,
     unlocked,
+    newAchievements,
     milestoneName: ms.name,
     xpGained: ms.xpReward,
   };
@@ -398,7 +434,11 @@ export async function uncompleteMilestone(milestoneId: string) {
     .delete(xpSession)
     .where(eq(xpSession.milestoneId, milestoneId));
 
+  // Re-check achievements (may need to re-lock)
+  await checkCategoryAchievements(ms.skill.categoryId, session.user.id);
+
   revalidatePath(`/skills/${ms.skill.categoryId}`);
+  revalidatePath("/achievements");
 }
 
 export async function deleteMilestone(milestoneId: string) {
@@ -425,6 +465,111 @@ export async function deleteMilestone(milestoneId: string) {
   await db.delete(milestone).where(eq(milestone.id, milestoneId));
 
   revalidatePath(`/skills/${ms.skill.categoryId}`);
+}
+
+// =====================
+// ACHIEVEMENT ACTIONS
+// =====================
+
+export async function createCustomAchievement(data: {
+  name: string;
+  description?: string;
+  icon?: string;
+  categoryId?: string;
+}) {
+  const session = await requireSession();
+  const [created] = await db
+    .insert(achievement)
+    .values({
+      userId: session.user.id,
+      categoryId: data.categoryId ?? null,
+      source: "custom",
+      name: data.name,
+      description: data.description ?? null,
+      icon: data.icon ?? "🏆",
+      triggerType: "manual",
+    })
+    .returning();
+
+  revalidatePath("/achievements");
+  if (data.categoryId) revalidatePath(`/skills/${data.categoryId}`);
+  return created;
+}
+
+export async function markAchievementManual(id: string) {
+  const session = await requireSession();
+  const existing = await db.query.achievement.findFirst({
+    where: (a, { and: _and, eq: _eq }) =>
+      _and(_eq(a.id, id), _eq(a.userId, session.user.id)),
+  });
+  if (!existing) throw new Error("Achievement not found");
+  if (existing.triggerType !== "manual") {
+    throw new Error("This achievement is unlocked automatically");
+  }
+
+  await db
+    .update(achievement)
+    .set({ isUnlocked: true, unlockedAt: new Date() })
+    .where(eq(achievement.id, id));
+
+  revalidatePath("/achievements");
+  if (existing.categoryId) revalidatePath(`/skills/${existing.categoryId}`);
+}
+
+export async function unmarkAchievementManual(id: string) {
+  const session = await requireSession();
+  const existing = await db.query.achievement.findFirst({
+    where: (a, { and: _and, eq: _eq }) =>
+      _and(_eq(a.id, id), _eq(a.userId, session.user.id)),
+  });
+  if (!existing) throw new Error("Achievement not found");
+  if (existing.triggerType !== "manual") {
+    throw new Error("This achievement is unlocked automatically");
+  }
+
+  await db
+    .update(achievement)
+    .set({ isUnlocked: false, unlockedAt: null })
+    .where(eq(achievement.id, id));
+
+  revalidatePath("/achievements");
+  if (existing.categoryId) revalidatePath(`/skills/${existing.categoryId}`);
+}
+
+export async function updateAchievementIcon(id: string, icon: string) {
+  const session = await requireSession();
+  const [updated] = await db
+    .update(achievement)
+    .set({ icon })
+    .where(
+      and(
+        eq(achievement.id, id),
+        eq(achievement.userId, session.user.id)
+      )
+    )
+    .returning();
+
+  if (updated) {
+    revalidatePath("/achievements");
+    if (updated.categoryId) revalidatePath(`/skills/${updated.categoryId}`);
+  }
+}
+
+export async function deleteAchievement(id: string) {
+  const session = await requireSession();
+  const existing = await db.query.achievement.findFirst({
+    where: (a, { and: _and, eq: _eq }) =>
+      _and(_eq(a.id, id), _eq(a.userId, session.user.id)),
+  });
+  if (!existing) throw new Error("Achievement not found");
+  if (existing.source !== "custom") {
+    throw new Error("Only custom achievements can be deleted");
+  }
+
+  await db.delete(achievement).where(eq(achievement.id, id));
+
+  revalidatePath("/achievements");
+  if (existing.categoryId) revalidatePath(`/skills/${existing.categoryId}`);
 }
 
 // =====================
@@ -464,4 +609,75 @@ async function checkAndUnlockDependents(
   }
 
   return unlocked;
+}
+
+/**
+ * Evaluate every auto-trigger achievement in a category and update its
+ * `isUnlocked` state based on current skill/milestone state.
+ * Returns names of achievements that newly unlocked (for toast messages).
+ */
+async function checkCategoryAchievements(
+  categoryId: string,
+  userId: string
+): Promise<string[]> {
+  const achievements = await db.query.achievement.findMany({
+    where: (a, { and: _and, eq: _eq }) =>
+      _and(_eq(a.categoryId, categoryId), _eq(a.userId, userId)),
+  });
+
+  const skills = await db.query.skill.findMany({
+    where: (s, { and: _and, eq: _eq }) =>
+      _and(_eq(s.categoryId, categoryId), _eq(s.userId, userId)),
+  });
+
+  if (skills.length === 0) return [];
+
+  // Aggregate totals for stage calculation
+  const totalMilestones = await db.query.milestone.findMany({
+    where: (m, { inArray }) =>
+      inArray(m.skillId, skills.map((s) => s.id)),
+    columns: { id: true, completed: true },
+  });
+  const completedCount = totalMilestones.filter((m) => m.completed).length;
+  const stage =
+    totalMilestones.length === 0
+      ? 0
+      : Math.min(
+          TOTAL_STAGES,
+          Math.floor((completedCount / totalMilestones.length) * TOTAL_STAGES)
+        );
+
+  const allMastered = skills.length > 0 && skills.every((s) => s.level === 4);
+
+  const newlyUnlocked: string[] = [];
+  for (const a of achievements) {
+    if (a.triggerType === "manual") continue; // manual only — skip auto eval
+
+    let shouldBeUnlocked = false;
+
+    if (a.triggerType === "subskill_mastered" && a.triggerSkillId) {
+      const s = skills.find((sk) => sk.id === a.triggerSkillId);
+      shouldBeUnlocked = s?.level === 4;
+    } else if (a.triggerType === "stage_reached" && a.triggerStage != null) {
+      shouldBeUnlocked = stage >= a.triggerStage;
+    } else if (a.triggerType === "all_mastered") {
+      shouldBeUnlocked = allMastered;
+    }
+
+    if (shouldBeUnlocked && !a.isUnlocked) {
+      await db
+        .update(achievement)
+        .set({ isUnlocked: true, unlockedAt: new Date() })
+        .where(eq(achievement.id, a.id));
+      newlyUnlocked.push(a.name);
+    } else if (!shouldBeUnlocked && a.isUnlocked) {
+      // Revert if conditions no longer hold (e.g., milestone unchecked)
+      await db
+        .update(achievement)
+        .set({ isUnlocked: false, unlockedAt: null })
+        .where(eq(achievement.id, a.id));
+    }
+  }
+
+  return newlyUnlocked;
 }

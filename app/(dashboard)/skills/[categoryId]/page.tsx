@@ -1,9 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-server";
-import { getCategoryById, getSkillsByCategory } from "@/modules/skills/queries";
+import {
+  getCategoryById,
+  getSkillsByCategory,
+  getAchievementsByCategory,
+} from "@/modules/skills/queries";
 import { SkillTreeView } from "@/components/skill-tree/skill-tree-view";
 import { SkillStageHeader } from "@/components/skill-tree/skill-stage-header";
+import { AchievementsRow } from "@/components/achievements/achievements-row";
 
 export default async function SkillTreePage({
   params,
@@ -17,6 +22,10 @@ export default async function SkillTreePage({
   if (!category) notFound();
 
   const skills = await getSkillsByCategory(categoryId, session.user.id);
+  const achievements = await getAchievementsByCategory(
+    categoryId,
+    session.user.id
+  );
 
   return (
     <div>
@@ -35,9 +44,10 @@ export default async function SkillTreePage({
         icon={category.icon}
         subskills={skills}
       />
-      <SkillTreeView
+      <SkillTreeView categoryId={category.id} skills={skills} />
+      <AchievementsRow
         categoryId={category.id}
-        skills={skills}
+        achievements={achievements}
       />
     </div>
   );

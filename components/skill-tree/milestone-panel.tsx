@@ -47,6 +47,12 @@ export function MilestonePanel({ skill }: { skill: SkillWithPrerequisites }) {
           duration: 5000,
         });
       }
+      if (result.newAchievements && result.newAchievements.length > 0) {
+        toast.success(
+          `🏆 Achievement unlocked: ${result.newAchievements.join(", ")}!`,
+          { duration: 6000 }
+        );
+      }
     }
     setLoading(null);
   }
