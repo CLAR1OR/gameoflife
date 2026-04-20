@@ -6,6 +6,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
   bar: string;
   glow: string;
   bg: string;
+  stroke: string;
 }> = {
   emerald: {
     ring: "ring-emerald-500/30",
@@ -13,6 +14,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-emerald-500",
     glow: "shadow-[0_0_20px_rgba(16,185,129,0.25)]",
     bg: "from-emerald-500/10",
+    stroke: "#10b981",
   },
   blue: {
     ring: "ring-blue-500/30",
@@ -20,6 +22,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-blue-500",
     glow: "shadow-[0_0_20px_rgba(59,130,246,0.25)]",
     bg: "from-blue-500/10",
+    stroke: "#3b82f6",
   },
   purple: {
     ring: "ring-purple-500/30",
@@ -27,6 +30,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-purple-500",
     glow: "shadow-[0_0_20px_rgba(168,85,247,0.25)]",
     bg: "from-purple-500/10",
+    stroke: "#a855f7",
   },
   pink: {
     ring: "ring-pink-500/30",
@@ -34,6 +38,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-pink-500",
     glow: "shadow-[0_0_20px_rgba(236,72,153,0.25)]",
     bg: "from-pink-500/10",
+    stroke: "#ec4899",
   },
   xp: {
     ring: "ring-yellow-500/30",
@@ -41,6 +46,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-yellow-500",
     glow: "shadow-[0_0_24px_rgba(250,204,21,0.3)]",
     bg: "from-yellow-500/15",
+    stroke: "#facc15",
   },
   orange: {
     ring: "ring-orange-500/40",
@@ -48,6 +54,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-orange-500",
     glow: "shadow-[0_0_24px_rgba(249,115,22,0.3)]",
     bg: "from-orange-500/15",
+    stroke: "#f97316",
   },
   legend: {
     ring: "ring-red-500/40",
@@ -55,8 +62,66 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
     bar: "bg-gradient-to-r from-yellow-400 via-red-500 to-purple-500",
     glow: "shadow-[0_0_32px_rgba(239,68,68,0.4)]",
     bg: "from-red-500/15",
+    stroke: "#ef4444",
   },
 };
+
+function WeeklyGoalRing({
+  current,
+  goal,
+  stroke,
+}: {
+  current: number;
+  goal: number;
+  stroke: string;
+}) {
+  const size = 72;
+  const strokeWidth = 6;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(1, current / Math.max(1, goal));
+  const offset = circumference * (1 - pct);
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeOpacity={0.15}
+          strokeWidth={strokeWidth}
+          fill="none"
+          className="text-muted-foreground"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{
+            transition: "stroke-dashoffset 500ms ease",
+            filter: `drop-shadow(0 0 4px ${stroke}66)`,
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center font-mono leading-none">
+        <span className="text-sm font-bold" style={{ color: stroke }}>
+          {current.toLocaleString()}
+        </span>
+        <span className="text-[9px] text-muted-foreground mt-0.5">
+          / {goal.toLocaleString()}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function getInitials(name: string): string {
   return (
@@ -73,12 +138,24 @@ function getInitials(name: string): string {
 export function CharacterStatusBar({
   name,
   totalXp,
+  weeklyXp,
+  weeklyGoal,
+  achievementsUnlocked,
+  achievementsTotal,
 }: {
   name: string;
   totalXp: number;
+  weeklyXp: number;
+  weeklyGoal: number;
+  achievementsUnlocked: number;
+  achievementsTotal: number;
 }) {
   const progress = getLevelProgress(totalXp);
   const classes = TIER_CLASSES[progress.tier.accent];
+  const achievementPct =
+    achievementsTotal === 0
+      ? 0
+      : (achievementsUnlocked / achievementsTotal) * 100;
 
   return (
     <div
@@ -90,19 +167,18 @@ export function CharacterStatusBar({
       />
 
       <div className="relative flex items-center gap-5 flex-wrap">
-        {/* Avatar + level ring */}
-        <div className="relative shrink-0">
-          <div
-            className={`flex h-20 w-20 items-center justify-center rounded-2xl border-2 bg-background/60 text-3xl font-bold font-mono ${classes.text}`}
-            style={{ borderColor: "currentColor" }}
-          >
-            {getInitials(name)}
-          </div>
-          <div
-            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-background border text-xs font-mono font-bold ${classes.text} border-current`}
-          >
-            Lv {progress.level}
-          </div>
+        {/* Avatar box with level inside */}
+        <div
+          className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl border-2 bg-background/60 font-mono ${classes.text}`}
+          style={{ borderColor: "currentColor" }}
+          title={`${name} — ${progress.tier.name}`}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-widest opacity-70 leading-none">
+            Lv
+          </span>
+          <span className="text-3xl font-bold leading-none mt-0.5">
+            {progress.level}
+          </span>
         </div>
 
         {/* Name + tier + XP bar */}
@@ -115,7 +191,6 @@ export function CharacterStatusBar({
               {progress.tier.name}
             </span>
           </div>
-          {/* XP bar */}
           <div className="space-y-1">
             <div className="relative h-3 rounded-full bg-muted/50 overflow-hidden border border-border/50">
               <div
@@ -136,19 +211,37 @@ export function CharacterStatusBar({
           </div>
         </div>
 
-        {/* Right-side slot: placeholder stats grid */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-right shrink-0">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
-            Total XP
+        {/* Right-side widgets */}
+        <div className="flex items-center gap-4 shrink-0">
+          {/* Achievements */}
+          <div className="flex flex-col items-end gap-0.5 text-right">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70">
+              🏆 Achievements
+            </div>
+            <div
+              className={`text-lg font-mono font-bold ${classes.text}`}
+              title={`${achievementsUnlocked} of ${achievementsTotal} unlocked`}
+            >
+              {achievementsUnlocked}
+              <span className="text-muted-foreground text-sm">
+                /{achievementsTotal}
+              </span>
+            </div>
+            <div className="text-[10px] font-mono text-muted-foreground/70">
+              {achievementPct.toFixed(0)}%
+            </div>
           </div>
-          <div className={`text-sm font-mono ${classes.text}`}>
-            {totalXp.toLocaleString()}
-          </div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
-            Progress
-          </div>
-          <div className={`text-sm font-mono ${classes.text}`}>
-            {progress.pct.toFixed(0)}%
+
+          {/* Weekly goal ring */}
+          <div className="flex flex-col items-center gap-1">
+            <WeeklyGoalRing
+              current={weeklyXp}
+              goal={weeklyGoal}
+              stroke={classes.stroke}
+            />
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70">
+              Weekly XP
+            </div>
           </div>
         </div>
       </div>

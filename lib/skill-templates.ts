@@ -1639,6 +1639,175 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       { name: "Awakened", description: "Mastered every branch of practice", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
+  {
+    id: "math",
+    name: "Mathematics",
+    description: "From arithmetic fluency to proving theorems that hold up",
+    icon: "🧮",
+    coverImage: "linear-gradient(135deg, #020617 0%, #0c4a6e 40%, #0891b2 75%, #67e8f9 100%)",
+    subskills: [
+      // =====================
+      // ROOT
+      // =====================
+      {
+        name: "Foundations & Numeracy",
+        description: "Arithmetic fluency, notation, and problem-solving habits",
+        milestones: [
+          { name: "Do 2-digit × 2-digit multiplication mentally in under 10 seconds", xpReward: 75 },
+          { name: "Estimate order of magnitude for real-world quantities (Fermi estimates)", xpReward: 50 },
+          { name: "Convert fluently between fractions, decimals, and percentages", xpReward: 50 },
+          { name: "Read and write standard notation (sets, sigma, function, quantifiers)", xpReward: 75 },
+          { name: "Explain why long division and the standard algorithms actually work", xpReward: 75 },
+          { name: "Read a foundational book (e.g. How to Solve It by Pólya)", xpReward: 125 },
+          { name: "Solve 50 warm-up problems from a problem book", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CORE BRANCHES
+      // =====================
+      {
+        name: "Algebra & Functions",
+        description: "The language of math — symbols, structure, transformation",
+        prerequisiteNames: ["Foundations & Numeracy"],
+        milestones: [
+          { name: "Solve linear systems by elimination and substitution", xpReward: 75 },
+          { name: "Factor and complete the square for any quadratic", xpReward: 75 },
+          { name: "Work fluently with exponents, logarithms, and radicals", xpReward: 100 },
+          { name: "Understand functions: domain, range, composition, inverses", xpReward: 100 },
+          { name: "Graph polynomials, rationals, exponentials, logs by hand", xpReward: 100 },
+          { name: "Solve 100 word problems by translating them into equations", xpReward: 100 },
+          { name: "Complete a full algebra text (e.g. Gelfand's Algebra)", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Geometry & Trigonometry",
+        description: "Space, shape, angle, measure",
+        prerequisiteNames: ["Foundations & Numeracy"],
+        milestones: [
+          { name: "Prove the Pythagorean theorem two different ways", xpReward: 100 },
+          { name: "Derive the sine and cosine angle-addition identities", xpReward: 100 },
+          { name: "Solve 30 ruler-and-compass construction problems", xpReward: 100 },
+          { name: "Understand radian measure and derive the unit circle from scratch", xpReward: 75 },
+          { name: "Prove a theorem from Euclid's Elements (Book I)", xpReward: 125 },
+          { name: "Read Euclid's Elements Book I cover to cover", xpReward: 125 },
+        ],
+      },
+
+      // =====================
+      // RIGOR
+      // =====================
+      {
+        name: "Proofs & Mathematical Thinking",
+        description: "Move from computing to proving",
+        prerequisiteNames: ["Algebra & Functions"],
+        milestones: [
+          { name: "Write a valid proof by induction", xpReward: 75 },
+          { name: "Write a valid proof by contradiction", xpReward: 75 },
+          { name: "Prove √2 is irrational from scratch", xpReward: 100 },
+          { name: "Master logical connectives, quantifiers, and negation rules", xpReward: 100 },
+          { name: "Complete a proof-writing book (e.g. Velleman's How to Prove It)", xpReward: 150 },
+          { name: "Solve 30 problems at AMC/AIME competition level", xpReward: 125 },
+          { name: "Write a solution clean enough to be graded by a strict mentor", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CONTINUOUS BRANCH
+      // =====================
+      {
+        name: "Calculus",
+        description: "Change, accumulation, and limits — single and multi-variable",
+        prerequisiteNames: ["Algebra & Functions", "Geometry & Trigonometry"],
+        milestones: [
+          { name: "Compute limits from the epsilon-delta definition", xpReward: 100 },
+          { name: "Differentiate fluently using product, quotient, and chain rules", xpReward: 75 },
+          { name: "Integrate by parts, substitution, and partial fractions", xpReward: 100 },
+          { name: "Solve an optimization problem with full reasoning", xpReward: 75 },
+          { name: "Derive Taylor series for common functions", xpReward: 100 },
+          { name: "Work through a single-variable calc text (Spivak or Stewart)", xpReward: 150 },
+          { name: "Extend to multivariable: gradients, Lagrange multipliers, div/curl", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // STRUCTURE BRANCH
+      // =====================
+      {
+        name: "Linear Algebra",
+        description: "Structure in many dimensions",
+        prerequisiteNames: ["Algebra & Functions"],
+        milestones: [
+          { name: "Compute determinants and matrix inverses by hand", xpReward: 75 },
+          { name: "Diagonalize a 3×3 matrix and interpret eigenvectors geometrically", xpReward: 100 },
+          { name: "Prove the rank-nullity theorem", xpReward: 100 },
+          { name: "Understand vector spaces as a structure, not just Rⁿ", xpReward: 100 },
+          { name: "Apply LA to a real problem (least-squares, PCA, graphics, or ML)", xpReward: 125 },
+          { name: "Work through Axler's Linear Algebra Done Right", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // UNCERTAINTY BRANCH
+      // =====================
+      {
+        name: "Probability & Statistics",
+        description: "Reason carefully under uncertainty",
+        prerequisiteNames: ["Calculus"],
+        milestones: [
+          { name: "Compute expectations, variances, and covariances fluently", xpReward: 75 },
+          { name: "Derive the central limit theorem intuitively", xpReward: 125 },
+          { name: "Model a real situation with a well-chosen distribution", xpReward: 100 },
+          { name: "Perform a hypothesis test and interpret p-values honestly", xpReward: 100 },
+          { name: "Run a Bayesian update from prior to posterior and explain it", xpReward: 100 },
+          { name: "Work through a probability text (e.g. Blitzstein's Intro to Probability)", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // DEEP END
+      // =====================
+      {
+        name: "Real Analysis & Abstract Algebra",
+        description: "Rigorous foundations and abstract structure",
+        prerequisiteNames: ["Proofs & Mathematical Thinking", "Calculus"],
+        milestones: [
+          { name: "Prove a sequence converges directly from the definition", xpReward: 100 },
+          { name: "Prove a function is continuous from the epsilon-delta definition", xpReward: 100 },
+          { name: "Understand open/closed sets, compactness, and completeness", xpReward: 125 },
+          { name: "Prove Lagrange's theorem for finite groups", xpReward: 125 },
+          { name: "Work through an analysis text (e.g. Abbott's Understanding Analysis)", xpReward: 150 },
+          { name: "Solve a problem that requires constructing a clever counterexample", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CAPSTONE
+      // =====================
+      {
+        name: "Research & Application",
+        description: "Use math on real problems — and create new math",
+        prerequisiteNames: ["Real Analysis & Abstract Algebra", "Probability & Statistics"],
+        milestones: [
+          { name: "Choose a real problem and formalize it mathematically", xpReward: 100 },
+          { name: "Read a research paper end-to-end and reconstruct its main result", xpReward: 150 },
+          { name: "Write original notes or a blog post proving something", xpReward: 100 },
+          { name: "Implement a mathematical result in code and verify numerically", xpReward: 125 },
+          { name: "Teach a concept to a beginner until they genuinely understand", xpReward: 125 },
+          { name: "Solve an open textbook problem no one has handed you a solution to", xpReward: 150 },
+        ],
+      },
+    ],
+    achievements: [
+      { name: "Numerate", description: "Fluent in the basics, ready for real math", icon: "🧮", trigger: { type: "subskill_mastered", subskillName: "Foundations & Numeracy" } },
+      { name: "Rigor", description: "You can prove what you claim", icon: "📜", trigger: { type: "subskill_mastered", subskillName: "Proofs & Mathematical Thinking" } },
+      { name: "Limits Tamed", description: "Mastered the calculus of change", icon: "🌀", trigger: { type: "subskill_mastered", subskillName: "Calculus" } },
+      { name: "Probabilist", description: "Reasons honestly under uncertainty", icon: "🎲", trigger: { type: "subskill_mastered", subskillName: "Probability & Statistics" } },
+      { name: "Analyst", description: "Comfortable in the abstract deep end", icon: "🔬", trigger: { type: "subskill_mastered", subskillName: "Real Analysis & Abstract Algebra" } },
+      { name: "Journeyman Mathematician", description: "Reached Journeyman — sharp, rigorous, curious", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Mathematician", description: "Mastered every branch", icon: "👑", trigger: { type: "all_mastered" } },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {

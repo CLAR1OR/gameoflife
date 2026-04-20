@@ -5,9 +5,11 @@ import {
   habitCompletion,
   quest,
   skill,
+  xpSession,
 } from "@/lib/db/schema";
-import { and, eq, isNull, sum } from "drizzle-orm";
+import { and, count, eq, gte, isNull, sum } from "drizzle-orm";
 import { levelFromXp } from "./level";
+import { formatLocalDate } from "./date";
 
 /**
  * Compute total account XP across skills + unlinked habits + completed quests.
@@ -120,3 +122,81 @@ export async function checkAccountLevelAchievements(
   }
   return newlyUnlocked;
 }
+
+/** XP earned in the last rolling 7 days (skill + unlinked habits + quests). */
+export async function computeWeeklyXp(userId: string): Promise<number> {
+  // Rolling 7-day window starting 6 days ago, including today
+  const now = new Date();
+  const weekAgo = new Date(now);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+  weekAgo.setHours(0, 0, 0, 0);
+  const weekAgoISODate = formatLocalDate(weekAgo);
+
+  // Skill XP from the xp_session log (milestones + linked-habit completions)
+  const [skillXpRow] = await db
+    .select({ total: sum(xpSession.xpGained) })
+    .from(xpSession)
+    .where(
+      and(
+        eq(xpSession.userId, userId),
+        gte(xpSession.loggedAt, weekAgo)
+      )
+    );
+  const skillXp = Number(skillXpRow?.total ?? 0);
+
+  // Unlinked habit XP: count completions in the last 7 days and multiply
+  const unlinkedHabits = await db
+    .select({
+      habitId: habit.id,
+      xpPer: habit.xpPerCompletion,
+    })
+    .from(habit)
+    .where(and(eq(habit.userId, userId), isNull(habit.skillId)));
+
+  let unlinkedXp = 0;
+  for (const h of unlinkedHabits) {
+    const [completionCount] = await db
+      .select({ c: count() })
+      .from(habitCompletion)
+      .where(
+        and(
+          eq(habitCompletion.habitId, h.habitId),
+          gte(habitCompletion.date, weekAgoISODate)
+        )
+      );
+    unlinkedXp += Number(completionCount.c) * h.xpPer;
+  }
+
+  // Quest XP: completed in the last 7 days
+  const questRows = await db
+    .select({ xp: quest.xpReward })
+    .from(quest)
+    .where(
+      and(
+        eq(quest.userId, userId),
+        eq(quest.status, "completed"),
+        gte(quest.completedAt, weekAgo)
+      )
+    );
+  const questXp = questRows.reduce((sum, r) => sum + r.xp, 0);
+
+  return skillXp + unlinkedXp + questXp;
+}
+
+/** Simple count of total and unlocked achievements for a user. */
+export async function getAchievementCounts(userId: string): Promise<{
+  total: number;
+  unlocked: number;
+}> {
+  const rows = await db
+    .select({ isUnlocked: achievement.isUnlocked })
+    .from(achievement)
+    .where(eq(achievement.userId, userId));
+  return {
+    total: rows.length,
+    unlocked: rows.filter((r) => r.isUnlocked).length,
+  };
+}
+
+/** Default weekly XP goal. Can be made user-configurable later. */
+export const DEFAULT_WEEKLY_XP_GOAL = 500;

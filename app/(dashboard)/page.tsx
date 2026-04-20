@@ -9,7 +9,12 @@ import {
 import { getActiveQuests } from "@/modules/quests/queries";
 import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
 import { todayISO } from "@/lib/date";
-import { ensureLevelAchievementsSeeded } from "@/lib/account-achievements";
+import {
+  ensureLevelAchievementsSeeded,
+  computeWeeklyXp,
+  getAchievementCounts,
+  DEFAULT_WEEKLY_XP_GOAL,
+} from "@/lib/account-achievements";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,14 +44,23 @@ export default async function DashboardPage() {
 
   await ensureLevelAchievementsSeeded(userId);
 
-  const [categories, categoryIdsWithHabits, habits, quests, totalAccountXp] =
-    await Promise.all([
-      getCategoriesByUser(userId),
-      getCategoryIdsWithHabits(userId),
-      getHabitsWithStatus(userId, 30),
-      getActiveQuests(userId),
-      getTotalAccountXp(userId),
-    ]);
+  const [
+    categories,
+    categoryIdsWithHabits,
+    habits,
+    quests,
+    totalAccountXp,
+    weeklyXp,
+    achievementCounts,
+  ] = await Promise.all([
+    getCategoriesByUser(userId),
+    getCategoryIdsWithHabits(userId),
+    getHabitsWithStatus(userId, 30),
+    getActiveQuests(userId),
+    getTotalAccountXp(userId),
+    computeWeeklyXp(userId),
+    getAchievementCounts(userId),
+  ]);
 
   const today = todayISO();
   const activeSkills = categories
@@ -73,7 +87,14 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Character status bar */}
-      <CharacterStatusBar name={session.user.name} totalXp={totalAccountXp} />
+      <CharacterStatusBar
+        name={session.user.name}
+        totalXp={totalAccountXp}
+        weeklyXp={weeklyXp}
+        weeklyGoal={DEFAULT_WEEKLY_XP_GOAL}
+        achievementsUnlocked={achievementCounts.unlocked}
+        achievementsTotal={achievementCounts.total}
+      />
 
       {/* Date */}
       <p className="text-sm text-muted-foreground -mt-4 font-mono">
