@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { habit, habitCompletion, skill, skillCategory } from "@/lib/db/schema";
-import { and, asc, eq, gte, isNotNull, inArray } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNotNull, inArray, isNull, sum } from "drizzle-orm";
 import { calcStreak, lastNDates } from "@/lib/date";
 import type { HabitWithLink } from "./types";
 
@@ -28,7 +28,9 @@ export async function getHabitsWithStatus(
   const firstDate = dates[0];
 
   const habitIds = rows.map((r) => r.habit.id);
-  const completions = await db
+
+  // Completions in range (for the 7-day dots and current streak)
+  const inRangeCompletions = await db
     .select({ habitId: habitCompletion.habitId, date: habitCompletion.date })
     .from(habitCompletion)
     .where(
@@ -38,20 +40,58 @@ export async function getHabitsWithStatus(
       )
     );
 
-  const byHabit = new Map<string, string[]>();
-  for (const c of completions) {
-    const list = byHabit.get(c.habitId) ?? [];
+  // ALL-time completions (for total + best streak)
+  const allCompletions = await db
+    .select({ habitId: habitCompletion.habitId, date: habitCompletion.date })
+    .from(habitCompletion)
+    .where(inArray(habitCompletion.habitId, habitIds));
+
+  const inRangeByHabit = new Map<string, string[]>();
+  for (const c of inRangeCompletions) {
+    const list = inRangeByHabit.get(c.habitId) ?? [];
     list.push(c.date);
-    byHabit.set(c.habitId, list);
+    inRangeByHabit.set(c.habitId, list);
   }
-  for (const list of byHabit.values()) list.sort();
+  for (const list of inRangeByHabit.values()) list.sort();
+
+  const allByHabit = new Map<string, string[]>();
+  for (const c of allCompletions) {
+    const list = allByHabit.get(c.habitId) ?? [];
+    list.push(c.date);
+    allByHabit.set(c.habitId, list);
+  }
+
+  // Best streak computed from all-time dates
+  const calcBest = (allDates: string[]): number => {
+    if (allDates.length === 0) return 0;
+    const sorted = [...allDates].sort();
+    let best = 1;
+    let current = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1] + "T00:00:00");
+      const curr = new Date(sorted[i] + "T00:00:00");
+      const diffDays = Math.round(
+        (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (diffDays === 1) {
+        current++;
+        if (current > best) best = current;
+      } else {
+        current = 1;
+      }
+    }
+    return best;
+  };
 
   return rows.map((r) => {
-    const completed = byHabit.get(r.habit.id) ?? [];
+    const inRange = inRangeByHabit.get(r.habit.id) ?? [];
+    const all = allByHabit.get(r.habit.id) ?? [];
     return {
       ...r.habit,
-      completedDates: completed,
-      currentStreak: calcStreak(completed),
+      completedDates: inRange,
+      currentStreak: calcStreak(all),
+      bestStreak: calcBest(all),
+      totalCompletions: all.length,
       skillName: r.skillName,
       categoryId: r.categoryId,
       categoryName: r.categoryName,
@@ -76,6 +116,190 @@ export async function getCategoryIdsWithHabits(
       )
     );
   return new Set(rows.map((r) => r.categoryId));
+}
+
+// =====================
+// STATISTICS
+// =====================
+
+/** Longest streak ever within a set of completed dates. */
+function calcBestStreak(dates: string[]): number {
+  if (dates.length === 0) return 0;
+  const sorted = [...dates].sort();
+  let best = 1;
+  let current = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1] + "T00:00:00");
+    const curr = new Date(sorted[i] + "T00:00:00");
+    const diffDays = Math.round(
+      (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (diffDays === 1) {
+      current++;
+      if (current > best) best = current;
+    } else {
+      current = 1;
+    }
+  }
+  return best;
+}
+
+export type HabitDetailStats = {
+  totalCompletions: number;
+  currentStreak: number;
+  bestStreak: number;
+  last30Completions: number;
+  completionRatePct: number; // last 30 days
+  totalXpEarned: number;
+};
+
+export async function getHabitDetailStats(
+  habitId: string,
+  userId: string
+): Promise<HabitDetailStats> {
+  const h = await db.query.habit.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, habitId), e(row.userId, userId)),
+  });
+  if (!h) {
+    return {
+      totalCompletions: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+      last30Completions: 0,
+      completionRatePct: 0,
+      totalXpEarned: 0,
+    };
+  }
+
+  const all = await db
+    .select({ date: habitCompletion.date })
+    .from(habitCompletion)
+    .where(
+      and(
+        eq(habitCompletion.habitId, habitId),
+        eq(habitCompletion.userId, userId)
+      )
+    );
+  const dates = all.map((r) => r.date);
+  const set = new Set(dates);
+
+  const last30 = lastNDates(30);
+  const last30Done = last30.filter((d) => set.has(d)).length;
+
+  return {
+    totalCompletions: dates.length,
+    currentStreak: calcStreak(dates.sort()),
+    bestStreak: calcBestStreak(dates),
+    last30Completions: last30Done,
+    completionRatePct: Math.round((last30Done / 30) * 100),
+    totalXpEarned: dates.length * h.xpPerCompletion,
+  };
+}
+
+export type OverallHabitStats = {
+  activeHabits: number;
+  pausedHabits: number;
+  totalCompletions: number;
+  totalXpFromHabits: number;
+  xpToSkills: number;
+  generalXp: number;
+  bestDailyStreak: number;
+  last30DaysCompletions: number;
+  avgCompletionsPerDay: number;
+};
+
+export async function getOverallHabitStats(
+  userId: string
+): Promise<OverallHabitStats> {
+  const habits = await db.query.habit.findMany({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.userId, userId), e(row.archived, false)),
+  });
+
+  const activeCount = habits.filter((h) => !h.paused).length;
+  const pausedCount = habits.filter((h) => h.paused).length;
+
+  if (habits.length === 0) {
+    return {
+      activeHabits: 0,
+      pausedHabits: 0,
+      totalCompletions: 0,
+      totalXpFromHabits: 0,
+      xpToSkills: 0,
+      generalXp: 0,
+      bestDailyStreak: 0,
+      last30DaysCompletions: 0,
+      avgCompletionsPerDay: 0,
+    };
+  }
+
+  const completions = await db
+    .select({
+      habitId: habitCompletion.habitId,
+      date: habitCompletion.date,
+    })
+    .from(habitCompletion)
+    .where(eq(habitCompletion.userId, userId));
+
+  // Map completions to habits to get xpPerCompletion
+  const xpByHabit = new Map(habits.map((h) => [h.id, h.xpPerCompletion]));
+  const linkedByHabit = new Map(habits.map((h) => [h.id, !!h.skillId]));
+
+  let xpToSkills = 0;
+  let generalXp = 0;
+  for (const c of completions) {
+    const xp = xpByHabit.get(c.habitId) ?? 0;
+    if (linkedByHabit.get(c.habitId)) xpToSkills += xp;
+    else generalXp += xp;
+  }
+
+  const last30 = new Set(lastNDates(30));
+  const last30Count = completions.filter((c) => last30.has(c.date)).length;
+
+  // Best-ever daily streak (consecutive days with ≥1 completion)
+  const allDates = new Set(completions.map((c) => c.date));
+  const sortedDates = Array.from(allDates).sort();
+  const bestDailyStreak = calcBestStreak(sortedDates);
+
+  return {
+    activeHabits: activeCount,
+    pausedHabits: pausedCount,
+    totalCompletions: completions.length,
+    totalXpFromHabits: xpToSkills + generalXp,
+    xpToSkills,
+    generalXp,
+    bestDailyStreak,
+    last30DaysCompletions: last30Count,
+    avgCompletionsPerDay: Math.round((last30Count / 30) * 10) / 10,
+  };
+}
+
+export async function getTotalAccountXp(userId: string): Promise<number> {
+  // Skill XP: sum of all skill.currentXp for the user
+  const [skillXpRow] = await db
+    .select({ total: sum(skill.currentXp) })
+    .from(skill)
+    .where(eq(skill.userId, userId));
+  const skillXp = Number(skillXpRow?.total ?? 0);
+
+  // General XP: unlinked habit completions × xpPerCompletion
+  const unlinkedRows = await db
+    .select({
+      completionCount: count(habitCompletion.id),
+      xpPer: habit.xpPerCompletion,
+    })
+    .from(habit)
+    .leftJoin(habitCompletion, eq(habitCompletion.habitId, habit.id))
+    .where(and(eq(habit.userId, userId), isNull(habit.skillId)))
+    .groupBy(habit.id);
+
+  const generalXp = unlinkedRows.reduce(
+    (sum, r) => sum + Number(r.completionCount) * r.xpPer,
+    0
+  );
+
+  return skillXp + generalXp;
 }
 
 /** All subskills for the current user, grouped by category — for the habit skill-linking dropdown. */

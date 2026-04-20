@@ -12,7 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createHabit, updateHabit } from "@/modules/habits/actions";
+import {
+  createHabit,
+  updateHabit,
+  type AutoAchievementSpec,
+} from "@/modules/habits/actions";
 import { toast } from "sonner";
 import type { Habit } from "@/modules/habits/types";
 import type { SubskillGroup } from "./types";
@@ -21,6 +25,20 @@ const ICONS = [
   "✅", "⏰", "🧘", "🎹", "🎸", "🇷🇺", "🇫🇷", "🇪🇸",
   "👥", "❄️", "🚫", "📚", "✍️", "🏃", "🏋️", "💧",
   "🥗", "😴", "☀️", "🌙", "🧠", "💻", "🎯", "🔥",
+];
+
+const AUTO_ACHIEVEMENT_OPTIONS: {
+  id: string;
+  label: string;
+  spec: AutoAchievementSpec;
+  defaultOn?: boolean;
+}[] = [
+  { id: "streak-7", label: "7-day streak", spec: { kind: "streak", days: 7 }, defaultOn: true },
+  { id: "streak-30", label: "30-day streak", spec: { kind: "streak", days: 30 }, defaultOn: true },
+  { id: "streak-100", label: "100-day streak", spec: { kind: "streak", days: 100 } },
+  { id: "total-50", label: "50 completions", spec: { kind: "total", count: 50 }, defaultOn: true },
+  { id: "total-100", label: "100 completions", spec: { kind: "total", count: 100 } },
+  { id: "total-365", label: "365 completions", spec: { kind: "total", count: 365 } },
 ];
 
 export function HabitDialog({
@@ -40,6 +58,11 @@ export function HabitDialog({
   const [icon, setIcon] = useState("✅");
   const [skillId, setSkillId] = useState<string | null>(null);
   const [xpPerCompletion, setXpPerCompletion] = useState("1");
+  const [selectedAchievements, setSelectedAchievements] = useState<Set<string>>(
+    new Set(
+      AUTO_ACHIEVEMENT_OPTIONS.filter((o) => o.defaultOn).map((o) => o.id)
+    )
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -55,15 +78,29 @@ export function HabitDialog({
       setIcon("✅");
       setSkillId(null);
       setXpPerCompletion("1");
+      setSelectedAchievements(
+        new Set(
+          AUTO_ACHIEVEMENT_OPTIONS.filter((o) => o.defaultOn).map((o) => o.id)
+        )
+      );
     }
   }, [habit, open]);
+
+  function toggleAchievement(id: string) {
+    setSelectedAchievements((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const data = {
+      const base = {
         name: name.trim(),
         description: description.trim() || null,
         icon,
@@ -71,11 +108,22 @@ export function HabitDialog({
         xpPerCompletion: parseInt(xpPerCompletion) || 1,
       };
       if (isEditing) {
-        await updateHabit(habit.id, data);
+        await updateHabit(habit.id, base);
         toast.success("Habit updated");
       } else {
-        await createHabit({ ...data, description: data.description ?? undefined });
-        toast.success("Habit created");
+        const autoAchievements = AUTO_ACHIEVEMENT_OPTIONS.filter((o) =>
+          selectedAchievements.has(o.id)
+        ).map((o) => o.spec);
+        await createHabit({
+          ...base,
+          description: base.description ?? undefined,
+          autoAchievements: autoAchievements.length ? autoAchievements : undefined,
+        });
+        toast.success(
+          autoAchievements.length
+            ? `Habit created with ${autoAchievements.length} achievements`
+            : "Habit created"
+        );
       }
       onOpenChange(false);
     } catch (e) {
@@ -177,9 +225,50 @@ export function HabitDialog({
                 onChange={(e) => setXpPerCompletion(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Only applies if linked to a skill.
+                Goes to the linked skill, or to your general account XP if
+                unlinked.
               </p>
             </div>
+
+            {!isEditing && (
+              <div className="space-y-2">
+                <Label>Auto-create achievements</Label>
+                <p className="text-xs text-muted-foreground">
+                  Achievements that unlock automatically based on this habit.
+                </p>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {AUTO_ACHIEVEMENT_OPTIONS.map((opt) => {
+                    const checked = selectedAchievements.has(opt.id);
+                    const isStreak = opt.spec.kind === "streak";
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => toggleAchievement(opt.id)}
+                        className={`flex items-center justify-between rounded-md border px-3 py-2 text-xs transition-colors text-left ${
+                          checked
+                            ? "border-glow/40 bg-glow/10 text-glow"
+                            : "border-border bg-muted/40 hover:bg-accent"
+                        }`}
+                      >
+                        <span>
+                          {isStreak ? "🔥" : "⭐"} {opt.label}
+                        </span>
+                        <span
+                          className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] ${
+                            checked
+                              ? "border-glow bg-glow text-background"
+                              : "border-border"
+                          }`}
+                        >
+                          {checked ? "✓" : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={loading || !name.trim()}>

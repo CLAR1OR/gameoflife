@@ -10,6 +10,7 @@ import { calcDailyStreak, lastNDates, todayISO } from "@/lib/date";
 import { toast } from "sonner";
 import type { HabitWithLink } from "@/modules/habits/types";
 import type { SubskillGroup } from "@/components/habits/types";
+import type { OverallHabitStats } from "@/modules/habits/queries";
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
@@ -35,9 +36,13 @@ function dateInfo(iso: string) {
 export function HabitsView({
   habits,
   subskillGroups,
+  overallStats,
+  totalAccountXp,
 }: {
   habits: HabitWithLink[];
   subskillGroups: SubskillGroup[];
+  overallStats: OverallHabitStats;
+  totalAccountXp: number;
 }) {
   const [newOpen, setNewOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -209,11 +214,91 @@ export function HabitsView({
         </section>
       )}
 
+      {/* Overall statistics */}
+      {overallStats.totalCompletions > 0 && (
+        <section className="pt-6">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+            📊 Overall Statistics
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <StatCard
+              label="Total Account XP"
+              value={totalAccountXp.toLocaleString()}
+              accent="xp"
+            />
+            <StatCard
+              label="Habit XP"
+              value={overallStats.totalXpFromHabits.toLocaleString()}
+              accent="glow"
+              sub={`${overallStats.xpToSkills} → skills, ${overallStats.generalXp} general`}
+            />
+            <StatCard
+              label="Total completions"
+              value={overallStats.totalCompletions.toLocaleString()}
+              accent="glow-purple"
+            />
+            <StatCard
+              label="Best daily streak"
+              value={`🔥 ${overallStats.bestDailyStreak}`}
+              accent="xp"
+            />
+            <StatCard
+              label="Avg / day (30d)"
+              value={overallStats.avgCompletionsPerDay.toString()}
+              accent="glow"
+              sub={`${overallStats.last30DaysCompletions} in last 30 days`}
+            />
+            <StatCard
+              label="Active habits"
+              value={overallStats.activeHabits.toString()}
+              accent="glow-purple"
+              sub={
+                overallStats.pausedHabits > 0
+                  ? `${overallStats.pausedHabits} paused`
+                  : undefined
+              }
+            />
+          </div>
+        </section>
+      )}
+
       <HabitDialog
         open={newOpen}
         onOpenChange={setNewOpen}
         subskillGroups={subskillGroups}
       />
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent: "glow" | "glow-purple" | "xp";
+}) {
+  const accentClass =
+    accent === "glow"
+      ? "text-glow border-glow/20"
+      : accent === "glow-purple"
+        ? "text-glow-purple border-glow-purple/20"
+        : "text-xp border-xp/20";
+  return (
+    <div className={`rounded-xl border bg-card p-3 ${accentClass}`}>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
+        {label}
+      </div>
+      <div className="text-xl font-mono mt-1">{value}</div>
+      {sub && (
+        <div className="text-[10px] text-muted-foreground/70 font-mono mt-0.5 truncate">
+          {sub}
+        </div>
+      )}
     </div>
   );
 }

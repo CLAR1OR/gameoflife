@@ -9,6 +9,10 @@ export type HabitWithLink = Habit & {
   completedDates: string[];
   /** Current streak in days ending today or yesterday */
   currentStreak: number;
+  /** Best streak ever (computed from all completions, not just range) */
+  bestStreak: number;
+  /** Total completions across all time */
+  totalCompletions: number;
   /** Which subskill this habit feeds (if any) */
   skillName: string | null;
   /** Which category (root skill) this habit belongs to */

@@ -209,26 +209,64 @@ export function HabitRow({
           </div>
         </div>
 
-        {/* Expanded description */}
-        {expanded && habit.description && (
-          <div className="px-4 pb-4 pt-1 border-t border-border/30 mx-3 mt-0">
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap pt-3">
-              {habit.description}
-            </p>
-          </div>
-        )}
-        {expanded && !habit.description && (
-          <div className="px-4 pb-3 pt-1 border-t border-border/30 mx-3 mt-0">
-            <p className="text-xs text-muted-foreground/60 italic pt-3">
-              No description yet —{" "}
-              <button
-                type="button"
-                onClick={() => setEditOpen(true)}
-                className="underline hover:text-foreground"
-              >
-                add one
-              </button>
-            </p>
+        {/* Expanded: description + stats */}
+        {expanded && (
+          <div className="border-t border-border/30 mx-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 px-4 pt-3 pb-4">
+            {/* Description */}
+            <div className="min-w-0">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono mb-1">
+                About
+              </div>
+              {habit.description ? (
+                <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                  {habit.description}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground/60 italic">
+                  No description yet —{" "}
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(true)}
+                    className="underline hover:text-foreground"
+                  >
+                    add one
+                  </button>
+                </p>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="md:border-l md:border-border/30 md:pl-4">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono mb-2">
+                Stats
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground">Total</div>
+                  <div className="font-mono text-base text-foreground">
+                    {habit.totalCompletions}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Current</div>
+                  <div className="font-mono text-base text-xp">
+                    🔥 {habit.currentStreak}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Best</div>
+                  <div className="font-mono text-base text-foreground">
+                    {habit.bestStreak}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">XP earned</div>
+                  <div className="font-mono text-base text-xp">
+                    {habit.totalCompletions * habit.xpPerCompletion}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

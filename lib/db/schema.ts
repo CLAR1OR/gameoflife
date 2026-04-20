@@ -148,10 +148,19 @@ export const achievement = sqliteTable("achievement", {
   isUnlocked: integer("is_unlocked", { mode: "boolean" }).notNull().default(false),
   unlockedAt: integer("unlocked_at", { mode: "timestamp" }),
   triggerType: text("trigger_type", {
-    enum: ["manual", "subskill_mastered", "stage_reached", "all_mastered"],
+    enum: [
+      "manual",
+      "subskill_mastered",
+      "stage_reached",
+      "all_mastered",
+      "habit_streak",
+      "habit_total",
+    ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),
   triggerStage: integer("trigger_stage"),
+  triggerHabitId: text("trigger_habit_id").references(() => habit.id, { onDelete: "cascade" }),
+  triggerCount: integer("trigger_count"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });

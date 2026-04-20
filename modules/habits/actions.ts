@@ -30,12 +30,17 @@ const DEFAULT_HABITS: { name: string; icon: string }[] = [
 // CRUD
 // =====================
 
+export type AutoAchievementSpec =
+  | { kind: "streak"; days: number }
+  | { kind: "total"; count: number };
+
 export async function createHabit(data: {
   name: string;
   description?: string;
   icon?: string;
   skillId?: string | null;
   xpPerCompletion?: number;
+  autoAchievements?: AutoAchievementSpec[];
 }) {
   const session = await requireSession();
   const existing = await db.query.habit.findMany({
@@ -55,8 +60,42 @@ export async function createHabit(data: {
     })
     .returning();
 
+  // Auto-create achievements for this habit
+  if (data.autoAchievements?.length) {
+    const achievementRows = data.autoAchievements.map((spec, i) => {
+      if (spec.kind === "streak") {
+        return {
+          userId: session.user.id,
+          categoryId: null,
+          source: "custom" as const,
+          name: `${data.name}: ${spec.days}-day streak`,
+          description: `Complete "${data.name}" for ${spec.days} consecutive days`,
+          icon: spec.days >= 100 ? "🏆" : spec.days >= 30 ? "🔥" : "✨",
+          triggerType: "habit_streak" as const,
+          triggerHabitId: row.id,
+          triggerCount: spec.days,
+          sortOrder: i,
+        };
+      }
+      return {
+        userId: session.user.id,
+        categoryId: null,
+        source: "custom" as const,
+        name: `${data.name}: ${spec.count} completions`,
+        description: `Complete "${data.name}" a total of ${spec.count} times`,
+        icon: spec.count >= 500 ? "👑" : spec.count >= 100 ? "💎" : "⭐",
+        triggerType: "habit_total" as const,
+        triggerHabitId: row.id,
+        triggerCount: spec.count,
+        sortOrder: i + 100,
+      };
+    });
+    await db.insert(achievement).values(achievementRows);
+  }
+
   revalidatePath("/habits");
   revalidatePath("/skills");
+  revalidatePath("/achievements");
   return row;
 }
 
@@ -130,8 +169,14 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
       await adjustSkillXp(row.skillId, session.user.id, -row.xpPerCompletion, habitId);
     }
 
+    const achievementsReverted = await checkHabitAchievements(
+      habitId,
+      session.user.id
+    );
+
     revalidatePath("/habits");
-    return { completed: false };
+    revalidatePath("/achievements");
+    return { completed: false, newAchievements: [] as string[], achievementsReverted };
   }
 
   // Check: add completion + add XP
@@ -145,8 +190,77 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
     await adjustSkillXp(row.skillId, session.user.id, row.xpPerCompletion, habitId);
   }
 
+  const newAchievements = await checkHabitAchievements(
+    habitId,
+    session.user.id
+  );
+
   revalidatePath("/habits");
-  return { completed: true };
+  revalidatePath("/achievements");
+  return { completed: true, newAchievements, achievementsReverted: [] as string[] };
+}
+
+/**
+ * Evaluate habit_streak and habit_total achievements linked to this habit.
+ * Returns names of achievements that newly unlocked.
+ */
+async function checkHabitAchievements(
+  habitId: string,
+  userId: string
+): Promise<string[]> {
+  const achievements = await db.query.achievement.findMany({
+    where: (a, { and: _and, eq: _eq }) =>
+      _and(_eq(a.triggerHabitId, habitId), _eq(a.userId, userId)),
+  });
+  if (achievements.length === 0) return [];
+
+  const completions = await db
+    .select({ date: habitCompletion.date })
+    .from(habitCompletion)
+    .where(
+      and(eq(habitCompletion.habitId, habitId), eq(habitCompletion.userId, userId))
+    );
+  const dates = completions.map((c) => c.date).sort();
+  const totalCompletions = dates.length;
+
+  // Current streak ending today or yesterday
+  const set = new Set(dates);
+  let currentStreak = 0;
+  const now = new Date();
+  const todayStr = todayISO();
+  const startOffset = set.has(todayStr) ? 0 : 1;
+  for (let i = startOffset; i < 3650; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (set.has(key)) currentStreak++;
+    else break;
+  }
+
+  const newlyUnlocked: string[] = [];
+  for (const a of achievements) {
+    if (a.triggerCount == null) continue;
+    let shouldBeUnlocked = false;
+    if (a.triggerType === "habit_streak") {
+      shouldBeUnlocked = currentStreak >= a.triggerCount;
+    } else if (a.triggerType === "habit_total") {
+      shouldBeUnlocked = totalCompletions >= a.triggerCount;
+    }
+
+    if (shouldBeUnlocked && !a.isUnlocked) {
+      await db
+        .update(achievement)
+        .set({ isUnlocked: true, unlockedAt: new Date() })
+        .where(eq(achievement.id, a.id));
+      newlyUnlocked.push(a.name);
+    } else if (!shouldBeUnlocked && a.isUnlocked) {
+      await db
+        .update(achievement)
+        .set({ isUnlocked: false, unlockedAt: null })
+        .where(eq(achievement.id, a.id));
+    }
+  }
+  return newlyUnlocked;
 }
 
 async function adjustSkillXp(
