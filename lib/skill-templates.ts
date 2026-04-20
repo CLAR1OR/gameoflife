@@ -1490,6 +1490,155 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
       { name: "Peak Human", description: "Mastered every branch of fitness", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
+  {
+    id: "meditation",
+    name: "Meditation",
+    description: "From first mindful breath to steady presence in daily life",
+    icon: "🧘",
+    coverImage: "linear-gradient(135deg, #0a0a1a 0%, #1e1b4b 40%, #4c1d95 75%, #a78bfa 100%)",
+    subskills: [
+      // =====================
+      // ROOT
+      // =====================
+      {
+        name: "Foundations & First Breath",
+        description: "Establish the habit and learn what practice actually is",
+        milestones: [
+          { name: "Sit for 5 minutes without distraction", xpReward: 50 },
+          { name: "Complete 7 consecutive days of meditation", xpReward: 75 },
+          { name: "Read one foundational book (e.g. Mindfulness in Plain English, The Mind Illuminated)", xpReward: 125 },
+          { name: "Try 3 different styles (breath, body scan, guided)", xpReward: 75 },
+          { name: "Establish a dedicated meditation space or cushion setup", xpReward: 50 },
+          { name: "Log 20 total sessions of any length", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // ATTENTION BRANCH
+      // =====================
+      {
+        name: "Breath & Body Awareness",
+        description: "Anchor attention in the body and breath",
+        prerequisiteNames: ["Foundations & First Breath"],
+        milestones: [
+          { name: "Hold attention on the breath for 10 minutes without losing it", xpReward: 100 },
+          { name: "Complete a 30-minute body scan from head to toe", xpReward: 100 },
+          { name: "Notice subtle sensations (warmth, tingling, pulse) during sitting", xpReward: 75 },
+          { name: "Sit through physical discomfort without shifting for 20 minutes", xpReward: 100 },
+          { name: "Complete 30 sessions of 15+ minutes", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Concentration (Samatha)",
+        description: "Build stable, unified attention",
+        prerequisiteNames: ["Breath & Body Awareness"],
+        milestones: [
+          { name: "Count 10 breaths without losing count, 10 times in a row", xpReward: 100 },
+          { name: "Sit for 45 minutes continuously", xpReward: 125 },
+          { name: "Experience access concentration (piti/sukha signs)", xpReward: 150 },
+          { name: "Hold single-pointed attention for 20 minutes", xpReward: 150 },
+          { name: "Complete 50 concentration-focused sessions", xpReward: 125 },
+        ],
+      },
+
+      // =====================
+      // WISDOM BRANCH
+      // =====================
+      {
+        name: "Mindfulness of Thoughts",
+        description: "Observe the mind without being pulled by it",
+        prerequisiteNames: ["Breath & Body Awareness"],
+        milestones: [
+          { name: "Notice a thought arising and label it without following it", xpReward: 75 },
+          { name: "Sit with a difficult emotion for a full session", xpReward: 125 },
+          { name: "Recognize and name 5 recurring mental patterns", xpReward: 100 },
+          { name: "Do a full session in open awareness (no anchor)", xpReward: 100 },
+          { name: "Read a book on cognitive patterns (e.g. Why Buddhism is True)", xpReward: 100 },
+        ],
+      },
+      {
+        name: "Insight (Vipassana)",
+        description: "See the three characteristics directly",
+        prerequisiteNames: ["Concentration (Samatha)", "Mindfulness of Thoughts"],
+        milestones: [
+          { name: "Practice noting (hearing, thinking, feeling) for a full session", xpReward: 100 },
+          { name: "Observe impermanence, unsatisfactoriness, and not-self directly", xpReward: 150 },
+          { name: "Sit a full vipassana session of 60+ minutes", xpReward: 125 },
+          { name: "Read a deep practice text (e.g. Mastering the Core Teachings of the Buddha)", xpReward: 150 },
+          { name: "Have a clear cessation or insight experience (documented)", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // HEART BRANCH
+      // =====================
+      {
+        name: "Loving-Kindness (Metta)",
+        description: "Train warmth and goodwill as a practice",
+        prerequisiteNames: ["Foundations & First Breath"],
+        milestones: [
+          { name: "Complete a full metta session (self → friend → neutral → difficult → all)", xpReward: 100 },
+          { name: "Do metta daily for 14 days", xpReward: 100 },
+          { name: "Send metta to someone you're in conflict with", xpReward: 125 },
+          { name: "Feel genuine warmth arise during practice", xpReward: 75 },
+          { name: "Complete 20 metta sessions", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // APPLICATION BRANCH
+      // =====================
+      {
+        name: "Daily Life Integration",
+        description: "Bring practice off the cushion and into the day",
+        prerequisiteNames: ["Mindfulness of Thoughts"],
+        milestones: [
+          { name: "Practice mindful eating for a full meal", xpReward: 50 },
+          { name: "Complete 7 days of mindful transitions (walking, doorways)", xpReward: 75 },
+          { name: "Respond mindfully to a stressful situation in real time", xpReward: 125 },
+          { name: "Do a digital-free half-day with present-moment awareness", xpReward: 75 },
+          { name: "Maintain a 30-day unbroken daily practice streak", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Retreat & Deepening",
+        description: "Step away from daily life and go deep",
+        prerequisiteNames: ["Concentration (Samatha)"],
+        milestones: [
+          { name: "Complete a self-led day-long silent retreat at home", xpReward: 100 },
+          { name: "Attend a 3-day group retreat", xpReward: 125 },
+          { name: "Complete a 7-day silent retreat (vipassana, zen, or similar)", xpReward: 150 },
+          { name: "Complete a 10-day Goenka or equivalent", xpReward: 150 },
+          { name: "Establish a twice-a-year retreat rhythm", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CAPSTONE
+      // =====================
+      {
+        name: "Teaching & Sharing",
+        description: "Pass it on — practice deepens when you transmit it",
+        prerequisiteNames: ["Insight (Vipassana)", "Daily Life Integration"],
+        milestones: [
+          { name: "Guide a friend through their first meditation", xpReward: 75 },
+          { name: "Lead a group sit (5+ people)", xpReward: 100 },
+          { name: "Write publicly about your practice (blog, journal shared)", xpReward: 75 },
+          { name: "Mentor someone through their first 30-day streak", xpReward: 125 },
+          { name: "Teach a short mindfulness workshop or course", xpReward: 150 },
+        ],
+      },
+    ],
+    achievements: [
+      { name: "First Sit", description: "Established a real practice", icon: "🌱", trigger: { type: "subskill_mastered", subskillName: "Foundations & First Breath" } },
+      { name: "Still Mind", description: "Reached access concentration", icon: "🕯️", trigger: { type: "subskill_mastered", subskillName: "Concentration (Samatha)" } },
+      { name: "Open Heart", description: "Mastered loving-kindness", icon: "💗", trigger: { type: "subskill_mastered", subskillName: "Loving-Kindness (Metta)" } },
+      { name: "Clear Seeing", description: "Direct insight into the three characteristics", icon: "👁️", trigger: { type: "subskill_mastered", subskillName: "Insight (Vipassana)" } },
+      { name: "Off the Cushion", description: "Practice lives in daily life", icon: "🌿", trigger: { type: "subskill_mastered", subskillName: "Daily Life Integration" } },
+      { name: "Journeyman Meditator", description: "Reached Journeyman — steady, present, skillful", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Awakened", description: "Mastered every branch of practice", icon: "👑", trigger: { type: "all_mastered" } },
+    ],
+  },
 ];
 
 export function getTemplate(id: string): SkillTemplate | undefined {

@@ -172,6 +172,7 @@ export const achievement = sqliteTable("achievement", {
       "quest_completed",
       "side_quest_count",
       "main_quest_count",
+      "account_level",
     ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),

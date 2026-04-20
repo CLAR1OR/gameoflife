@@ -9,15 +9,17 @@ import {
 import { getActiveQuests } from "@/modules/quests/queries";
 import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
 import { todayISO } from "@/lib/date";
+import { ensureLevelAchievementsSeeded } from "@/lib/account-achievements";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CharacterStatusBar } from "@/components/dashboard/character-status-bar";
 import {
   DashboardFocusTile,
   EmptyFocusTile,
 } from "@/components/dashboard/dashboard-focus-tile";
 import { DashboardHabitRow } from "@/components/dashboard/dashboard-habit-row";
-import { QuestSlot, EmptyQuestSlot } from "@/components/quests/quest-slot";
+import { QuestSlot } from "@/components/quests/quest-slot";
 
 const FOCUS_SLOTS = 3;
 
@@ -34,6 +36,8 @@ function formatFriendlyDate(iso: string): string {
 export default async function DashboardPage() {
   const session = await requireSession();
   const userId = session.user.id;
+
+  await ensureLevelAchievementsSeeded(userId);
 
   const [categories, categoryIdsWithHabits, habits, quests, totalAccountXp] =
     await Promise.all([
@@ -68,24 +72,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back,{" "}
-            <span className="text-glow">{session.user.name}</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {formatFriendlyDate(today)}
-          </p>
-        </div>
-        <Badge
-          variant="outline"
-          className="border-xp/30 text-xp font-mono px-3 py-1 text-sm"
-        >
-          ⚡ {totalAccountXp.toLocaleString()} XP
-        </Badge>
-      </div>
+      {/* Character status bar */}
+      <CharacterStatusBar name={session.user.name} totalXp={totalAccountXp} />
+
+      {/* Date */}
+      <p className="text-sm text-muted-foreground -mt-4 font-mono">
+        {formatFriendlyDate(today)}
+      </p>
 
       {/* Current Focus */}
       <section>

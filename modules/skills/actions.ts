@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { calculateLevel } from "@/lib/xp";
 import { getTemplate } from "@/lib/skill-templates";
+import { checkAccountLevelAchievements } from "@/lib/account-achievements";
 
 const TOTAL_STAGES = 6;
 
@@ -386,9 +387,13 @@ export async function completeMilestone(milestoneId: string) {
     ms.skill.categoryId,
     session.user.id
   );
+  const levelAchievements = await checkAccountLevelAchievements(
+    session.user.id
+  );
 
   revalidatePath(`/skills/${ms.skill.categoryId}`);
   revalidatePath("/achievements");
+  revalidatePath("/");
 
   return {
     newXp,
@@ -396,7 +401,7 @@ export async function completeMilestone(milestoneId: string) {
     newLevel,
     leveledUp: newLevel > oldLevel,
     unlocked,
-    newAchievements,
+    newAchievements: [...newAchievements, ...levelAchievements],
     milestoneName: ms.name,
     xpGained: ms.xpReward,
   };
@@ -436,9 +441,11 @@ export async function uncompleteMilestone(milestoneId: string) {
 
   // Re-check achievements (may need to re-lock)
   await checkCategoryAchievements(ms.skill.categoryId, session.user.id);
+  await checkAccountLevelAchievements(session.user.id);
 
   revalidatePath(`/skills/${ms.skill.categoryId}`);
   revalidatePath("/achievements");
+  revalidatePath("/");
 }
 
 export async function deleteMilestone(milestoneId: string) {

@@ -13,6 +13,7 @@ import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { calculateLevel } from "@/lib/xp";
 import { todayISO } from "@/lib/date";
+import { checkAccountLevelAchievements } from "@/lib/account-achievements";
 
 const TOTAL_STAGES = 6;
 
@@ -163,9 +164,11 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
       habitId,
       session.user.id
     );
+    await checkAccountLevelAchievements(session.user.id);
 
     revalidatePath("/habits");
     revalidatePath("/achievements");
+    revalidatePath("/");
     return { completed: false, newAchievements: [] as string[], achievementsReverted };
   }
 
@@ -184,10 +187,18 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
     habitId,
     session.user.id
   );
+  const levelAchievements = await checkAccountLevelAchievements(
+    session.user.id
+  );
 
   revalidatePath("/habits");
   revalidatePath("/achievements");
-  return { completed: true, newAchievements, achievementsReverted: [] as string[] };
+  revalidatePath("/");
+  return {
+    completed: true,
+    newAchievements: [...newAchievements, ...levelAchievements],
+    achievementsReverted: [] as string[],
+  };
 }
 
 /**

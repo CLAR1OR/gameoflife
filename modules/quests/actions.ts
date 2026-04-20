@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { MAX_SIDE_QUESTS } from "./types";
+import { checkAccountLevelAchievements } from "@/lib/account-achievements";
 
 export type QuestAutoAchievementSpec = {
   enabled: boolean;
@@ -116,11 +117,17 @@ export async function completeQuest(id: string) {
     .where(eq(quest.id, id));
 
   const newlyUnlocked = await checkQuestAchievements(session.user.id, id);
+  const levelAchievements = await checkAccountLevelAchievements(
+    session.user.id
+  );
 
   revalidatePath("/quests");
   revalidatePath("/");
   revalidatePath("/achievements");
-  return { xp: row.xpReward, newAchievements: newlyUnlocked };
+  return {
+    xp: row.xpReward,
+    newAchievements: [...newlyUnlocked, ...levelAchievements],
+  };
 }
 
 export async function abandonQuest(id: string) {
@@ -162,9 +169,11 @@ export async function restoreQuest(id: string) {
   // If it was previously completed, we need to re-lock the quest-completed
   // achievement since completion is no longer true.
   await checkQuestAchievements(session.user.id, id);
+  await checkAccountLevelAchievements(session.user.id);
 
   revalidatePath("/quests");
   revalidatePath("/achievements");
+  revalidatePath("/");
 }
 
 export async function deleteQuest(id: string) {
