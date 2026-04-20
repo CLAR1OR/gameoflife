@@ -2,24 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { useSession } from "@/lib/auth-client";
 import { APP_MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function TopNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const router = useRouter();
 
   const user = session?.user;
   const initials = user?.name
@@ -31,11 +21,7 @@ export function TopNav() {
         .slice(0, 2)
     : "?";
 
-  async function handleSignOut() {
-    await signOut();
-    router.push("/login");
-    router.refresh();
-  }
+  const onAccountPage = pathname === "/account";
 
   return (
     <div className="sticky top-0 z-50 flex justify-center pt-4 pb-2 pointer-events-none">
@@ -84,26 +70,23 @@ export function TopNav() {
         {/* Subtle separator */}
         <div className="h-6 w-px bg-border/60 mx-1" />
 
-        {/* User avatar */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-full border border-glow/30 hover:border-glow/60 transition-all">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="text-xs bg-glow/10 text-glow font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>
-              <p className="text-sm font-medium">{user?.name ?? "User"}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* User avatar — opens the account page */}
+        <Link
+          href="/account"
+          title={user?.name ? `${user.name} · Account` : "Account"}
+          className={cn(
+            "group flex h-9 w-9 items-center justify-center rounded-full border transition-all",
+            onAccountPage
+              ? "border-glow/60 shadow-[0_0_12px_rgba(0,255,136,0.3)]"
+              : "border-glow/30 hover:border-glow/60"
+          )}
+        >
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="text-xs bg-glow/10 text-glow font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
       </nav>
     </div>
   );
