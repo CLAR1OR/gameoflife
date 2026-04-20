@@ -38,14 +38,9 @@ export function TopNav() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border/50 bg-sidebar/80 backdrop-blur-md px-6">
-      {/* Left: Logo */}
-      <Link href="/" className="text-lg font-bold tracking-tight text-glow glow-green-text shrink-0">
-        Game of Life
-      </Link>
-
-      {/* Center: Navigation icons */}
-      <div className="flex items-center gap-1">
+    <div className="sticky top-0 z-50 flex justify-center pt-4 pb-2 pointer-events-none">
+      <nav className="pointer-events-auto flex items-center gap-1 rounded-full border border-border/60 bg-card/80 backdrop-blur-xl px-2 py-1.5 shadow-lg shadow-black/20">
+        {/* Navigation icons */}
         {APP_MODULES.map((mod) => {
           const isActive =
             mod.href === "/"
@@ -57,10 +52,10 @@ export function TopNav() {
             return (
               <div
                 key={mod.href}
-                className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-xl opacity-30 cursor-not-allowed"
+                className="group relative flex h-10 w-10 items-center justify-center rounded-full text-xl opacity-30 cursor-not-allowed"
               >
                 {mod.icon}
-                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-muted-foreground border border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="pointer-events-none absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-muted-foreground border border-border opacity-0 group-hover:opacity-100 transition-opacity">
                   {mod.name} — soon
                 </span>
               </div>
@@ -72,23 +67,24 @@ export function TopNav() {
               key={mod.href}
               href={mod.href}
               className={cn(
-                "group relative flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-all",
+                "group relative flex h-10 w-10 items-center justify-center rounded-full text-xl transition-all",
                 isActive
-                  ? "bg-glow/10 text-glow glow-green"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-glow/15 text-glow ring-1 ring-glow/40 shadow-[0_0_12px_rgba(0,255,136,0.3)]"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground hover:scale-110"
               )}
             >
               {mod.icon}
-              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground border border-border opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground border border-border opacity-0 group-hover:opacity-100 transition-opacity">
                 {mod.name}
               </span>
             </Link>
           );
         })}
-      </div>
 
-      {/* Right: User */}
-      <div className="shrink-0">
+        {/* Subtle separator */}
+        <div className="h-6 w-px bg-border/60 mx-1" />
+
+        {/* User avatar */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-full border border-glow/30 hover:border-glow/60 transition-all">
             <Avatar className="h-9 w-9">
@@ -108,7 +104,7 @@ export function TopNav() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }

@@ -137,183 +137,232 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
   {
     id: "russian",
     name: "Russian Language",
-    description: "From Cyrillic basics to reading Dostoevsky in the original",
+    description: "From the first Cyrillic letter to reading Dostoevsky in the original",
     icon: "🇷🇺",
     coverImage: "url('/russian.png') center/cover",
     subskills: [
       // =====================
-      // COMPREHENSIBLE INPUT (A1 → C1)
+      // ROOT
       // =====================
       {
-        name: "A1 Comprehensible Input",
-        description: "Beginner videos with visuals and simple speech",
+        name: "Cyrillic & First Steps",
+        description: "The alphabet, your first 100 words, and your first full sentence",
         milestones: [
-          { name: "Watch your first 10 A1 CI videos", xpReward: 50 },
-          { name: "Complete a beginner CI playlist", xpReward: 100 },
-          { name: "Watch 30 A1 videos total", xpReward: 100 },
-          { name: "Understand 50% of an A1 video without subtitles", xpReward: 100 },
-          { name: "Complete a second A1 playlist", xpReward: 100 },
-          { name: "Accumulate 20+ hours of A1 input", xpReward: 150 },
-        ],
-      },
-      {
-        name: "A2 Comprehensible Input",
-        description: "Elementary videos, slow clear speech, everyday topics",
-        prerequisiteNames: ["A1 Comprehensible Input"],
-        milestones: [
-          { name: "Watch 10 A2 videos", xpReward: 50 },
-          { name: "Complete an A2 playlist", xpReward: 100 },
-          { name: "Watch 30 A2 videos total", xpReward: 100 },
-          { name: "Understand 70% of an A2 video without subtitles", xpReward: 100 },
-          { name: "Complete a second A2 playlist", xpReward: 100 },
-          { name: "Reach 40+ cumulative hours of input", xpReward: 150 },
-        ],
-      },
-      {
-        name: "B1 Comprehensible Input",
-        description: "Intermediate: vlogs, slow podcasts, slice-of-life content",
-        prerequisiteNames: ["A2 Comprehensible Input"],
-        milestones: [
-          { name: "Watch 10 B1 videos", xpReward: 50 },
-          { name: "Complete a B1 playlist (30+ videos)", xpReward: 100 },
-          { name: "Understand a Russian vlogger's casual video", xpReward: 100 },
-          { name: "Watch 50 B1 videos total", xpReward: 100 },
-          { name: "Follow a podcast episode for intermediate learners", xpReward: 100 },
-          { name: "Reach 80+ cumulative hours of input", xpReward: 150 },
-        ],
-      },
-      {
-        name: "B2 Comprehensible Input",
-        description: "Upper intermediate: TV shows, native podcasts, interviews",
-        prerequisiteNames: ["B1 Comprehensible Input"],
-        milestones: [
-          { name: "Watch a full episode of 'Кухня' (or any Russian sitcom)", xpReward: 100 },
-          { name: "Understand a Russian news segment", xpReward: 100 },
-          { name: "Complete a native-speaker podcast episode", xpReward: 100 },
-          { name: "Finish a B2 playlist or course", xpReward: 100 },
-          { name: "Watch 5 full episodes of a Russian show", xpReward: 100 },
-          { name: "Reach 150+ cumulative hours of input", xpReward: 100 },
-        ],
-      },
-      {
-        name: "C1 Comprehensible Input",
-        description: "Advanced: native media, cinema, stand-up, debates",
-        prerequisiteNames: ["B2 Comprehensible Input"],
-        milestones: [
-          { name: "Watch a Russian movie without subtitles", xpReward: 100 },
-          { name: "Understand a Russian stand-up comedy bit", xpReward: 100 },
-          { name: "Follow an interview with a Russian-speaking public figure", xpReward: 100 },
-          { name: "Finish a Russian TV show (10+ episodes)", xpReward: 100 },
-          { name: "Understand a podcast on a complex topic (politics, science)", xpReward: 100 },
-          { name: "Reach 300+ cumulative hours of input", xpReward: 100 },
+          { name: "Learn all 33 Cyrillic letters (print) — read them on sight", xpReward: 75 },
+          { name: "Read 10 basic Russian words aloud correctly", xpReward: 50 },
+          { name: "Learn the 100 most frequent words", xpReward: 75 },
+          { name: "Learn 20 essential phrases (greetings, politeness, asking for help)", xpReward: 75 },
+          { name: "Hold a 30-second self-introduction in Russian", xpReward: 100 },
+          { name: "Distinguish hard and soft consonants by ear", xpReward: 75 },
+          { name: "Complete a beginner course module (Pimsleur, Assimil, or equivalent)", xpReward: 125 },
         ],
       },
 
       // =====================
-      // READING (Comics → Classics)
+      // MECHANICS
       // =====================
       {
-        name: "Reading — Comics",
-        description: "Entry-level reading with visual context",
-        prerequisiteNames: ["A1 Comprehensible Input"],
+        name: "Pronunciation & Sounds",
+        description: "Sound Russian, not like a foreigner reading Cyrillic out loud",
+        prerequisiteNames: ["Cyrillic & First Steps"],
         milestones: [
-          { name: "Read your first Russian comic strip", xpReward: 75 },
-          { name: "Finish a short comic book", xpReward: 100 },
-          { name: "Read 5 comic strips in a row", xpReward: 100 },
-          { name: "Finish 3 full comic books", xpReward: 125 },
-          { name: "Read a comic without looking up more than 5 words", xpReward: 100 },
-          { name: "Complete 10 comics total", xpReward: 100 },
+          { name: "Roll a proper Russian р (trill) on demand", xpReward: 100 },
+          { name: "Master vowel reduction (unstressed о → а, е → и)", xpReward: 100 },
+          { name: "Pronounce all hard/soft consonant pairs accurately", xpReward: 100 },
+          { name: "Correctly stress 100 common words (no more guessing)", xpReward: 75 },
+          { name: "Mimic a native speaker on 10 common sentences convincingly", xpReward: 100 },
+          { name: "Record a paragraph and get native approval on 3+ full sentences", xpReward: 125 },
         ],
       },
-      {
-        name: "Reading — Easy Books",
-        description: "Graded readers and children's books",
-        prerequisiteNames: ["Reading — Comics"],
-        milestones: [
-          { name: "Finish your first A1/A2 graded reader", xpReward: 100 },
-          { name: "Read a Russian children's book (e.g., Чебурашка)", xpReward: 100 },
-          { name: "Finish 3 short graded readers", xpReward: 100 },
-          { name: "Read a short-story collection for learners", xpReward: 125 },
-          { name: "Finish a B1-level graded book", xpReward: 125 },
-          { name: "Complete 5 easy books total", xpReward: 50 },
-        ],
-      },
-      {
-        name: "Reading — Intermediate",
-        description: "Contemporary novels and non-fiction",
-        prerequisiteNames: ["Reading — Easy Books", "B1 Comprehensible Input"],
-        milestones: [
-          { name: "Finish a young-adult novel in Russian", xpReward: 100 },
-          { name: "Read a novella (100–200 pages)", xpReward: 100 },
-          { name: "Read a non-fiction book in Russian", xpReward: 125 },
-          { name: "Finish a contemporary Russian novel", xpReward: 125 },
-          { name: "Read a full book without using a dictionary", xpReward: 100 },
-          { name: "Complete 3 intermediate books total", xpReward: 50 },
-        ],
-      },
-      {
-        name: "Reading — Classics",
-        description: "19th-century literature in the original",
-        prerequisiteNames: ["Reading — Intermediate", "B2 Comprehensible Input"],
-        milestones: [
-          { name: "Read a Chekhov short story", xpReward: 100 },
-          { name: "Finish 'A Hero of Our Time' (Lermontov)", xpReward: 150 },
-          { name: "Finish a Turgenev or Gogol novel", xpReward: 150 },
-          { name: "Read a Dostoevsky novel", xpReward: 100 },
-          { name: "Read a Tolstoy work (short story or novel)", xpReward: 100 },
-        ],
-      },
-
-      // =====================
-      // WRITING
-      // =====================
       {
         name: "Handwriting",
-        description: "Cyrillic print and cursive",
+        description: "Cyrillic print and cursive — because Russians actually use cursive",
+        prerequisiteNames: ["Cyrillic & First Steps"],
         milestones: [
-          { name: "Learn all 33 Cyrillic letters (print)", xpReward: 100 },
+          { name: "Write all 33 letters in print from memory", xpReward: 50 },
           { name: "Practice each letter 20 times in cursive", xpReward: 100 },
-          { name: "Copy a full page of printed text", xpReward: 100 },
+          { name: "Copy a full printed page into cursive", xpReward: 100 },
           { name: "Keep a handwritten journal for a week", xpReward: 100 },
-          { name: "Write a handwritten letter to a friend", xpReward: 100 },
-          { name: "Maintain a handwritten journal for a month", xpReward: 100 },
+          { name: "Write a handwritten letter to a friend (or language partner)", xpReward: 100 },
+          { name: "Maintain a handwritten journal for a full month", xpReward: 125 },
         ],
       },
       {
         name: "Touch Typing",
         description: "ЙЦУКЕН layout mastery",
+        prerequisiteNames: ["Cyrillic & First Steps"],
         milestones: [
-          { name: "Learn the ЙЦУКЕН keyboard layout", xpReward: 100 },
-          { name: "Type at 20 WPM without looking", xpReward: 100 },
-          { name: "Complete a Russian typing course", xpReward: 100 },
+          { name: "Learn the ЙЦУКЕН keyboard layout", xpReward: 75 },
+          { name: "Type at 20 WPM in Russian without looking", xpReward: 75 },
           { name: "Reach 40 WPM", xpReward: 100 },
-          { name: "Reach 60 WPM", xpReward: 100 },
-          { name: "Type a 500-word essay in Russian", xpReward: 100 },
+          { name: "Reach 60 WPM", xpReward: 125 },
+          { name: "Type a 500-word essay in Russian at >40 WPM", xpReward: 100 },
+          { name: "Type a 1000-word text with <5 errors", xpReward: 100 },
         ],
       },
 
       // =====================
-      // VOCABULARY
+      // LANGUAGE SYSTEM
       // =====================
       {
-        name: "Vocabulary",
-        description: "Build the words you need, one tier at a time",
+        name: "Core Vocabulary",
+        description: "Build the words — one tier at a time",
+        prerequisiteNames: ["Cyrillic & First Steps"],
         milestones: [
-          { name: "Learn the 500 most common Russian words", xpReward: 100 },
-          { name: "Complete a beginner Anki deck (or equivalent)", xpReward: 100 },
+          { name: "Learn the 500 most common Russian words", xpReward: 75 },
+          { name: "Complete a beginner Anki deck (or equivalent SRS)", xpReward: 100 },
           { name: "Reach 1,000 words known", xpReward: 100 },
-          { name: "Reach 2,000 words known", xpReward: 100 },
-          { name: "Reach 5,000 words known", xpReward: 100 },
-          { name: "Reach 10,000 words known (advanced reader level)", xpReward: 100 },
+          { name: "Reach 2,500 words known", xpReward: 125 },
+          { name: "Reach 5,000 words known", xpReward: 150 },
+          { name: "Reach 10,000 words known (advanced-reader territory)", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Grammar Foundations",
+        description: "The six cases, verb conjugation, and aspect — the real hard part",
+        prerequisiteNames: ["Cyrillic & First Steps"],
+        milestones: [
+          { name: "Learn all 6 cases for singular nouns", xpReward: 100 },
+          { name: "Learn all 6 cases for plural nouns", xpReward: 100 },
+          { name: "Conjugate 20 common verbs in present, past, and future", xpReward: 100 },
+          { name: "Use verb aspect (perfective/imperfective) correctly in real sentences", xpReward: 150 },
+          { name: "Master pronouns and adjective-noun agreement", xpReward: 100 },
+          { name: "Complete a grammar reference book (e.g. Wade, or The New Penguin Russian Course)", xpReward: 150 },
+          { name: "Pass a B1-level grammar assessment", xpReward: 75 },
+        ],
+      },
+      {
+        name: "Advanced Grammar",
+        description: "Verbs of motion, participles, gerunds — the stuff that separates B1 from C1",
+        prerequisiteNames: ["Grammar Foundations", "Input — Beginner (A1–B1)"],
+        milestones: [
+          { name: "Master verbs of motion with prefixes (пойти/прийти/уйти/войти…)", xpReward: 150 },
+          { name: "Use participles (active & passive) correctly in writing", xpReward: 125 },
+          { name: "Use gerunds (деепричастия) naturally", xpReward: 100 },
+          { name: "Handle subordinate clauses and reported speech fluently", xpReward: 125 },
+          { name: "Write a 200-word text with zero case errors", xpReward: 125 },
+          { name: "Pass a C1-level grammar assessment", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // INPUT
+      // =====================
+      {
+        name: "Input — Beginner (A1–B1)",
+        description: "Comprehensible input from first video to conversational podcasts",
+        prerequisiteNames: ["Pronunciation & Sounds"],
+        milestones: [
+          { name: "Watch your first 10 A1 CI videos", xpReward: 50 },
+          { name: "Complete an A1 CI playlist", xpReward: 75 },
+          { name: "Understand 70% of an A2 video without subtitles", xpReward: 100 },
+          { name: "Follow a slow podcast episode aimed at learners", xpReward: 100 },
+          { name: "Understand a Russian vlogger's casual video", xpReward: 125 },
+          { name: "Follow a B1 podcast on a familiar topic", xpReward: 125 },
+          { name: "Accumulate 50+ cumulative hours of Russian input", xpReward: 125 },
+        ],
+      },
+      {
+        name: "Input — Advanced (B2–C1)",
+        description: "Native media at native speed — shows, news, cinema, debates",
+        prerequisiteNames: ["Input — Beginner (A1–B1)"],
+        milestones: [
+          { name: "Watch a full episode of a Russian sitcom (e.g. Кухня)", xpReward: 100 },
+          { name: "Understand a Russian news segment at normal speed", xpReward: 125 },
+          { name: "Finish a native-speaker podcast episode", xpReward: 125 },
+          { name: "Watch a Russian film without subtitles", xpReward: 125 },
+          { name: "Understand a Russian stand-up comedy bit", xpReward: 125 },
+          { name: "Follow a debate or interview on a complex topic (politics, science)", xpReward: 150 },
+          { name: "Reach 300+ cumulative hours of Russian input", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // READING
+      // =====================
+      {
+        name: "Reading — Graded & Contemporary",
+        description: "From comics to contemporary novels — build the reading muscle",
+        prerequisiteNames: ["Core Vocabulary", "Input — Beginner (A1–B1)"],
+        milestones: [
+          { name: "Read your first Russian comic strip", xpReward: 50 },
+          { name: "Finish an A1/A2 graded reader", xpReward: 75 },
+          { name: "Read a Russian children's book (e.g. Чебурашка)", xpReward: 75 },
+          { name: "Finish a B1-level short-story collection for learners", xpReward: 100 },
+          { name: "Finish a contemporary Russian novel or novella (100–200 pp)", xpReward: 125 },
+          { name: "Read a non-fiction book in Russian", xpReward: 125 },
+          { name: "Read a full book cover-to-cover without using a dictionary", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Reading — Classics",
+        description: "19th-century literature in the original — the reason many start Russian",
+        prerequisiteNames: ["Reading — Graded & Contemporary", "Input — Advanced (B2–C1)", "Advanced Grammar"],
+        milestones: [
+          { name: "Read a Chekhov short story in the original", xpReward: 100 },
+          { name: "Finish A Hero of Our Time (Lermontov)", xpReward: 125 },
+          { name: "Read a Turgenev or Gogol novel", xpReward: 125 },
+          { name: "Read Pushkin poetry with real comprehension", xpReward: 125 },
+          { name: "Finish a Dostoevsky novel", xpReward: 150 },
+          { name: "Finish a Tolstoy work (War and Peace or Anna Karenina)", xpReward: 150 },
+        ],
+      },
+
+      // =====================
+      // OUTPUT
+      // =====================
+      {
+        name: "Speaking & Conversation",
+        description: "Actually talk to people — the whole point",
+        prerequisiteNames: ["Pronunciation & Sounds", "Grammar Foundations", "Input — Beginner (A1–B1)"],
+        milestones: [
+          { name: "Hold a 2-minute conversation with a tutor on a familiar topic", xpReward: 75 },
+          { name: "Navigate a real task in Russian (order food, ask directions)", xpReward: 100 },
+          { name: "Complete 20 hours of 1-on-1 tutoring (iTalki or equivalent)", xpReward: 125 },
+          { name: "Tell a 5-minute story in past tense without breaking down", xpReward: 125 },
+          { name: "Hold a 30-minute conversation with a native speaker", xpReward: 125 },
+          { name: "Debate or explain a complex topic spontaneously", xpReward: 150 },
+        ],
+      },
+      {
+        name: "Writing & Composition",
+        description: "From first paragraph to publishable essay",
+        prerequisiteNames: ["Grammar Foundations", "Core Vocabulary"],
+        milestones: [
+          { name: "Write a 100-word paragraph about your day", xpReward: 75 },
+          { name: "Journal in Russian for 30 consecutive days", xpReward: 125 },
+          { name: "Write a 500-word personal essay", xpReward: 100 },
+          { name: "Write a 1000-word essay on a topic you care about", xpReward: 125 },
+          { name: "Have a piece corrected by a native with <10 serious errors", xpReward: 125 },
+          { name: "Publish something in Russian (blog post, email thread, social)", xpReward: 100 },
+        ],
+      },
+
+      // =====================
+      // CAPSTONE
+      // =====================
+      {
+        name: "Immersion & Culture",
+        description: "Live in the language — not just study it",
+        prerequisiteNames: ["Input — Advanced (B2–C1)", "Reading — Classics", "Speaking & Conversation"],
+        milestones: [
+          { name: "Spend a week thinking (and dreaming) in Russian", xpReward: 100 },
+          { name: "Watch a Russian film and discuss it with a native afterwards", xpReward: 100 },
+          { name: "Read a Russian news source daily for a month", xpReward: 125 },
+          { name: "Make a Russian-speaking friend and keep regular contact", xpReward: 125 },
+          { name: "Travel to or live in a Russian-speaking region for 1+ week", xpReward: 150 },
+          { name: "Take a C1/C2 exam (TORFL) — or self-assess honestly at C1+", xpReward: 150 },
         ],
       },
     ],
     achievements: [
-      { name: "First Words", description: "A1 videos no longer sound like static", icon: "🔤", trigger: { type: "subskill_mastered", subskillName: "A1 Comprehensible Input" } },
-      { name: "Conversational", description: "You can follow a Russian vlogger", icon: "💬", trigger: { type: "subskill_mastered", subskillName: "B1 Comprehensible Input" } },
-      { name: "Fluent Listener", description: "Movies without subtitles — done", icon: "👂", trigger: { type: "subskill_mastered", subskillName: "C1 Comprehensible Input" } },
-      { name: "Read the Classics", description: "Finished Dostoevsky in the original", icon: "📖", trigger: { type: "subskill_mastered", subskillName: "Reading — Classics" } },
-      { name: "Polyglot Path", description: "Journeyman level — real conversations possible", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
+      { name: "Read Cyrillic", description: "The alphabet no longer looks like symbols", icon: "🔤", trigger: { type: "subskill_mastered", subskillName: "Cyrillic & First Steps" } },
+      { name: "Native Ear", description: "Your pronunciation passes the native-speaker ear test", icon: "👂", trigger: { type: "subskill_mastered", subskillName: "Pronunciation & Sounds" } },
+      { name: "Case-Hardened", description: "Verbs of motion and participles no longer scare you", icon: "⚙️", trigger: { type: "subskill_mastered", subskillName: "Advanced Grammar" } },
+      { name: "Fluent Listener", description: "Native media at native speed — no subtitles", icon: "🎧", trigger: { type: "subskill_mastered", subskillName: "Input — Advanced (B2–C1)" } },
+      { name: "Conversationalist", description: "You hold real conversations, not just survive them", icon: "💬", trigger: { type: "subskill_mastered", subskillName: "Speaking & Conversation" } },
+      { name: "Read the Classics", description: "Finished Dostoevsky and Tolstoy in the original", icon: "📖", trigger: { type: "subskill_mastered", subskillName: "Reading — Classics" } },
+      { name: "Polyglot Path", description: "Reached Journeyman — real life in Russian is possible", icon: "⚔️", trigger: { type: "stage_reached", stage: 3 } },
       { name: "Native-like", description: "Mastered every branch of the language", icon: "👑", trigger: { type: "all_mastered" } },
     ],
   },
