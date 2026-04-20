@@ -1,148 +1,227 @@
+import Link from "next/link";
 import { requireSession } from "@/lib/auth-server";
 import { getCategoriesByUser } from "@/modules/skills/queries";
-import { db } from "@/lib/db";
-import { skill, xpSession } from "@/lib/db/schema";
-import { eq, desc, sum } from "drizzle-orm";
-import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  getCategoryIdsWithHabits,
+  getHabitsWithStatus,
+  getTotalAccountXp,
+} from "@/modules/habits/queries";
+import { getActiveQuests } from "@/modules/quests/queries";
+import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
+import { todayISO } from "@/lib/date";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DashboardFocusTile,
+  EmptyFocusTile,
+} from "@/components/dashboard/dashboard-focus-tile";
+import { DashboardHabitRow } from "@/components/dashboard/dashboard-habit-row";
+import { QuestSlot, EmptyQuestSlot } from "@/components/quests/quest-slot";
+
+const FOCUS_SLOTS = 3;
+
+function formatFriendlyDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default async function DashboardPage() {
   const session = await requireSession();
   const userId = session.user.id;
 
-  const categories = await getCategoriesByUser(userId);
-  const activeSkills = categories.filter((c) => c.status === "active");
+  const [categories, categoryIdsWithHabits, habits, quests, totalAccountXp] =
+    await Promise.all([
+      getCategoriesByUser(userId),
+      getCategoryIdsWithHabits(userId),
+      getHabitsWithStatus(userId, 30),
+      getActiveQuests(userId),
+      getTotalAccountXp(userId),
+    ]);
 
-  const [totalXpResult] = await db
-    .select({ total: sum(skill.currentXp) })
-    .from(skill)
-    .where(eq(skill.userId, userId));
-  const totalXp = Number(totalXpResult?.total ?? 0);
+  const today = todayISO();
+  const activeSkills = categories
+    .filter((c) => c.status === "active")
+    .map((c) => ({
+      ...c,
+      hasHabit: categoryIdsWithHabits.has(c.id),
+    }));
 
-  const totalSubskills = await db
-    .select({ id: skill.id })
-    .from(skill)
-    .where(eq(skill.userId, userId));
+  const activeHabits = habits.filter((h) => !h.paused);
+  const habitsDoneToday = activeHabits.filter((h) =>
+    h.completedDates.includes(today)
+  ).length;
 
-  const recentSessions = await db
-    .select({
-      id: xpSession.id,
-      xpGained: xpSession.xpGained,
-      note: xpSession.note,
-      loggedAt: xpSession.loggedAt,
-      skillName: skill.name,
-    })
-    .from(xpSession)
-    .innerJoin(skill, eq(xpSession.skillId, skill.id))
-    .where(eq(xpSession.userId, userId))
-    .orderBy(desc(xpSession.loggedAt))
-    .limit(5);
+  const focusSlots = Array.from(
+    { length: FOCUS_SLOTS },
+    (_, i) => activeSkills[i] ?? null
+  );
+  const sideSlots = Array.from(
+    { length: MAX_SIDE_QUESTS },
+    (_, i) => quests.side[i] ?? null
+  );
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">
-        Welcome back, <span className="text-glow">{session.user.name}</span>
-      </h1>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-xp/20">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xp/70 uppercase text-xs tracking-wider">Total XP</CardDescription>
-            <CardTitle className="text-3xl font-mono text-xp">
-              {totalXp.toLocaleString()}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-glow/20">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-glow/70 uppercase text-xs tracking-wider">Active Focus</CardDescription>
-            <CardTitle className="text-3xl font-mono text-glow">
-              {activeSkills.length}/3
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-glow-purple/20">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-glow-purple/70 uppercase text-xs tracking-wider">Subskills</CardDescription>
-            <CardTitle className="text-3xl font-mono text-glow-purple">
-              {totalSubskills.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome back,{" "}
+            <span className="text-glow">{session.user.name}</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {formatFriendlyDate(today)}
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className="border-xp/30 text-xp font-mono px-3 py-1 text-sm"
+        >
+          ⚡ {totalAccountXp.toLocaleString()} XP
+        </Badge>
       </div>
 
-      {activeSkills.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Current Focus</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {activeSkills.map((cat) => (
-              <Link key={cat.id} href={`/skills/${cat.id}`}>
-                <Card className="hover:border-glow/40 transition-all border-glow/20 glow-green">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{cat.icon ?? "📚"}</span>
-                      <CardTitle className="text-base">{cat.name}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Badge variant="secondary">
-                      {cat.skillCount}{" "}
-                      {cat.skillCount === 1 ? "subskill" : "subskills"}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+      {/* Current Focus */}
+      <section>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
+            ⚔️ Current Focus
+          </h2>
+          <Badge
+            variant="outline"
+            className="border-glow/30 text-glow/70 text-[10px] font-mono"
+          >
+            {activeSkills.length}/{FOCUS_SLOTS}
+          </Badge>
+          <Link
+            href="/skills"
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Manage skills →
+          </Link>
         </div>
-      )}
+        <div className="grid grid-cols-3 gap-4">
+          {focusSlots.map((s, i) =>
+            s ? (
+              <DashboardFocusTile key={s.id} skill={s} />
+            ) : (
+              <EmptyFocusTile key={`empty-${i}`} />
+            )
+          )}
+        </div>
+      </section>
 
-      {activeSkills.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground mb-3">
-              You haven&apos;t set any active focus skills yet.
-            </p>
-            <Link
-              href="/skills"
-              className="text-primary underline hover:text-primary/80"
+      {/* Today's Habits */}
+      <section>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
+            🔄 Today&apos;s Habits
+          </h2>
+          {activeHabits.length > 0 && (
+            <Badge
+              variant="outline"
+              className="border-glow/30 text-glow/70 text-[10px] font-mono"
             >
-              Choose your focus &rarr;
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {recentSessions.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Recent Activity</h2>
-          <div className="space-y-2">
-            {recentSessions.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center justify-between rounded-lg border px-4 py-3"
-              >
-                <div>
-                  <span className="font-medium text-sm">{s.skillName}</span>
-                  {s.note && (
-                    <span className="text-muted-foreground text-sm ml-2">
-                      — {s.note}
-                    </span>
-                  )}
-                </div>
-                <Badge variant="secondary">+{s.xpGained} XP</Badge>
-              </div>
+              {habitsDoneToday}/{activeHabits.length}
+            </Badge>
+          )}
+          <Link
+            href="/habits"
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Manage habits →
+          </Link>
+        </div>
+        {activeHabits.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                No active habits yet.
+              </p>
+              <Link href="/habits">
+                <Button size="sm" variant="outline">
+                  Create your first habit →
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {activeHabits.map((h) => (
+              <DashboardHabitRow key={h.id} habit={h} />
             ))}
           </div>
+        )}
+      </section>
+
+      {/* Main Quest */}
+      <section>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-sm font-mono uppercase tracking-wider text-xp">
+            ⚔️ Main Quest
+          </h2>
+          <Link
+            href="/quests"
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Manage quests →
+          </Link>
         </div>
-      )}
+        {quests.main ? (
+          <QuestSlot quest={quests.main} variant="main" />
+        ) : (
+          <Link href="/quests" className="block">
+            <div className="rounded-2xl border-2 border-dashed border-border bg-muted/10 hover:border-xp/40 hover:bg-xp/5 transition-all p-8 flex items-center justify-center gap-3 text-muted-foreground">
+              <span className="text-4xl opacity-40">⚔️</span>
+              <div className="text-left">
+                <div className="font-mono text-xs uppercase tracking-wider opacity-70">
+                  No Main Quest
+                </div>
+                <div className="text-sm mt-0.5">
+                  Click to set your primary goal
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
+      </section>
+
+      {/* Side Quests */}
+      <section>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
+            📜 Side Quests
+          </h2>
+          <Badge
+            variant="outline"
+            className="border-glow/30 text-glow/70 text-[10px] font-mono"
+          >
+            {quests.side.length}/{MAX_SIDE_QUESTS}
+          </Badge>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {sideSlots.map((q, i) =>
+            q ? (
+              <QuestSlot key={q.id} quest={q} variant="side" />
+            ) : (
+              <Link key={`empty-${i}`} href="/quests" className="block">
+                <div className="aspect-square w-full rounded-xl border-2 border-dashed border-border bg-muted/10 hover:border-glow/40 hover:bg-glow/5 transition-all flex flex-col items-center justify-center gap-2">
+                  <span className="text-4xl text-muted-foreground/30">?</span>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+                    Empty Slot
+                  </span>
+                </div>
+              </Link>
+            )
+          )}
+        </div>
+      </section>
     </div>
   );
 }
