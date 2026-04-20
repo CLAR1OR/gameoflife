@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { habit, habitCompletion, skill, skillCategory } from "@/lib/db/schema";
+import { habit, habitCompletion, skill, skillCategory, quest } from "@/lib/db/schema";
 import { and, asc, count, eq, gte, isNotNull, inArray, isNull, sum } from "drizzle-orm";
 import { calcStreak, lastNDates } from "@/lib/date";
 import type { HabitWithLink } from "./types";
@@ -299,7 +299,14 @@ export async function getTotalAccountXp(userId: string): Promise<number> {
     0
   );
 
-  return skillXp + generalXp;
+  // Quest XP: sum of completed quest xpRewards
+  const questRows = await db
+    .select({ xp: quest.xpReward })
+    .from(quest)
+    .where(and(eq(quest.userId, userId), eq(quest.status, "completed")));
+  const questXp = questRows.reduce((sum, r) => sum + r.xp, 0);
+
+  return skillXp + generalXp + questXp;
 }
 
 /** All subskills for the current user, grouped by category — for the habit skill-linking dropdown. */

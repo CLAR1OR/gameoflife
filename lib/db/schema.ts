@@ -109,6 +109,20 @@ export const milestone = sqliteTable("milestone", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const quest = sqliteTable("quest", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  type: text("type", { enum: ["main", "side"] }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  icon: text("icon").notNull().default("📜"),
+  xpReward: integer("xp_reward").notNull().default(10),
+  status: text("status", { enum: ["active", "completed", "abandoned"] }).notNull().default("active"),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const habit = sqliteTable("habit", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -155,11 +169,15 @@ export const achievement = sqliteTable("achievement", {
       "all_mastered",
       "habit_streak",
       "habit_total",
+      "quest_completed",
+      "side_quest_count",
+      "main_quest_count",
     ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),
   triggerStage: integer("trigger_stage"),
   triggerHabitId: text("trigger_habit_id").references(() => habit.id, { onDelete: "cascade" }),
+  triggerQuestId: text("trigger_quest_id").references(() => quest.id, { onDelete: "cascade" }),
   triggerCount: integer("trigger_count"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -189,6 +207,10 @@ export const userRelations = relations(user, ({ many }) => ({
   achievements: many(achievement),
   habits: many(habit),
   habitCompletions: many(habitCompletion),
+}));
+
+export const questRelations = relations(quest, ({ one }) => ({
+  user: one(user, { fields: [quest.userId], references: [user.id] }),
 }));
 
 export const habitRelations = relations(habit, ({ one, many }) => ({
