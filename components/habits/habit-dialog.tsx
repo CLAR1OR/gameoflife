@@ -36,6 +36,7 @@ export function HabitDialog({
 }) {
   const isEditing = !!habit;
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("✅");
   const [skillId, setSkillId] = useState<string | null>(null);
   const [xpPerCompletion, setXpPerCompletion] = useState("1");
@@ -44,11 +45,13 @@ export function HabitDialog({
   useEffect(() => {
     if (habit) {
       setName(habit.name);
+      setDescription(habit.description ?? "");
       setIcon(habit.icon);
       setSkillId(habit.skillId);
       setXpPerCompletion(String(habit.xpPerCompletion));
     } else {
       setName("");
+      setDescription("");
       setIcon("✅");
       setSkillId(null);
       setXpPerCompletion("1");
@@ -62,6 +65,7 @@ export function HabitDialog({
     try {
       const data = {
         name: name.trim(),
+        description: description.trim() || null,
         icon,
         skillId,
         xpPerCompletion: parseInt(xpPerCompletion) || 1,
@@ -70,7 +74,7 @@ export function HabitDialog({
         await updateHabit(habit.id, data);
         toast.success("Habit updated");
       } else {
-        await createHabit(data);
+        await createHabit({ ...data, description: data.description ?? undefined });
         toast.success("Habit created");
       }
       onOpenChange(false);
@@ -102,6 +106,17 @@ export function HabitDialog({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="habit-desc">Description (optional)</Label>
+              <textarea
+                id="habit-desc"
+                rows={3}
+                placeholder="What does this habit mean? How should you do it?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
             <div className="space-y-2">

@@ -46,3 +46,29 @@ export function calcStreak(completedDates: string[]): number {
   }
   return streak;
 }
+
+/**
+ * Consecutive days ending today (or yesterday) where at least one of the
+ * provided habit completion-date-lists has that date.
+ */
+export function calcDailyStreak(allCompletedDateLists: string[][]): number {
+  const union = new Set<string>();
+  for (const list of allCompletedDateLists) {
+    for (const d of list) union.add(d);
+  }
+  if (union.size === 0) return 0;
+
+  const today = new Date();
+  const startOffset = union.has(formatLocalDate(today)) ? 0 : 1;
+  let streak = 0;
+  for (let i = startOffset; i < 3650; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    if (union.has(formatLocalDate(d))) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}

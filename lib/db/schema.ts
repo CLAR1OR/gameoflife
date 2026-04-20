@@ -114,9 +114,11 @@ export const habit = sqliteTable("habit", {
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   skillId: text("skill_id").references(() => skill.id, { onDelete: "set null" }),
   name: text("name").notNull(),
+  description: text("description"),
   icon: text("icon").notNull().default("✅"),
   xpPerCompletion: integer("xp_per_completion").notNull().default(1),
   sortOrder: integer("sort_order").notNull().default(0),
+  paused: integer("paused", { mode: "boolean" }).notNull().default(false),
   archived: integer("archived", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });

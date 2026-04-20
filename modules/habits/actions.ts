@@ -32,6 +32,7 @@ const DEFAULT_HABITS: { name: string; icon: string }[] = [
 
 export async function createHabit(data: {
   name: string;
+  description?: string;
   icon?: string;
   skillId?: string | null;
   xpPerCompletion?: number;
@@ -46,6 +47,7 @@ export async function createHabit(data: {
     .values({
       userId: session.user.id,
       name: data.name,
+      description: data.description ?? null,
       icon: data.icon ?? "✅",
       skillId: data.skillId ?? null,
       xpPerCompletion: data.xpPerCompletion ?? 1,
@@ -62,6 +64,7 @@ export async function updateHabit(
   id: string,
   data: {
     name?: string;
+    description?: string | null;
     icon?: string;
     skillId?: string | null;
     xpPerCompletion?: number;
@@ -71,6 +74,17 @@ export async function updateHabit(
   await db
     .update(habit)
     .set(data)
+    .where(and(eq(habit.id, id), eq(habit.userId, session.user.id)));
+
+  revalidatePath("/habits");
+  revalidatePath("/skills");
+}
+
+export async function setHabitPaused(id: string, paused: boolean) {
+  const session = await requireSession();
+  await db
+    .update(habit)
+    .set({ paused })
     .where(and(eq(habit.id, id), eq(habit.userId, session.user.id)));
 
   revalidatePath("/habits");
