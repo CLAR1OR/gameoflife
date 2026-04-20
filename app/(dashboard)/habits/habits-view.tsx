@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HabitRow } from "@/components/habits/habit-row";
 import { HabitDialog } from "@/components/habits/habit-dialog";
-import { seedDefaultHabits } from "@/modules/habits/actions";
 import { calcDailyStreak, lastNDates, todayISO } from "@/lib/date";
-import { toast } from "sonner";
 import type { HabitWithLink } from "@/modules/habits/types";
 import type { SubskillGroup } from "@/components/habits/types";
 import type { OverallHabitStats } from "@/modules/habits/queries";
@@ -45,7 +43,6 @@ export function HabitsView({
   totalAccountXp: number;
 }) {
   const [newOpen, setNewOpen] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   const today = todayISO();
   const dateRange = useMemo(() => lastNDates(7), []);
@@ -61,19 +58,6 @@ export function HabitsView({
     () => calcDailyStreak(active.map((h) => h.completedDates)),
     [active]
   );
-
-  async function handleSeed() {
-    setSeeding(true);
-    try {
-      const result = await seedDefaultHabits();
-      if (result.seeded) {
-        toast.success("Seeded starter habits — edit to link them to skills");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    }
-    setSeeding(false);
-  }
 
   return (
     <div className="space-y-6">
@@ -124,24 +108,13 @@ export function HabitsView({
           <div>
             <p className="font-medium">No habits yet</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Daily actions that build momentum. Each completion can give XP to
-              a skill.
+              Daily actions that build momentum. Each completion can give XP
+              to a linked skill, or to your general account XP.
             </p>
           </div>
-          <div className="flex justify-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSeed}
-              disabled={seeding}
-            >
-              {seeding ? "Seeding..." : "Use starter habits"}
-            </Button>
+          <div className="flex justify-center">
             <Button onClick={() => setNewOpen(true)}>+ New Habit</Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Starter habits: Getting up on time, Piano, Meditation, Russian,
-            Focusmate Session, Wim Hof practice, No memes
-          </p>
         </div>
       )}
 

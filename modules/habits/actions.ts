@@ -16,16 +16,6 @@ import { todayISO } from "@/lib/date";
 
 const TOTAL_STAGES = 6;
 
-const DEFAULT_HABITS: { name: string; icon: string }[] = [
-  { name: "Getting up on time", icon: "⏰" },
-  { name: "Piano", icon: "🎹" },
-  { name: "Meditation", icon: "🧘" },
-  { name: "Russian", icon: "🇷🇺" },
-  { name: "Focusmate Session", icon: "👥" },
-  { name: "Wim Hof practice", icon: "❄️" },
-  { name: "No memes", icon: "🚫" },
-];
-
 // =====================
 // CRUD
 // =====================
@@ -366,31 +356,6 @@ async function checkCategoryAchievements(categoryId: string, userId: string) {
         .where(eq(achievement.id, a.id));
     }
   }
-}
-
-// =====================
-// SEED DEFAULTS
-// =====================
-
-export async function seedDefaultHabits() {
-  const session = await requireSession();
-  const existing = await db.query.habit.findMany({
-    where: (h, { eq: e }) => e(h.userId, session.user.id),
-  });
-  if (existing.length > 0) return { seeded: false };
-
-  await db.insert(habit).values(
-    DEFAULT_HABITS.map((h, i) => ({
-      userId: session.user.id,
-      name: h.name,
-      icon: h.icon,
-      skillId: null,
-      sortOrder: i,
-    }))
-  );
-
-  revalidatePath("/habits");
-  return { seeded: true };
 }
 
 export async function reorderHabits(orderedIds: string[]) {
