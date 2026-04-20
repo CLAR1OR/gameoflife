@@ -109,6 +109,12 @@ export const milestone = sqliteTable("milestone", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const userSettings = sqliteTable("user_settings", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  netWorth: integer("net_worth").notNull().default(0),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const quest = sqliteTable("quest", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -212,6 +218,10 @@ export const userRelations = relations(user, ({ many }) => ({
 
 export const questRelations = relations(quest, ({ one }) => ({
   user: one(user, { fields: [quest.userId], references: [user.id] }),
+}));
+
+export const userSettingsRelations = relations(userSettings, ({ one }) => ({
+  user: one(user, { fields: [userSettings.userId], references: [user.id] }),
 }));
 
 export const habitRelations = relations(habit, ({ one, many }) => ({

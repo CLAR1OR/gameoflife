@@ -9,12 +9,8 @@ import {
 import { getActiveQuests } from "@/modules/quests/queries";
 import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
 import { todayISO } from "@/lib/date";
-import {
-  ensureLevelAchievementsSeeded,
-  computeWeeklyXp,
-  getAchievementCounts,
-  DEFAULT_WEEKLY_XP_GOAL,
-} from "@/lib/account-achievements";
+import { ensureLevelAchievementsSeeded } from "@/lib/account-achievements";
+import { getUserSettings } from "@/modules/settings/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,16 +46,14 @@ export default async function DashboardPage() {
     habits,
     quests,
     totalAccountXp,
-    weeklyXp,
-    achievementCounts,
+    settings,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
     getHabitsWithStatus(userId, 30),
     getActiveQuests(userId),
     getTotalAccountXp(userId),
-    computeWeeklyXp(userId),
-    getAchievementCounts(userId),
+    getUserSettings(userId),
   ]);
 
   const today = todayISO();
@@ -90,10 +84,7 @@ export default async function DashboardPage() {
       <CharacterStatusBar
         name={session.user.name}
         totalXp={totalAccountXp}
-        weeklyXp={weeklyXp}
-        weeklyGoal={DEFAULT_WEEKLY_XP_GOAL}
-        achievementsUnlocked={achievementCounts.unlocked}
-        achievementsTotal={achievementCounts.total}
+        netWorth={settings.netWorth}
       />
 
       {/* Date */}
