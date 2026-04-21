@@ -20,7 +20,12 @@ import {
   EmptyFocusTile,
 } from "@/components/dashboard/dashboard-focus-tile";
 import { DashboardHabitRow } from "@/components/dashboard/dashboard-habit-row";
-import { QuestSlot } from "@/components/quests/quest-slot";
+import {
+  DashboardMainQuest,
+  DashboardEmptyMainQuest,
+  DashboardSideQuest,
+  DashboardEmptySideQuest,
+} from "@/components/dashboard/dashboard-quest-tiles";
 
 const FOCUS_SLOTS = 3;
 
@@ -124,111 +129,98 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Today's Habits */}
-      <section>
-        <div className="flex items-center gap-3 mb-3">
-          <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
-            🔄 Today&apos;s Habits
-          </h2>
-          {activeHabits.length > 0 && (
-            <Badge
-              variant="outline"
-              className="border-glow/30 text-glow/70 text-[10px] font-mono"
-            >
-              {habitsDoneToday}/{activeHabits.length}
-            </Badge>
-          )}
-          <Link
-            href="/habits"
-            className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Manage habits →
-          </Link>
-        </div>
-        {activeHabits.length === 0 ? (
-          <Card>
-            <CardContent className="py-6 text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                No active habits yet.
-              </p>
-              <Link href="/habits">
-                <Button size="sm" variant="outline">
-                  Create your first habit →
-                </Button>
+      {/* Two-column: quests left, habits right */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
+        {/* Left column: Main + Side quests */}
+        <div className="space-y-6">
+          {/* Main Quest */}
+          <section>
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-sm font-mono uppercase tracking-wider text-xp">
+                ⚔️ Main Quest
+              </h2>
+              <Link
+                href="/quests"
+                className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Manage →
               </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {activeHabits.map((h) => (
-              <DashboardHabitRow key={h.id} habit={h} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Main Quest */}
-      <section>
-        <div className="flex items-center gap-3 mb-3">
-          <h2 className="text-sm font-mono uppercase tracking-wider text-xp">
-            ⚔️ Main Quest
-          </h2>
-          <Link
-            href="/quests"
-            className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Manage quests →
-          </Link>
-        </div>
-        {quests.main ? (
-          <QuestSlot quest={quests.main} variant="main" />
-        ) : (
-          <Link href="/quests" className="block">
-            <div className="rounded-2xl border-2 border-dashed border-border bg-muted/10 hover:border-xp/40 hover:bg-xp/5 transition-all p-8 flex items-center justify-center gap-3 text-muted-foreground">
-              <span className="text-4xl opacity-40">⚔️</span>
-              <div className="text-left">
-                <div className="font-mono text-xs uppercase tracking-wider opacity-70">
-                  No Main Quest
-                </div>
-                <div className="text-sm mt-0.5">
-                  Click to set your primary goal
-                </div>
-              </div>
             </div>
-          </Link>
-        )}
-      </section>
-
-      {/* Side Quests */}
-      <section>
-        <div className="flex items-center gap-3 mb-3">
-          <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
-            📜 Side Quests
-          </h2>
-          <Badge
-            variant="outline"
-            className="border-glow/30 text-glow/70 text-[10px] font-mono"
-          >
-            {quests.side.length}/{MAX_SIDE_QUESTS}
-          </Badge>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {sideSlots.map((q, i) =>
-            q ? (
-              <QuestSlot key={q.id} quest={q} variant="side" />
+            {quests.main ? (
+              <DashboardMainQuest quest={quests.main} />
             ) : (
-              <Link key={`empty-${i}`} href="/quests" className="block">
-                <div className="aspect-square w-full rounded-xl border-2 border-dashed border-border bg-muted/10 hover:border-glow/40 hover:bg-glow/5 transition-all flex flex-col items-center justify-center gap-2">
-                  <span className="text-4xl text-muted-foreground/30">?</span>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
-                    Empty Slot
-                  </span>
-                </div>
-              </Link>
-            )
-          )}
+              <DashboardEmptyMainQuest />
+            )}
+          </section>
+
+          {/* Side Quests */}
+          <section>
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
+                📜 Side Quests
+              </h2>
+              <Badge
+                variant="outline"
+                className="border-glow/30 text-glow/70 text-[10px] font-mono"
+              >
+                {quests.side.length}/{MAX_SIDE_QUESTS}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {sideSlots.map((q, i) =>
+                q ? (
+                  <DashboardSideQuest key={q.id} quest={q} />
+                ) : (
+                  <DashboardEmptySideQuest key={`empty-${i}`} />
+                )
+              )}
+            </div>
+          </section>
         </div>
-      </section>
+
+        {/* Right column: Habits list */}
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
+              🔄 Today&apos;s Habits
+            </h2>
+            {activeHabits.length > 0 && (
+              <Badge
+                variant="outline"
+                className="border-glow/30 text-glow/70 text-[10px] font-mono"
+              >
+                {habitsDoneToday}/{activeHabits.length}
+              </Badge>
+            )}
+            <Link
+              href="/habits"
+              className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Manage →
+            </Link>
+          </div>
+          {activeHabits.length === 0 ? (
+            <Card>
+              <CardContent className="py-6 text-center">
+                <p className="text-sm text-muted-foreground mb-3">
+                  No active habits yet.
+                </p>
+                <Link href="/habits">
+                  <Button size="sm" variant="outline">
+                    Create your first habit →
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {activeHabits.map((h) => (
+                <DashboardHabitRow key={h.id} habit={h} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
