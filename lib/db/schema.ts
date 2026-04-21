@@ -136,6 +136,7 @@ export const habit = sqliteTable("habit", {
   name: text("name").notNull(),
   description: text("description"),
   icon: text("icon").notNull().default("✅"),
+  kind: text("kind", { enum: ["daily", "irregular"] }).notNull().default("daily"),
   xpPerCompletion: integer("xp_per_completion").notNull().default(1),
   sortOrder: integer("sort_order").notNull().default(0),
   paused: integer("paused", { mode: "boolean" }).notNull().default(false),
@@ -143,19 +144,13 @@ export const habit = sqliteTable("habit", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
-export const habitCompletion = sqliteTable(
-  "habit_completion",
-  {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    habitId: text("habit_id").notNull().references(() => habit.id, { onDelete: "cascade" }),
-    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    date: text("date").notNull(), // YYYY-MM-DD in user's local time
-    completedAt: integer("completed_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  },
-  (table) => [
-    uniqueIndex("habit_completion_unique").on(table.habitId, table.date),
-  ]
-);
+export const habitCompletion = sqliteTable("habit_completion", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  habitId: text("habit_id").notNull().references(() => habit.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  date: text("date").notNull(), // YYYY-MM-DD in user's local time
+  completedAt: integer("completed_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
 
 export const achievement = sqliteTable("achievement", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

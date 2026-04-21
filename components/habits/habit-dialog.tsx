@@ -56,6 +56,7 @@ export function HabitDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("✅");
+  const [kind, setKind] = useState<"daily" | "irregular">("daily");
   const [skillId, setSkillId] = useState<string | null>(null);
   const [xpPerCompletion, setXpPerCompletion] = useState("1");
   const [selectedAchievements, setSelectedAchievements] = useState<Set<string>>(
@@ -70,12 +71,14 @@ export function HabitDialog({
       setName(habit.name);
       setDescription(habit.description ?? "");
       setIcon(habit.icon);
+      setKind(habit.kind);
       setSkillId(habit.skillId);
       setXpPerCompletion(String(habit.xpPerCompletion));
     } else {
       setName("");
       setDescription("");
       setIcon("✅");
+      setKind("daily");
       setSkillId(null);
       setXpPerCompletion("1");
       setSelectedAchievements(
@@ -104,6 +107,7 @@ export function HabitDialog({
         name: name.trim(),
         description: description.trim() || null,
         icon,
+        kind,
         skillId,
         xpPerCompletion: parseInt(xpPerCompletion) || 1,
       };
@@ -155,6 +159,39 @@ export function HabitDialog({
                 onChange={(e) => setName(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Kind</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setKind("daily")}
+                  className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                    kind === "daily"
+                      ? "border-glow/50 bg-glow/10 text-glow"
+                      : "border-border bg-muted/40 hover:bg-accent"
+                  }`}
+                >
+                  <div className="text-sm font-medium">✅ Daily</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    Check off once per day · streak tracked
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKind("irregular")}
+                  className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                    kind === "irregular"
+                      ? "border-glow-purple/50 bg-glow-purple/10 text-glow-purple"
+                      : "border-border bg-muted/40 hover:bg-accent"
+                  }`}
+                >
+                  <div className="text-sm font-medium">🔁 Irregular</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    Tap +1 anytime · no streak
+                  </div>
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="habit-desc">Description (optional)</Label>
@@ -237,7 +274,9 @@ export function HabitDialog({
                   Achievements that unlock automatically based on this habit.
                 </p>
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  {AUTO_ACHIEVEMENT_OPTIONS.map((opt) => {
+                  {AUTO_ACHIEVEMENT_OPTIONS.filter(
+                    (o) => !(kind === "irregular" && o.spec.kind === "streak")
+                  ).map((opt) => {
                     const checked = selectedAchievements.has(opt.id);
                     const isStreak = opt.spec.kind === "streak";
                     return (

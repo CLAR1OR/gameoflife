@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { habit, habitCompletion, skill, skillCategory, quest } from "@/lib/db/schema";
 import { and, asc, count, eq, gte, isNotNull, inArray, isNull, sum } from "drizzle-orm";
-import { calcStreak, lastNDates } from "@/lib/date";
+import { calcStreak, lastNDates, todayISO } from "@/lib/date";
 import type { HabitWithLink } from "./types";
 
 export async function getHabitsWithStatus(
@@ -83,15 +83,20 @@ export async function getHabitsWithStatus(
     return best;
   };
 
+  const today = todayISO();
+
   return rows.map((r) => {
     const inRange = inRangeByHabit.get(r.habit.id) ?? [];
     const all = allByHabit.get(r.habit.id) ?? [];
+    const isIrregular = r.habit.kind === "irregular";
+    const todayCount = all.filter((d) => d === today).length;
     return {
       ...r.habit,
       completedDates: inRange,
-      currentStreak: calcStreak(all),
-      bestStreak: calcBest(all),
+      currentStreak: isIrregular ? 0 : calcStreak(all),
+      bestStreak: isIrregular ? 0 : calcBest(all),
       totalCompletions: all.length,
+      todayCount,
       skillName: r.skillName,
       categoryId: r.categoryId,
       categoryName: r.categoryName,

@@ -5,14 +5,16 @@ export type Habit = InferSelectModel<typeof habit>;
 export type HabitCompletion = InferSelectModel<typeof habitCompletion>;
 
 export type HabitWithLink = Habit & {
-  /** ISO date strings (YYYY-MM-DD) for completions in the fetched range */
+  /** ISO date strings (YYYY-MM-DD) — unique dates for daily habits; may have duplicates for irregular. */
   completedDates: string[];
-  /** Current streak in days ending today or yesterday */
+  /** Current streak — for daily habits only. 0 for irregular. */
   currentStreak: number;
-  /** Best streak ever (computed from all completions, not just range) */
+  /** Best streak ever — daily habits. 0 for irregular. */
   bestStreak: number;
-  /** Total completions across all time */
+  /** Total completions across all time. */
   totalCompletions: number;
+  /** Completions logged today (only meaningful for irregular; 0 or 1 for daily). */
+  todayCount: number;
   /** Which subskill this habit feeds (if any) */
   skillName: string | null;
   /** Which category (root skill) this habit belongs to */

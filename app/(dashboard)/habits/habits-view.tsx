@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HabitRow } from "@/components/habits/habit-row";
+import { IrregularHabitRow } from "@/components/habits/irregular-habit-row";
 import { HabitDialog } from "@/components/habits/habit-dialog";
 import { calcDailyStreak, lastNDates, todayISO } from "@/lib/date";
 import type { HabitWithLink } from "@/modules/habits/types";
@@ -49,14 +50,19 @@ export function HabitsView({
 
   const active = habits.filter((h) => !h.paused);
   const paused = habits.filter((h) => h.paused);
+  const dailyActive = active.filter((h) => h.kind === "daily");
+  const irregularActive = active.filter((h) => h.kind === "irregular");
 
-  const doneToday = active.filter((h) => h.completedDates.includes(today)).length;
-  const todayPct = active.length === 0 ? 0 : (doneToday / active.length) * 100;
+  const doneToday = dailyActive.filter((h) =>
+    h.completedDates.includes(today)
+  ).length;
+  const todayPct =
+    dailyActive.length === 0 ? 0 : (doneToday / dailyActive.length) * 100;
 
-  // Daily streak: consecutive days where at least one habit was completed
+  // Daily streak: consecutive days where at least one *daily* habit was completed
   const dailyStreak = useMemo(
-    () => calcDailyStreak(active.map((h) => h.completedDates)),
-    [active]
+    () => calcDailyStreak(dailyActive.map((h) => h.completedDates)),
+    [dailyActive]
   );
 
   return (
@@ -73,7 +79,7 @@ export function HabitsView({
       </div>
 
       {/* Today's progress */}
-      {active.length > 0 && (
+      {dailyActive.length > 0 && (
         <div className="rounded-xl border bg-card p-5 space-y-3">
           <div className="flex items-end justify-between">
             <div>
@@ -82,7 +88,9 @@ export function HabitsView({
               </div>
               <div className="text-3xl font-mono text-glow mt-1">
                 {doneToday}
-                <span className="text-muted-foreground">/{active.length}</span>
+                <span className="text-muted-foreground">
+                  /{dailyActive.length}
+                </span>
               </div>
             </div>
             <div className="text-right">
@@ -118,55 +126,78 @@ export function HabitsView({
         </div>
       )}
 
-      {/* 7-day date header */}
-      {active.length > 0 && (
-        <div className="flex items-center gap-3 pl-[calc(2.75rem+0.75rem)]">
-          {/* spacer matches HabitRow: checkbox (h-11 w-11 = 2.75rem) + gap-3 */}
-          <div className="flex-1" />
-          <div className="hidden sm:flex items-center gap-2 pr-[calc(4rem+0.25rem)]">
-            {/* spacer reserves room for edit/delete hover buttons */}
-            {dateRange.slice(-7).map((d) => {
-              const { weekday, day } = dateInfo(d);
-              const isToday = d === today;
-              return (
-                <div
-                  key={d}
-                  className={`flex w-6 flex-col items-center gap-0.5 font-mono ${
-                    isToday ? "text-glow" : "text-muted-foreground"
-                  }`}
-                >
-                  <span
-                    className={`text-[10px] uppercase tracking-wider leading-none ${
-                      isToday ? "font-bold" : "opacity-60"
+      {/* Daily habits section */}
+      {dailyActive.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
+            ✅ Daily
+          </h2>
+          {/* 7-day date header */}
+          <div className="flex items-center gap-3 pl-[calc(2.75rem+0.75rem)]">
+            <div className="flex-1" />
+            <div className="hidden sm:flex items-center gap-2 pr-[calc(4rem+0.25rem)]">
+              {dateRange.slice(-7).map((d) => {
+                const { weekday, day } = dateInfo(d);
+                const isToday = d === today;
+                return (
+                  <div
+                    key={d}
+                    className={`flex w-6 flex-col items-center gap-0.5 font-mono ${
+                      isToday ? "text-glow" : "text-muted-foreground"
                     }`}
                   >
-                    {weekday}
-                  </span>
-                  <span
-                    className={`text-[11px] leading-none ${
-                      isToday ? "font-bold" : ""
-                    }`}
-                  >
-                    {day}
-                  </span>
-                </div>
-              );
-            })}
+                    <span
+                      className={`text-[10px] uppercase tracking-wider leading-none ${
+                        isToday ? "font-bold" : "opacity-60"
+                      }`}
+                    >
+                      {weekday}
+                    </span>
+                    <span
+                      className={`text-[11px] leading-none ${
+                        isToday ? "font-bold" : ""
+                      }`}
+                    >
+                      {day}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+          <div className="space-y-2">
+            {dailyActive.map((h) => (
+              <HabitRow
+                key={h.id}
+                habit={h}
+                dateRange={dateRange}
+                subskillGroups={subskillGroups}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* Active habits */}
-      <div className="space-y-2">
-        {active.map((h) => (
-          <HabitRow
-            key={h.id}
-            habit={h}
-            dateRange={dateRange}
-            subskillGroups={subskillGroups}
-          />
-        ))}
-      </div>
+      {/* Irregular habits section */}
+      {irregularActive.length > 0 && (
+        <section className="space-y-2 pt-2">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-glow-purple">
+            🔁 Irregular
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Tap to log anytime. No streak — just a running count.
+          </p>
+          <div className="space-y-2">
+            {irregularActive.map((h) => (
+              <IrregularHabitRow
+                key={h.id}
+                habit={h}
+                subskillGroups={subskillGroups}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Paused habits */}
       {paused.length > 0 && (
@@ -175,14 +206,22 @@ export function HabitsView({
             ⏸ Paused ({paused.length})
           </h2>
           <div className="space-y-2">
-            {paused.map((h) => (
-              <HabitRow
-                key={h.id}
-                habit={h}
-                dateRange={dateRange}
-                subskillGroups={subskillGroups}
-              />
-            ))}
+            {paused.map((h) =>
+              h.kind === "irregular" ? (
+                <IrregularHabitRow
+                  key={h.id}
+                  habit={h}
+                  subskillGroups={subskillGroups}
+                />
+              ) : (
+                <HabitRow
+                  key={h.id}
+                  habit={h}
+                  dateRange={dateRange}
+                  subskillGroups={subskillGroups}
+                />
+              )
+            )}
           </div>
         </section>
       )}

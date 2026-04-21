@@ -66,7 +66,9 @@ export default async function DashboardPage() {
 
   const activeHabits = habits.filter((h) => !h.paused);
   const habitsDoneToday = activeHabits.filter((h) =>
-    h.completedDates.includes(today)
+    h.kind === "irregular"
+      ? h.todayCount > 0
+      : h.completedDates.includes(today)
   ).length;
 
   const focusSlots = Array.from(

@@ -29,6 +29,7 @@ export async function createHabit(data: {
   name: string;
   description?: string;
   icon?: string;
+  kind?: "daily" | "irregular";
   skillId?: string | null;
   xpPerCompletion?: number;
   autoAchievements?: AutoAchievementSpec[];
@@ -45,6 +46,7 @@ export async function createHabit(data: {
       name: data.name,
       description: data.description ?? null,
       icon: data.icon ?? "✅",
+      kind: data.kind ?? "daily",
       skillId: data.skillId ?? null,
       xpPerCompletion: data.xpPerCompletion ?? 1,
       sortOrder: existing.length,
@@ -96,6 +98,7 @@ export async function updateHabit(
     name?: string;
     description?: string | null;
     icon?: string;
+    kind?: "daily" | "irregular";
     skillId?: string | null;
     xpPerCompletion?: number;
   }
@@ -199,6 +202,103 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
     newAchievements: [...newAchievements, ...levelAchievements],
     achievementsReverted: [] as string[],
   };
+}
+
+/**
+ * Log an irregular habit completion. Unlike daily habits, this always inserts
+ * a new completion row (no toggle) — an irregular habit can be logged multiple
+ * times per day.
+ */
+export async function logIrregularHabit(habitId: string) {
+  const session = await requireSession();
+  const targetDate = todayISO();
+
+  const row = await db.query.habit.findFirst({
+    where: (h, { and: a, eq: e }) =>
+      a(e(h.id, habitId), e(h.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Habit not found");
+  if (row.kind !== "irregular") {
+    throw new Error("This habit is daily — use toggleHabitCompletion");
+  }
+
+  await db.insert(habitCompletion).values({
+    habitId,
+    userId: session.user.id,
+    date: targetDate,
+  });
+
+  if (row.skillId) {
+    await adjustSkillXp(
+      row.skillId,
+      session.user.id,
+      row.xpPerCompletion,
+      habitId
+    );
+  }
+
+  const newAchievements = await checkHabitAchievements(
+    habitId,
+    session.user.id
+  );
+  const levelAchievements = await checkAccountLevelAchievements(
+    session.user.id
+  );
+
+  revalidatePath("/habits");
+  revalidatePath("/achievements");
+  revalidatePath("/");
+  return {
+    logged: true,
+    newAchievements: [...newAchievements, ...levelAchievements],
+  };
+}
+
+/**
+ * Remove the most recent completion of an irregular habit logged today.
+ * Used for "undo last" when the user misclicks.
+ */
+export async function undoLastIrregularLog(habitId: string) {
+  const session = await requireSession();
+  const targetDate = todayISO();
+
+  const row = await db.query.habit.findFirst({
+    where: (h, { and: a, eq: e }) =>
+      a(e(h.id, habitId), e(h.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Habit not found");
+
+  const mostRecent = await db.query.habitCompletion.findFirst({
+    where: (hc, { and: a, eq: e }) =>
+      a(
+        e(hc.habitId, habitId),
+        e(hc.userId, session.user.id),
+        e(hc.date, targetDate)
+      ),
+    orderBy: (hc, { desc }) => [desc(hc.completedAt)],
+  });
+  if (!mostRecent) return { removed: false };
+
+  await db
+    .delete(habitCompletion)
+    .where(eq(habitCompletion.id, mostRecent.id));
+
+  if (row.skillId) {
+    await adjustSkillXp(
+      row.skillId,
+      session.user.id,
+      -row.xpPerCompletion,
+      habitId
+    );
+  }
+
+  await checkHabitAchievements(habitId, session.user.id);
+  await checkAccountLevelAchievements(session.user.id);
+
+  revalidatePath("/habits");
+  revalidatePath("/achievements");
+  revalidatePath("/");
+  return { removed: true };
 }
 
 /**
