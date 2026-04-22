@@ -1,12 +1,14 @@
 import { db } from "@/lib/db";
 import {
   achievement,
+  book,
   habit,
   habitCompletion,
   quest,
   skill,
   xpSession,
 } from "@/lib/db/schema";
+import { XP_PER_BOOK } from "@/modules/books/types";
 import { and, count, eq, gte, isNull, sum } from "drizzle-orm";
 import { levelFromXp } from "./level";
 import { formatLocalDate } from "./date";
@@ -49,7 +51,14 @@ export async function computeTotalAccountXp(userId: string): Promise<number> {
     .where(and(eq(quest.userId, userId), eq(quest.status, "completed")));
   const questXp = questRows.reduce((sum, r) => sum + r.xp, 0);
 
-  return skillXp + generalXp + questXp;
+  // Books-read XP: flat XP_PER_BOOK per finished book
+  const [readBooksRow] = await db
+    .select({ c: count() })
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+  const booksXp = Number(readBooksRow?.c ?? 0) * XP_PER_BOOK;
+
+  return skillXp + generalXp + questXp + booksXp;
 }
 
 const LEVEL_ACHIEVEMENTS: {

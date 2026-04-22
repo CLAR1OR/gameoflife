@@ -234,12 +234,15 @@ export const achievement = sqliteTable("achievement", {
       "finance_net_worth",
       "finance_recurrings",
       "finance_checkins",
+      "books_read_count",
+      "reading_list_completed",
     ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),
   triggerStage: integer("trigger_stage"),
   triggerHabitId: text("trigger_habit_id").references(() => habit.id, { onDelete: "cascade" }),
   triggerQuestId: text("trigger_quest_id").references(() => quest.id, { onDelete: "cascade" }),
+  triggerReadingListId: text("trigger_reading_list_id"),
   triggerCount: integer("trigger_count"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -256,6 +259,49 @@ export const xpSession = sqliteTable("xp_session", {
 });
 
 // =====================
+// BOOKS
+// =====================
+
+export const book = sqliteTable("book", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  authors: text("authors").notNull(), // comma-separated
+  isbn: text("isbn"),
+  coverUrl: text("cover_url"),
+  pages: integer("pages"),
+  year: integer("year"),
+  description: text("description"),
+  status: text("status", { enum: ["want", "reading", "read"] }).notNull().default("want"),
+  rating: integer("rating"), // 1-5
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  finishedAt: integer("finished_at", { mode: "timestamp" }),
+  notes: text("notes"),
+  source: text("source"), // "manual" | "goodreads_csv" | "template" | "openlibrary"
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const readingList = sqliteTable("reading_list", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  templateId: text("template_id"), // null for custom
+  name: text("name").notNull(),
+  description: text("description"),
+  icon: text("icon").notNull().default("📚"),
+  coverImage: text("cover_image"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const readingListItem = sqliteTable("reading_list_item", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  listId: text("list_id").notNull().references(() => readingList.id, { onDelete: "cascade" }),
+  bookId: text("book_id").notNull().references(() => book.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// =====================
 // RELATIONS
 // =====================
 
@@ -269,6 +315,29 @@ export const userRelations = relations(user, ({ many }) => ({
   achievements: many(achievement),
   habits: many(habit),
   habitCompletions: many(habitCompletion),
+  books: many(book),
+  readingLists: many(readingList),
+}));
+
+export const bookRelations = relations(book, ({ one, many }) => ({
+  user: one(user, { fields: [book.userId], references: [user.id] }),
+  readingListItems: many(readingListItem),
+}));
+
+export const readingListRelations = relations(readingList, ({ one, many }) => ({
+  user: one(user, { fields: [readingList.userId], references: [user.id] }),
+  items: many(readingListItem),
+}));
+
+export const readingListItemRelations = relations(readingListItem, ({ one }) => ({
+  list: one(readingList, {
+    fields: [readingListItem.listId],
+    references: [readingList.id],
+  }),
+  book: one(book, {
+    fields: [readingListItem.bookId],
+    references: [book.id],
+  }),
 }));
 
 export const questRelations = relations(quest, ({ one }) => ({

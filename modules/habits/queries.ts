@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
-import { habit, habitCompletion, skill, skillCategory, quest } from "@/lib/db/schema";
+import { habit, habitCompletion, skill, skillCategory, quest, book } from "@/lib/db/schema";
 import { and, asc, count, eq, gte, isNotNull, inArray, isNull, sum } from "drizzle-orm";
 import { calcStreak, lastNDates, todayISO } from "@/lib/date";
+import { XP_PER_BOOK } from "@/modules/books/types";
 import type { HabitWithLink } from "./types";
 
 export async function getHabitsWithStatus(
@@ -318,7 +319,14 @@ export async function getTotalAccountXp(userId: string): Promise<number> {
   });
   const miscXp = settingsRow?.generalXp ?? 0;
 
-  return skillXp + generalXp + questXp + miscXp;
+  // Books-read XP: flat XP_PER_BOOK per book marked as read
+  const [readBooksRow] = await db
+    .select({ c: count() })
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+  const booksXp = Number(readBooksRow?.c ?? 0) * XP_PER_BOOK;
+
+  return skillXp + generalXp + questXp + miscXp + booksXp;
 }
 
 /** All subskills for the current user, grouped by category — for the habit skill-linking dropdown. */
