@@ -63,10 +63,16 @@ export function CharacterStatusBar({
   name,
   totalXp,
   netWorth,
+  currency,
+  staleAccountCount = 0,
+  totalAccounts = 0,
 }: {
   name: string;
   totalXp: number;
   netWorth: number;
+  currency: string;
+  staleAccountCount?: number;
+  totalAccounts?: number;
 }) {
   const progress = getLevelProgress(totalXp);
   const classes = TIER_CLASSES[progress.tier.accent];
@@ -125,9 +131,15 @@ export function CharacterStatusBar({
           </div>
         </div>
 
-        {/* Right: net worth (editable) */}
-        <div className="shrink-0">
-          <NetWorthRow initial={netWorth} />
+        {/* Right column: top-anchored stack — room for another widget below */}
+        <div className="shrink-0 self-stretch flex flex-col items-end gap-2 min-w-[140px]">
+          <NetWorthRow
+            initial={netWorth}
+            currency={currency}
+            staleAccountCount={staleAccountCount}
+            totalAccounts={totalAccounts}
+          />
+          {/* Space reserved for another widget */}
         </div>
       </div>
     </div>

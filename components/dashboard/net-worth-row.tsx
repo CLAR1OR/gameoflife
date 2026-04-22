@@ -1,96 +1,51 @@
-"use client";
+import Link from "next/link";
+import { formatMoney } from "@/lib/money";
 
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { updateNetWorth } from "@/modules/settings/actions";
-import { toast } from "sonner";
+export function NetWorthRow({
+  initial,
+  currency,
+  staleAccountCount = 0,
+  totalAccounts = 0,
+}: {
+  initial: number;
+  currency: string;
+  staleAccountCount?: number;
+  totalAccounts?: number;
+}) {
+  const noAccounts = totalAccounts === 0;
+  const hasStale = staleAccountCount > 0;
+  const showBadge = noAccounts || hasStale;
 
-export function NetWorthRow({ initial }: { initial: number }) {
-  const [value, setValue] = useState(initial);
-  const [open, setOpen] = useState(false);
-  const [input, setInput] = useState(String(initial));
-  const [loading, setLoading] = useState(false);
+  const badgeLabel = noAccounts
+    ? "Add your first account"
+    : staleAccountCount === 1
+      ? "1 account needs a check-in"
+      : `${staleAccountCount} accounts need a check-in`;
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = parseInt(input.replace(/[^0-9-]/g, ""), 10);
-    if (!Number.isFinite(parsed)) {
-      toast.error("Please enter a valid number");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { netWorth } = await updateNetWorth(parsed);
-      setValue(netWorth);
-      setOpen(false);
-      toast.success("Net worth updated");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    }
-    setLoading(false);
-  }
+  const badgeContent = noAccounts
+    ? "!"
+    : staleAccountCount > 9
+      ? "9+"
+      : String(staleAccountCount);
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setInput(String(value));
-          setOpen(true);
-        }}
-        className="group flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 hover:bg-accent px-3 py-2 transition-colors"
-        title="Click to edit net worth"
-      >
-        <span className="text-xl">💰</span>
-        <span className="font-mono text-lg font-bold text-yellow-400">
-          {value.toLocaleString()}
+    <Link
+      href="/finance"
+      className="group relative inline-flex items-center gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-accent/40"
+      title={showBadge ? badgeLabel : "Open finance"}
+    >
+      <span className="text-xl leading-none">🪙</span>
+      <span className="font-mono text-lg font-bold text-yellow-400 leading-none group-hover:text-yellow-300 transition-colors">
+        {formatMoney(initial, currency)}
+      </span>
+      {showBadge && (
+        <span
+          className="absolute -right-2 -top-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-background bg-amber-500 text-[10px] font-bold text-black shadow-sm px-1"
+          aria-label={badgeLabel}
+        >
+          {badgeContent}
         </span>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity">
-          edit
-        </span>
-      </button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <form onSubmit={handleSave}>
-            <DialogHeader>
-              <DialogTitle>Net Worth</DialogTitle>
-              <DialogDescription>
-                For now this is a manual number. A full finances module will
-                replace this later.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 py-4">
-              <Label htmlFor="net-worth">Amount</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">💰</span>
-                <Input
-                  id="net-worth"
-                  inputMode="numeric"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  autoFocus
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+      )}
+    </Link>
   );
 }

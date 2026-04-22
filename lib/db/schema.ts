@@ -112,8 +112,63 @@ export const milestone = sqliteTable("milestone", {
 export const userSettings = sqliteTable("user_settings", {
   userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
   netWorth: integer("net_worth").notNull().default(0),
+  features: text("features", { mode: "json" }).$type<Record<string, boolean>>(),
+  currency: text("currency").notNull().default("EUR"),
+  generalXp: integer("general_xp").notNull().default(0),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
+
+export const financeAccount = sqliteTable("finance_account", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["cash", "bank", "investment", "crypto", "debt", "other"] }).notNull().default("cash"),
+  balance: integer("balance").notNull().default(0),
+  icon: text("icon"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  archivedAt: integer("archived_at", { mode: "timestamp" }),
+  lastCheckedAt: integer("last_checked_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const financeTransaction = sqliteTable("finance_transaction", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  accountId: text("account_id").references(() => financeAccount.id, { onDelete: "set null" }),
+  transferToAccountId: text("transfer_to_account_id").references(() => financeAccount.id, { onDelete: "set null" }),
+  type: text("type", { enum: ["income", "expense", "transfer"] }).notNull(),
+  amount: integer("amount").notNull(),
+  category: text("category").notNull(),
+  note: text("note"),
+  occurredOn: text("occurred_on").notNull(),
+  importHash: text("import_hash"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const financeRecurring = sqliteTable("finance_recurring", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  accountId: text("account_id").references(() => financeAccount.id, { onDelete: "set null" }),
+  type: text("type", { enum: ["income", "expense"] }).notNull(),
+  amount: integer("amount").notNull(),
+  category: text("category").notNull(),
+  note: text("note"),
+  cadence: text("cadence", { enum: ["monthly", "yearly"] }).notNull(),
+  nextDueOn: text("next_due_on").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const financeNetWorthSnapshot = sqliteTable("finance_net_worth_snapshot", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  takenOn: text("taken_on").notNull(),
+  netWorth: integer("net_worth").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  uniqueDaily: uniqueIndex("finance_snapshot_unique_daily").on(t.userId, t.takenOn),
+}));
 
 export const quest = sqliteTable("quest", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -174,6 +229,11 @@ export const achievement = sqliteTable("achievement", {
       "side_quest_count",
       "main_quest_count",
       "account_level",
+      "finance_accounts",
+      "finance_transactions",
+      "finance_net_worth",
+      "finance_recurrings",
+      "finance_checkins",
     ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),

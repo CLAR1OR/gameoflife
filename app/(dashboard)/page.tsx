@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-server";
-import { getCategoriesByUser } from "@/modules/skills/queries";
+import { getCategoriesByUser, getTodaysQuests } from "@/modules/skills/queries";
 import {
   getCategoryIdsWithHabits,
   getHabitsWithStatus,
@@ -10,7 +10,10 @@ import { getActiveQuests } from "@/modules/quests/queries";
 import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
 import { todayISO } from "@/lib/date";
 import { ensureLevelAchievementsSeeded } from "@/lib/account-achievements";
+import { ensureFinanceAchievementsSeeded } from "@/lib/finance-achievements";
 import { getUserSettings } from "@/modules/settings/queries";
+import { isFeatureEnabled } from "@/modules/settings/features";
+import { getNetWorth, getAccountAttention } from "@/modules/finance/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +29,7 @@ import {
   DashboardSideQuest,
   DashboardEmptySideQuest,
 } from "@/components/dashboard/dashboard-quest-tiles";
+import { DashboardTodaysQuestRow } from "@/components/dashboard/dashboard-todays-quest";
 
 const FOCUS_SLOTS = 3;
 
@@ -44,6 +48,7 @@ export default async function DashboardPage() {
   const userId = session.user.id;
 
   await ensureLevelAchievementsSeeded(userId);
+  await ensureFinanceAchievementsSeeded(userId);
 
   const [
     categories,
@@ -52,6 +57,8 @@ export default async function DashboardPage() {
     quests,
     totalAccountXp,
     settings,
+    netWorth,
+    accountAttention,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
@@ -59,7 +66,12 @@ export default async function DashboardPage() {
     getActiveQuests(userId),
     getTotalAccountXp(userId),
     getUserSettings(userId),
+    getNetWorth(userId),
+    getAccountAttention(userId),
   ]);
+
+  const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
+  const todaysQuests = todaysQuestsEnabled ? await getTodaysQuests(userId) : [];
 
   const today = todayISO();
   const activeSkills = categories
@@ -91,7 +103,10 @@ export default async function DashboardPage() {
       <CharacterStatusBar
         name={session.user.name}
         totalXp={totalAccountXp}
-        netWorth={settings.netWorth}
+        netWorth={netWorth}
+        currency={settings.currency}
+        staleAccountCount={accountAttention.staleAccountCount}
+        totalAccounts={accountAttention.totalAccounts}
       />
 
       {/* Date */}
@@ -128,6 +143,28 @@ export default async function DashboardPage() {
           )}
         </div>
       </section>
+
+      {/* Today's Quests — one suggested next milestone per active skill (opt-in) */}
+      {todaysQuestsEnabled && todaysQuests.length > 0 && (
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-sm font-mono uppercase tracking-wider text-glow">
+              🎯 Today&apos;s Quests
+            </h2>
+            <Badge
+              variant="outline"
+              className="border-glow/30 text-glow/70 text-[10px] font-mono"
+            >
+              {todaysQuests.length}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {todaysQuests.map((q) => (
+              <DashboardTodaysQuestRow key={q.milestoneId} quest={q} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Two-column: quests left, habits right */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">

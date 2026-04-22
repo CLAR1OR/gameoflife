@@ -1,14 +1,19 @@
 import { db } from "@/lib/db";
-import { userSettings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { DEFAULT_CURRENCY } from "@/lib/money";
 
-export async function getUserSettings(userId: string): Promise<{
+export type UserSettings = {
   netWorth: number;
-}> {
+  features: Record<string, boolean>;
+  currency: string;
+};
+
+export async function getUserSettings(userId: string): Promise<UserSettings> {
   const row = await db.query.userSettings.findFirst({
     where: (s, { eq: e }) => e(s.userId, userId),
   });
   return {
     netWorth: row?.netWorth ?? 0,
+    features: row?.features ?? {},
+    currency: row?.currency ?? DEFAULT_CURRENCY,
   };
 }

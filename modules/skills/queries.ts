@@ -78,6 +78,59 @@ export async function getAchievementsByCategory(
     .orderBy(asc(achievement.sortOrder));
 }
 
+export type TodaysQuest = {
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  skillId: string;
+  skillName: string;
+  skillLevel: number;
+  milestoneId: string;
+  milestoneName: string;
+  xpReward: number;
+};
+
+export async function getTodaysQuests(userId: string): Promise<TodaysQuest[]> {
+  const categories = await db.query.skillCategory.findMany({
+    where: (cat, { and: a, eq: e }) =>
+      a(e(cat.userId, userId), e(cat.status, "active")),
+    with: {
+      skills: {
+        orderBy: (s, { asc }) => [asc(s.createdAt)],
+        with: {
+          milestones: {
+            orderBy: (m, { asc }) => [asc(m.sortOrder)],
+          },
+        },
+      },
+    },
+    orderBy: (cat, { asc }) => [asc(cat.sortOrder)],
+  });
+
+  const quests: TodaysQuest[] = [];
+  for (const cat of categories) {
+    for (const sk of cat.skills) {
+      // unlocked (level > 0) but not mastered (level < 4)
+      if (sk.level <= 0 || sk.level >= 4) continue;
+      const nextMilestone = sk.milestones.find((m) => !m.completed);
+      if (!nextMilestone) continue;
+      quests.push({
+        categoryId: cat.id,
+        categoryName: cat.name,
+        categoryIcon: cat.icon,
+        skillId: sk.id,
+        skillName: sk.name,
+        skillLevel: sk.level,
+        milestoneId: nextMilestone.id,
+        milestoneName: nextMilestone.name,
+        xpReward: nextMilestone.xpReward,
+      });
+      break;
+    }
+  }
+  return quests;
+}
+
 export async function getActivatedTemplateIds(userId: string): Promise<string[]> {
   const categories = await db.query.skillCategory.findMany({
     where: (cat, { and: a, eq: e }) => a(e(cat.userId, userId)),

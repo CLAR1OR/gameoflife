@@ -36,6 +36,10 @@ yarn-error.log*
 # database
 /data/
 
+# bank CSV samples (may contain sensitive info)
+/samples/*.csv
+/samples/*.CSV
+
 # vercel
 .vercel
 

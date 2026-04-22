@@ -311,7 +311,14 @@ export async function getTotalAccountXp(userId: string): Promise<number> {
     .where(and(eq(quest.userId, userId), eq(quest.status, "completed")));
   const questXp = questRows.reduce((sum, r) => sum + r.xp, 0);
 
-  return skillXp + generalXp + questXp;
+  // Miscellaneous "general" XP stored as a single counter on user_settings
+  // (e.g. finance account check-ins).
+  const settingsRow = await db.query.userSettings.findFirst({
+    where: (s, { eq: e }) => e(s.userId, userId),
+  });
+  const miscXp = settingsRow?.generalXp ?? 0;
+
+  return skillXp + generalXp + questXp + miscXp;
 }
 
 /** All subskills for the current user, grouped by category — for the habit skill-linking dropdown. */

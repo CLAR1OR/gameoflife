@@ -7,9 +7,14 @@ import { getTotalAccountXp } from "@/modules/habits/queries";
 import { getQuestStats } from "@/modules/quests/queries";
 import { getAchievementCounts } from "@/lib/account-achievements";
 import { getUserSettings } from "@/modules/settings/queries";
+import { getNetWorth, getAccountAttention } from "@/modules/finance/queries";
+import { formatMoney } from "@/lib/money";
 import { getLevelProgress } from "@/lib/level";
 import { CharacterStatusBar } from "@/components/dashboard/character-status-bar";
 import { Badge } from "@/components/ui/badge";
+import { FeatureToggles } from "@/components/account/feature-toggles";
+import { CurrencyPicker } from "@/components/account/currency-picker";
+import { ResetFinanceButton } from "@/components/account/reset-finance-button";
 import { SignOutButton } from "./sign-out-button";
 
 function formatDate(d: Date | number | null | undefined): string {
@@ -73,6 +78,8 @@ export default async function AccountPage() {
     questStats,
     achievementCounts,
     settings,
+    netWorth,
+    accountAttention,
     totalSubskillsResult,
     totalHabitsResult,
     habitCompletionsResult,
@@ -82,6 +89,8 @@ export default async function AccountPage() {
     getQuestStats(userId),
     getAchievementCounts(userId),
     getUserSettings(userId),
+    getNetWorth(userId),
+    getAccountAttention(userId),
     db.select({ c: count() }).from(skill).where(eq(skill.userId, userId)),
     db
       .select({ c: count() })
@@ -114,7 +123,10 @@ export default async function AccountPage() {
       <CharacterStatusBar
         name={session.user.name}
         totalXp={totalAccountXp}
-        netWorth={settings.netWorth}
+        netWorth={netWorth}
+        currency={settings.currency}
+        staleAccountCount={accountAttention.staleAccountCount}
+        totalAccounts={accountAttention.totalAccounts}
       />
 
       {/* Identity */}
@@ -225,20 +237,49 @@ export default async function AccountPage() {
           />
           <StatCard
             label="Net worth"
-            value={`💰 ${settings.netWorth.toLocaleString()}`}
-            sub="edit on dashboard"
+            value={formatMoney(netWorth, settings.currency)}
+            sub="sum of accounts"
             accent="neutral"
           />
         </div>
       </section>
 
+      {/* Preferences */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Preferences
+        </h2>
+        <CurrencyPicker initial={settings.currency} />
+      </section>
+
+      {/* Optional features */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Optional Features
+        </h2>
+        <FeatureToggles initial={settings.features} />
+        <p className="text-[11px] text-muted-foreground/70 mt-2">
+          Opt in to experimental dashboard modules. Defaults are off.
+        </p>
+      </section>
+
       {/* Danger zone */}
       <section>
         <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-          Account
+          Danger zone
         </h2>
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="rounded-xl border bg-card divide-y divide-border/60">
+          <div className="flex items-center justify-between gap-4 flex-wrap p-5">
+            <div>
+              <div className="text-sm font-medium">Reset finance data</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Wipe all accounts, transactions, recurring rules, and
+                net-worth history. Earned XP stays.
+              </div>
+            </div>
+            <ResetFinanceButton />
+          </div>
+          <div className="flex items-center justify-between gap-4 flex-wrap p-5">
             <div>
               <div className="text-sm font-medium">Sign out</div>
               <div className="text-xs text-muted-foreground mt-0.5">
