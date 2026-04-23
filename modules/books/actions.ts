@@ -332,6 +332,8 @@ const BOOK_ACHIEVEMENTS: {
   { name: "Well-Read", description: "Read 50 books", icon: "🎓", count: 50 },
   { name: "Bibliophile", description: "Read 100 books", icon: "👑", count: 100 },
   { name: "Library Unto Yourself", description: "Read 250 books", icon: "🏛️", count: 250 },
+  { name: "Master Librarian", description: "Read 500 books", icon: "🗂️", count: 500 },
+  { name: "Beyond Bibliophile", description: "Read 1000 books", icon: "♾️", count: 1000 },
 ];
 
 export async function ensureBookAchievementsSeeded(userId: string) {
@@ -339,10 +341,16 @@ export async function ensureBookAchievementsSeeded(userId: string) {
     where: (a, { and: _and, eq: _eq }) =>
       _and(_eq(a.userId, userId), _eq(a.triggerType, "books_read_count")),
   });
-  if (existing.length > 0) return;
+  const existingCounts = new Set(
+    existing.map((a) => a.triggerCount).filter((c): c is number => c != null)
+  );
+  const toInsert = BOOK_ACHIEVEMENTS.filter(
+    (ba) => !existingCounts.has(ba.count)
+  );
+  if (toInsert.length === 0) return;
 
   await db.insert(achievement).values(
-    BOOK_ACHIEVEMENTS.map((ba) => ({
+    toInsert.map((ba) => ({
       userId,
       categoryId: null,
       source: "custom" as const,
