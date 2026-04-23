@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { updateBook, deleteBook } from "@/modules/books/actions";
 import { toast } from "sonner";
 import type { Book } from "@/modules/books/types";
+import { CoverPicker } from "./cover-picker";
 
 function StatusButton({
   value,
@@ -51,6 +52,23 @@ function StatusButton({
   );
 }
 
+function dateToInput(d: Date | number | null | undefined): string {
+  if (!d) return "";
+  const date = typeof d === "number" ? new Date(d * 1000) : d;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function inputToDate(s: string): Date | null {
+  if (!s) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  // Local midnight of the chosen day
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
 export function BookDetailsDialog({
   book,
   open,
@@ -60,16 +78,35 @@ export function BookDetailsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [status, setStatus] = useState(book.status);
+  const [status, setStatusRaw] = useState(book.status);
   const [rating, setRating] = useState<number | null>(book.rating);
   const [notes, setNotes] = useState(book.notes ?? "");
+  const [startedAt, setStartedAt] = useState(dateToInput(book.startedAt));
+  const [finishedAt, setFinishedAt] = useState(dateToInput(book.finishedAt));
+  const [coverUrl, setCoverUrl] = useState<string | null>(book.coverUrl);
+  const [pickingCover, setPickingCover] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setStatus(book.status);
+    setStatusRaw(book.status);
     setRating(book.rating);
     setNotes(book.notes ?? "");
+    setStartedAt(dateToInput(book.startedAt));
+    setFinishedAt(dateToInput(book.finishedAt));
+    setCoverUrl(book.coverUrl);
+    setPickingCover(false);
   }, [book, open]);
+
+  /** Wrap status changes so the dates auto-populate to today if empty. */
+  function setStatus(next: "want" | "reading" | "read") {
+    const today = dateToInput(new Date());
+    if (next === "reading" && !startedAt) setStartedAt(today);
+    if (next === "read") {
+      if (!startedAt) setStartedAt(today);
+      if (!finishedAt) setFinishedAt(today);
+    }
+    setStatusRaw(next);
+  }
 
   async function handleSave() {
     setLoading(true);
@@ -78,6 +115,9 @@ export function BookDetailsDialog({
         status,
         rating,
         notes: notes.trim() || null,
+        startedAt: inputToDate(startedAt),
+        finishedAt: inputToDate(finishedAt),
+        coverUrl,
       });
       toast.success("Book updated");
       onOpenChange(false);
@@ -105,14 +145,27 @@ export function BookDetailsDialog({
       <DialogContent className="sm:!max-w-lg">
         <DialogHeader>
           <div className="flex gap-4">
-            {book.coverUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={book.coverUrl}
-                alt={book.title}
-                className="w-24 h-36 object-cover rounded-md shrink-0 border border-border"
-              />
-            )}
+            <div className="relative w-24 h-36 shrink-0">
+              {coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverUrl}
+                  alt={book.title}
+                  className="w-24 h-36 object-cover rounded-md border border-border"
+                />
+              ) : (
+                <div className="w-24 h-36 flex items-center justify-center bg-muted/30 rounded-md border border-border text-3xl">
+                  📖
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setPickingCover((s) => !s)}
+                className="absolute bottom-1 left-1 right-1 text-[10px] font-mono bg-black/70 text-white/90 hover:bg-black/90 rounded px-1 py-0.5 transition-colors"
+              >
+                {pickingCover ? "close" : "change cover"}
+              </button>
+            </div>
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-lg leading-tight">
                 {book.title}
@@ -141,7 +194,19 @@ export function BookDetailsDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+          {pickingCover && (
+            <CoverPicker
+              defaultQuery={`${book.title} ${book.authors}`}
+              currentUrl={coverUrl}
+              onPick={(url) => {
+                setCoverUrl(url);
+                setPickingCover(false);
+              }}
+              onCancel={() => setPickingCover(false)}
+            />
+          )}
+
           <div className="space-y-2">
             <Label>Status</Label>
             <div className="flex gap-2">
@@ -203,6 +268,31 @@ export function BookDetailsDialog({
             </div>
           )}
 
+          {(status === "reading" || status === "read") && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="book-started">Started</Label>
+                <Input
+                  id="book-started"
+                  type="date"
+                  value={startedAt}
+                  onChange={(e) => setStartedAt(e.target.value)}
+                />
+              </div>
+              {status === "read" && (
+                <div className="space-y-2">
+                  <Label htmlFor="book-finished">Finished</Label>
+                  <Input
+                    id="book-finished"
+                    type="date"
+                    value={finishedAt}
+                    onChange={(e) => setFinishedAt(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="book-notes">Notes</Label>
             <textarea
@@ -214,12 +304,6 @@ export function BookDetailsDialog({
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
-
-          {book.finishedAt && (
-            <p className="text-[10px] font-mono text-muted-foreground">
-              Finished {new Date(book.finishedAt).toLocaleDateString()}
-            </p>
-          )}
         </div>
 
         <DialogFooter className="!justify-between gap-2">

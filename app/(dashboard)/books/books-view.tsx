@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,11 +42,18 @@ export function BooksView({
   ratings: number[];
   recent: Book[];
 }) {
+  const PAGE_SIZE = 50;
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset pagination whenever the result set changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter, sort, search]);
 
   const filtered = useMemo(() => {
     let list = books;
@@ -213,11 +220,41 @@ export function BooksView({
           No books match that filter.
         </p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-          {filtered.map((b) => (
-            <BookCard key={b.id} book={b} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {filtered.slice(0, visibleCount).map((b) => (
+              <BookCard key={b.id} book={b} />
+            ))}
+          </div>
+          {filtered.length > visibleCount && (
+            <div className="flex items-center justify-center py-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setVisibleCount((v) =>
+                    Math.min(v + PAGE_SIZE, filtered.length)
+                  )
+                }
+              >
+                + Load more (
+                {Math.min(PAGE_SIZE, filtered.length - visibleCount)} of{" "}
+                {filtered.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
+          {filtered.length > PAGE_SIZE && visibleCount >= filtered.length && (
+            <div className="flex items-center justify-center py-3">
+              <button
+                type="button"
+                onClick={() => setVisibleCount(PAGE_SIZE)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Collapse to first {PAGE_SIZE}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Stats */}
