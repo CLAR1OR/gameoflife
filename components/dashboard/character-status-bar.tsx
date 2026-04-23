@@ -144,7 +144,7 @@ export function CharacterStatusBar({
 
         {/* Right column: top-anchored stack */}
         {(showNetWorth || showBooks) && (
-          <div className="shrink-0 self-stretch flex flex-col items-end gap-2 min-w-[140px]">
+          <div className="shrink-0 self-stretch flex flex-col items-start gap-2 min-w-[140px]">
             {showNetWorth && (
               <NetWorthRow
                 initial={netWorth}
