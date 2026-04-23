@@ -8,6 +8,7 @@ import { BookCard } from "@/components/books/book-card";
 import { AddBookDialog } from "@/components/books/add-book-dialog";
 import { CsvImportDialog } from "@/components/books/csv-import-dialog";
 import { YearlyGoalRing } from "@/components/books/yearly-goal-ring";
+import { CurrentlyReadingStrip } from "@/components/books/currently-reading-strip";
 import { ReadingStats } from "@/components/books/reading-stats";
 import { ReadingFeed } from "@/components/books/reading-feed";
 import type { Book, BookStatus } from "@/modules/books/types";
@@ -112,22 +113,11 @@ export function BooksView({
         </div>
       </div>
 
-      {/* Yearly goal ring */}
-      <YearlyGoalRing read={yearTotal} goal={yearlyGoal} />
-
-      {/* Currently reading spotlight */}
-      {currentlyReading.length > 0 && (
-        <section>
-          <h2 className="text-xs font-mono uppercase tracking-wider text-glow mb-3">
-            📗 Currently reading
-          </h2>
-          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3">
-            {currentlyReading.map((b) => (
-              <BookCard key={b.id} book={b} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Top row: yearly goal + currently reading */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <YearlyGoalRing read={yearTotal} goal={yearlyGoal} />
+        <CurrentlyReadingStrip books={currentlyReading} />
+      </div>
 
       {/* Stats row */}
       {stats.total > 0 && (

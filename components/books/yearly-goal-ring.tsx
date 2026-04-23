@@ -97,7 +97,7 @@ export function YearlyGoalRing({
           setInput(String(goal || 30));
           setOpen(true);
         }}
-        className="group relative rounded-xl border border-border/60 bg-card p-4 hover:border-glow/40 transition-colors flex items-center gap-4"
+        className="group relative rounded-xl border border-border/60 bg-card p-4 hover:border-glow/40 transition-colors flex items-center gap-4 h-full w-full text-left"
         title="Click to edit yearly reading goal"
       >
         <div className="relative shrink-0" style={{ width: size, height: size }}>
