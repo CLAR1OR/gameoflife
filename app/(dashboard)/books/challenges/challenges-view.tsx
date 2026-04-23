@@ -7,10 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   activateReadingListTemplate,
+  createReadingList,
   deleteReadingList,
 } from "@/modules/books/actions";
 import { toast } from "sonner";
 import type { ReadingListWithProgress } from "@/modules/books/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const LIST_ICON_OPTIONS = [
+  "📚", "📖", "🎯", "⭐", "🏆", "🌟", "🔥", "💎",
+  "🗺️", "🧭", "🎓", "🧠", "✨", "🗡️", "🛡️", "🏛️",
+];
 
 type TemplateForView = {
   id: string;
@@ -58,7 +73,36 @@ export function ChallengesView({
   templates: TemplateForView[];
 }) {
   const [activating, setActivating] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newIcon, setNewIcon] = useState("📚");
+  const [creating, setCreating] = useState(false);
   const available = templates.filter((t) => !t.isActivated);
+
+  async function handleCreateList() {
+    const name = newName.trim();
+    if (!name) {
+      toast.error("Name is required");
+      return;
+    }
+    setCreating(true);
+    try {
+      await createReadingList({
+        name,
+        description: newDesc.trim() || undefined,
+        icon: newIcon,
+      });
+      toast.success("List created");
+      setNewOpen(false);
+      setNewName("");
+      setNewDesc("");
+      setNewIcon("📚");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setCreating(false);
+  }
 
   async function handleActivate(id: string) {
     setActivating(id);
@@ -92,11 +136,16 @@ export function ChallengesView({
             Curated reading lists. Finish every book to unlock the challenge.
           </p>
         </div>
-        <Link href="/books">
-          <Button variant="outline" size="sm">
-            ← Back to library
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setNewOpen(true)}>
+            + New list
           </Button>
-        </Link>
+          <Link href="/books">
+            <Button variant="outline" size="sm">
+              ← Back to library
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Active challenges */}
@@ -213,10 +262,73 @@ export function ChallengesView({
         <div className="rounded-xl border border-dashed bg-muted/20 p-10 text-center">
           <div className="text-6xl mb-3">🎯</div>
           <p className="text-sm text-muted-foreground">
-            All challenges have been activated. Add custom ones later.
+            All templated challenges are active. Create a custom one with
+            &ldquo;+ New list&rdquo;.
           </p>
         </div>
       )}
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent className="sm:!max-w-md">
+          <DialogHeader>
+            <DialogTitle>New reading list</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="list-name">Name</Label>
+              <Input
+                id="list-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g. Booker Prize Winners"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="list-desc">Description (optional)</Label>
+              <textarea
+                id="list-desc"
+                rows={2}
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="What this list is about…"
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <div className="grid grid-cols-8 gap-1">
+                {LIST_ICON_OPTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setNewIcon(emoji)}
+                    className={`flex h-9 w-9 items-center justify-center rounded-md text-lg transition-colors ${
+                      newIcon === emoji
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-accent"
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setNewOpen(false)}
+              disabled={creating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateList} disabled={creating}>
+              {creating ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

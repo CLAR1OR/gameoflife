@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Book } from "@/modules/books/types";
+import type { RecentReadEntry } from "@/modules/books/queries";
 import { BookDetailsDialog } from "./book-details-dialog";
 
 function formatMonth(d: Date | number): string {
@@ -20,8 +20,9 @@ function formatDay(d: Date | number): string {
   });
 }
 
-function FeedEntry({ book }: { book: Book }) {
+function FeedEntry({ entry }: { entry: RecentReadEntry }) {
   const [open, setOpen] = useState(false);
+  const { read, book } = entry;
   return (
     <>
       <button
@@ -54,18 +55,18 @@ function FeedEntry({ book }: { book: Book }) {
                 {book.authors}
               </div>
             </div>
-            {book.finishedAt && (
+            {read.finishedAt && (
               <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                {formatDay(book.finishedAt)}
+                {formatDay(read.finishedAt)}
               </span>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1.5">
-            {book.rating ? (
+            {read.rating ? (
               <span className="text-[11px] text-yellow-400 tracking-widest">
-                {"★".repeat(book.rating)}
+                {"★".repeat(read.rating)}
                 <span className="text-muted-foreground/30">
-                  {"★".repeat(5 - book.rating)}
+                  {"★".repeat(5 - read.rating)}
                 </span>
               </span>
             ) : (
@@ -79,9 +80,9 @@ function FeedEntry({ book }: { book: Book }) {
               </span>
             )}
           </div>
-          {book.notes && (
+          {read.notes && (
             <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 italic">
-              &ldquo;{book.notes}&rdquo;
+              &ldquo;{read.notes}&rdquo;
             </p>
           )}
         </div>
@@ -91,20 +92,19 @@ function FeedEntry({ book }: { book: Book }) {
   );
 }
 
-export function ReadingFeed({ books }: { books: Book[] }) {
-  if (books.length === 0) return null;
+export function ReadingFeed({ entries }: { entries: RecentReadEntry[] }) {
+  if (entries.length === 0) return null;
 
-  // Group by "Month Year"
-  const groups = new Map<string, Book[]>();
+  const groups = new Map<string, RecentReadEntry[]>();
   const groupOrder: string[] = [];
-  for (const b of books) {
-    if (!b.finishedAt) continue;
-    const key = formatMonth(b.finishedAt);
+  for (const e of entries) {
+    if (!e.read.finishedAt) continue;
+    const key = formatMonth(e.read.finishedAt);
     if (!groups.has(key)) {
       groups.set(key, []);
       groupOrder.push(key);
     }
-    groups.get(key)!.push(b);
+    groups.get(key)!.push(e);
   }
 
   return (
@@ -114,7 +114,7 @@ export function ReadingFeed({ books }: { books: Book[] }) {
       </h2>
       <div className="space-y-6">
         {groupOrder.map((month) => {
-          const entries = groups.get(month)!;
+          const monthEntries = groups.get(month)!;
           return (
             <div key={month} className="space-y-2">
               <div className="flex items-center gap-3">
@@ -123,12 +123,12 @@ export function ReadingFeed({ books }: { books: Book[] }) {
                 </h3>
                 <div className="flex-1 h-px bg-border/40" />
                 <span className="text-[10px] font-mono text-muted-foreground">
-                  {entries.length} book{entries.length === 1 ? "" : "s"}
+                  {monthEntries.length} book{monthEntries.length === 1 ? "" : "s"}
                 </span>
               </div>
               <div className="space-y-2">
-                {entries.map((b) => (
-                  <FeedEntry key={b.id} book={b} />
+                {monthEntries.map((e) => (
+                  <FeedEntry key={e.read.id} entry={e} />
                 ))}
               </div>
             </div>

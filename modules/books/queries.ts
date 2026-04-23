@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
-import { book, readingList, readingListItem } from "@/lib/db/schema";
+import { book, bookRead, readingList, readingListItem } from "@/lib/db/schema";
 import { and, asc, desc, eq, gte } from "drizzle-orm";
-import type { Book, ReadingList, ReadingListWithProgress } from "./types";
+import type { Book, BookRead, ReadingList, ReadingListWithProgress } from "./types";
 
 export async function getBooksByUser(userId: string): Promise<Book[]> {
   return db
@@ -106,17 +106,14 @@ export async function getCurrentlyReading(userId: string): Promise<Book[]> {
 
 /** Number of books finished in the current year (local time). */
 export async function getBooksReadThisYear(userId: string): Promise<number> {
+  // Count read events (including rereads) this year.
   const now = new Date();
   const yearStart = new Date(now.getFullYear(), 0, 1);
   const rows = await db
-    .select({ c: book.id })
-    .from(book)
+    .select({ c: bookRead.id })
+    .from(bookRead)
     .where(
-      and(
-        eq(book.userId, userId),
-        eq(book.status, "read"),
-        gte(book.finishedAt, yearStart)
-      )
+      and(eq(bookRead.userId, userId), gte(bookRead.finishedAt, yearStart))
     );
   return rows.length;
 }
@@ -135,18 +132,16 @@ export async function getBooksPerMonth(
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
 
+  // Every read event in window (rereads included), join to book for pages.
   const rows = await db
     .select({
-      finishedAt: book.finishedAt,
+      finishedAt: bookRead.finishedAt,
       pages: book.pages,
     })
-    .from(book)
+    .from(bookRead)
+    .innerJoin(book, eq(bookRead.bookId, book.id))
     .where(
-      and(
-        eq(book.userId, userId),
-        eq(book.status, "read"),
-        gte(book.finishedAt, start)
-      )
+      and(eq(bookRead.userId, userId), gte(bookRead.finishedAt, start))
     );
 
   const buckets: MonthBucket[] = [];
@@ -173,9 +168,10 @@ export async function getBooksPerMonth(
 /** Year-by-year finish counts across the user's full history. */
 export async function getBooksPerYear(userId: string): Promise<YearBucket[]> {
   const rows = await db
-    .select({ finishedAt: book.finishedAt, pages: book.pages })
-    .from(book)
-    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+    .select({ finishedAt: bookRead.finishedAt, pages: book.pages })
+    .from(bookRead)
+    .innerJoin(book, eq(bookRead.bookId, book.id))
+    .where(eq(bookRead.userId, userId));
 
   const map = new Map<number, YearBucket>();
   for (const r of rows) {
@@ -208,17 +204,37 @@ export async function getRatingDistribution(
   return dist;
 }
 
-/** Recently finished books, most recent first. */
+/** Recently finished books, most recent first. Each read event is a row,
+ * so rereads show up as separate entries. */
+export type RecentReadEntry = {
+  read: BookRead;
+  book: Book;
+};
+
 export async function getRecentlyFinished(
   userId: string,
   limit = 20
-): Promise<Book[]> {
+): Promise<RecentReadEntry[]> {
+  const rows = await db
+    .select({ read: bookRead, book: book })
+    .from(bookRead)
+    .innerJoin(book, eq(bookRead.bookId, book.id))
+    .where(eq(bookRead.userId, userId))
+    .orderBy(desc(bookRead.finishedAt), desc(bookRead.createdAt))
+    .limit(limit);
+  return rows;
+}
+
+/** All reads of a single book, newest first. */
+export async function getReadHistory(
+  bookId: string,
+  userId: string
+): Promise<BookRead[]> {
   return db
     .select()
-    .from(book)
-    .where(and(eq(book.userId, userId), eq(book.status, "read")))
-    .orderBy(desc(book.finishedAt), desc(book.createdAt))
-    .limit(limit);
+    .from(bookRead)
+    .where(and(eq(bookRead.bookId, bookId), eq(bookRead.userId, userId)))
+    .orderBy(desc(bookRead.finishedAt), desc(bookRead.createdAt));
 }
 
 export async function getBookStats(userId: string): Promise<{

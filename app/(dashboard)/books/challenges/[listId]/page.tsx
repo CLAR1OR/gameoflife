@@ -3,6 +3,10 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth-server";
 import { getReadingListWithBooks } from "@/modules/books/queries";
 import { BookCard } from "@/components/books/book-card";
+import {
+  ReadingListAdmin,
+  RemoveFromListButton,
+} from "@/components/books/reading-list-admin";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
@@ -21,6 +25,7 @@ export default async function ChallengePage({
   const total = books.length;
   const pct = total === 0 ? 0 : (read / total) * 100;
   const complete = total > 0 && read === total;
+  const isTemplate = !!list.templateId;
 
   return (
     <div className="space-y-6">
@@ -33,12 +38,9 @@ export default async function ChallengePage({
         </Link>
       </div>
 
-      {/* Header banner */}
       <div
         className={`rounded-2xl border p-6 ${
-          complete
-            ? "border-xp/40 glow-gold"
-            : "border-glow/30"
+          complete ? "border-xp/40 glow-gold" : "border-glow/30"
         }`}
       >
         <div className="flex items-start gap-4 flex-wrap">
@@ -69,6 +71,14 @@ export default async function ChallengePage({
                   ✓ Complete
                 </Badge>
               )}
+              {isTemplate && (
+                <Badge
+                  variant="outline"
+                  className="border-glow-purple/40 text-glow-purple font-mono text-[10px]"
+                >
+                  Template
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -78,15 +88,32 @@ export default async function ChallengePage({
             {pct.toFixed(0)}%
           </div>
         </div>
+
+        <div className="mt-4">
+          <ReadingListAdmin
+            listId={list.id}
+            listName={list.name}
+            listDescription={list.description}
+            listIcon={list.icon}
+            isTemplate={isTemplate}
+            bookIdsInList={books.map((b) => b.id)}
+          />
+        </div>
       </div>
 
-      {/* Books grid */}
       {books.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No books in this challenge.</p>
+        <p className="text-sm text-muted-foreground text-center py-8">
+          No books yet. Click &ldquo;+ Add book&rdquo; to search your library.
+        </p>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
           {books.map((b) => (
-            <BookCard key={b.id} book={b} />
+            <div key={b.id} className="relative">
+              <BookCard book={b} />
+              {!isTemplate && (
+                <RemoveFromListButton listId={list.id} bookId={b.id} />
+              )}
+            </div>
           ))}
         </div>
       )}

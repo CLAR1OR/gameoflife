@@ -1,14 +1,75 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { book, readingList, readingListItem, achievement } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import {
+  book,
+  bookRead,
+  readingList,
+  readingListItem,
+  achievement,
+  skill,
+  quest,
+} from "@/lib/db/schema";
+import { and, desc, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { getReadingListTemplate } from "@/lib/books-templates";
 import { openLibraryCoverUrl, parseGoodreadsCsv } from "@/lib/books-csv";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
+import { calculateLevel } from "@/lib/xp";
 import { XP_PER_BOOK } from "./types";
+
+/** XP a book read grants to a linked subskill (if any). */
+const BOOK_XP_TO_SKILL = XP_PER_BOOK;
+
+/** Adjust a subskill's XP, recompute level. */
+async function adjustSkillXp(
+  skillId: string,
+  userId: string,
+  delta: number
+) {
+  const s = await db.query.skill.findFirst({
+    where: (sk, { and: a, eq: e }) =>
+      a(e(sk.id, skillId), e(sk.userId, userId)),
+  });
+  if (!s) return;
+  if (s.level === 0) return; // locked subskills can't gain XP
+  const newXp = Math.max(0, s.currentXp + delta);
+  const newLevel = calculateLevel(newXp);
+  await db
+    .update(skill)
+    .set({ currentXp: newXp, level: newLevel, updatedAt: new Date() })
+    .where(eq(skill.id, skillId));
+  revalidatePath(`/skills/${s.categoryId}`);
+}
+
+/** Auto-complete the linked quest if still active. */
+async function autoCompleteQuest(questId: string, userId: string) {
+  const q = await db.query.quest.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, questId), e(row.userId, userId)),
+  });
+  if (!q || q.status !== "active") return;
+  await db
+    .update(quest)
+    .set({ status: "completed", completedAt: new Date() })
+    .where(eq(quest.id, questId));
+  revalidatePath("/quests");
+}
+
+/** Reopen a previously-completed linked quest (book un-read). */
+async function reopenQuest(questId: string, userId: string) {
+  const q = await db.query.quest.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, questId), e(row.userId, userId)),
+  });
+  if (!q || q.status !== "completed") return;
+  await db
+    .update(quest)
+    .set({ status: "active", completedAt: null })
+    .where(eq(quest.id, questId));
+  revalidatePath("/quests");
+}
 
 export async function createBook(data: {
   title: string;
@@ -24,12 +85,18 @@ export async function createBook(data: {
   startedAt?: Date | null;
   notes?: string | null;
   source?: string;
+  skillId?: string | null;
+  questId?: string | null;
 }) {
   const session = await requireSession();
 
   const coverUrl =
     data.coverUrl ?? openLibraryCoverUrl(data.isbn ?? null, "M");
   const status = data.status ?? "want";
+  const finishedAt =
+    data.finishedAt ?? (status === "read" ? new Date() : null);
+  const startedAt =
+    data.startedAt ?? (status === "reading" ? new Date() : null);
 
   const [row] = await db
     .insert(book)
@@ -44,14 +111,30 @@ export async function createBook(data: {
       description: data.description ?? null,
       status,
       rating: data.rating ?? null,
-      startedAt: data.startedAt ?? (status === "reading" ? new Date() : null),
-      finishedAt: data.finishedAt ?? (status === "read" ? new Date() : null),
+      startedAt,
+      finishedAt,
       notes: data.notes ?? null,
       source: data.source ?? "manual",
+      skillId: data.skillId ?? null,
+      questId: data.questId ?? null,
     })
     .returning();
 
-  if (status === "read") {
+  if (status === "read" && finishedAt) {
+    await db.insert(bookRead).values({
+      bookId: row.id,
+      userId: session.user.id,
+      startedAt: startedAt,
+      finishedAt: finishedAt,
+      rating: data.rating ?? null,
+      notes: data.notes ?? null,
+    });
+    if (row.skillId) {
+      await adjustSkillXp(row.skillId, session.user.id, BOOK_XP_TO_SKILL);
+    }
+    if (row.questId) {
+      await autoCompleteQuest(row.questId, session.user.id);
+    }
     await onBookRead(session.user.id);
   }
 
@@ -73,6 +156,8 @@ export async function updateBook(
     startedAt?: Date | null;
     finishedAt?: Date | null;
     notes?: string | null;
+    skillId?: string | null;
+    questId?: string | null;
   }
 ) {
   const session = await requireSession();
@@ -110,18 +195,180 @@ export async function updateBook(
 
   const wasRead = existing.status === "read";
   const isRead = (data.status ?? existing.status) === "read";
+
+  // Transition want/reading → read: create a new bookRead row, grant XP, complete linked quest
   if (!wasRead && isRead) {
+    const finishedAt = updates.finishedAt ?? existing.finishedAt ?? new Date();
+    const startedAt = updates.startedAt ?? existing.startedAt ?? null;
+    await db.insert(bookRead).values({
+      bookId: id,
+      userId: session.user.id,
+      startedAt,
+      finishedAt,
+      rating: data.rating ?? existing.rating ?? null,
+      notes: data.notes ?? existing.notes ?? null,
+    });
+    const linkedSkillId = data.skillId ?? existing.skillId;
+    if (linkedSkillId) {
+      await adjustSkillXp(linkedSkillId, session.user.id, BOOK_XP_TO_SKILL);
+    }
+    const linkedQuestId = data.questId ?? existing.questId;
+    if (linkedQuestId) {
+      await autoCompleteQuest(linkedQuestId, session.user.id);
+    }
     await onBookRead(session.user.id);
   } else if (wasRead && !isRead) {
+    // Transition read → want/reading: remove the latest bookRead row, reverse XP, reopen quest
+    const latest = await db.query.bookRead.findFirst({
+      where: (br, { and: a, eq: e }) =>
+        a(e(br.bookId, id), e(br.userId, session.user.id)),
+      orderBy: (br, { desc: d }) => [d(br.finishedAt)],
+    });
+    if (latest) {
+      await db.delete(bookRead).where(eq(bookRead.id, latest.id));
+    }
+    const linkedSkillId = data.skillId ?? existing.skillId;
+    if (linkedSkillId) {
+      await adjustSkillXp(linkedSkillId, session.user.id, -BOOK_XP_TO_SKILL);
+    }
+    const linkedQuestId = data.questId ?? existing.questId;
+    if (linkedQuestId) {
+      await reopenQuest(linkedQuestId, session.user.id);
+    }
     await onBookUnread(session.user.id);
   } else if (wasRead && isRead) {
-    // Still read but maybe rating changed — just re-check list completion
+    // Still read — rating/notes/finish-date might have changed. Sync into
+    // the most recent bookRead row so the history stays consistent.
+    const latest = await db.query.bookRead.findFirst({
+      where: (br, { and: a, eq: e }) =>
+        a(e(br.bookId, id), e(br.userId, session.user.id)),
+      orderBy: (br, { desc: d }) => [d(br.finishedAt)],
+    });
+    if (latest) {
+      await db
+        .update(bookRead)
+        .set({
+          finishedAt:
+            updates.finishedAt ?? existing.finishedAt ?? latest.finishedAt,
+          startedAt: updates.startedAt ?? existing.startedAt ?? latest.startedAt,
+          rating:
+            data.rating !== undefined
+              ? data.rating
+              : (existing.rating ?? latest.rating),
+          notes:
+            data.notes !== undefined
+              ? data.notes
+              : (existing.notes ?? latest.notes),
+        })
+        .where(eq(bookRead.id, latest.id));
+    }
     await checkReadingListCompletion(session.user.id);
   }
 
   revalidatePath("/books");
   revalidatePath(`/books/${id}`);
   return updates;
+}
+
+/** Log an additional read of an already-read book. */
+export async function logReread(
+  id: string,
+  data: {
+    finishedAt?: Date;
+    startedAt?: Date | null;
+    rating?: number | null;
+    notes?: string | null;
+  } = {}
+) {
+  const session = await requireSession();
+  const existing = await db.query.book.findFirst({
+    where: (b, { and: a, eq: e }) => a(e(b.id, id), e(b.userId, session.user.id)),
+  });
+  if (!existing) throw new Error("Book not found");
+
+  const finishedAt = data.finishedAt ?? new Date();
+  const startedAt = data.startedAt ?? null;
+
+  await db.insert(bookRead).values({
+    bookId: id,
+    userId: session.user.id,
+    startedAt,
+    finishedAt,
+    rating: data.rating ?? null,
+    notes: data.notes ?? null,
+  });
+
+  // Bump the book's most-recent fields so the gallery sort stays correct
+  await db
+    .update(book)
+    .set({
+      status: "read",
+      finishedAt,
+      rating: data.rating ?? existing.rating ?? null,
+      notes: data.notes ?? existing.notes ?? null,
+    })
+    .where(and(eq(book.id, id), eq(book.userId, session.user.id)));
+
+  if (existing.skillId) {
+    await adjustSkillXp(existing.skillId, session.user.id, BOOK_XP_TO_SKILL);
+  }
+
+  await onBookRead(session.user.id);
+  revalidatePath("/books");
+  revalidatePath(`/books/${id}`);
+  return { logged: true };
+}
+
+/** Delete a specific read row (not the book). */
+export async function deleteBookRead(readId: string) {
+  const session = await requireSession();
+  const row = await db.query.bookRead.findFirst({
+    where: (br, { and: a, eq: e }) =>
+      a(e(br.id, readId), e(br.userId, session.user.id)),
+    with: { book: true },
+  });
+  if (!row) return;
+
+  await db.delete(bookRead).where(eq(bookRead.id, readId));
+
+  // If this was the only read, drop the book back to "reading" (the user can
+  // re-mark it manually). Otherwise sync the book's most-recent fields from
+  // the newest remaining read.
+  const remaining = await db
+    .select()
+    .from(bookRead)
+    .where(
+      and(
+        eq(bookRead.bookId, row.bookId),
+        eq(bookRead.userId, session.user.id)
+      )
+    )
+    .orderBy(desc(bookRead.finishedAt));
+
+  if (remaining.length === 0) {
+    await db
+      .update(book)
+      .set({ status: "reading", finishedAt: null, rating: null })
+      .where(eq(book.id, row.bookId));
+  } else {
+    const newest = remaining[0];
+    await db
+      .update(book)
+      .set({
+        finishedAt: newest.finishedAt,
+        rating: newest.rating,
+        notes: newest.notes,
+      })
+      .where(eq(book.id, row.bookId));
+  }
+
+  if (row.book.skillId) {
+    await adjustSkillXp(row.book.skillId, session.user.id, -BOOK_XP_TO_SKILL);
+  }
+  await onBookUnread(session.user.id);
+
+  revalidatePath("/books");
+  revalidatePath(`/books/${row.bookId}`);
 }
 
 export async function deleteBook(id: string) {
@@ -388,6 +635,41 @@ export async function deleteReadingList(id: string) {
   revalidatePath("/achievements");
 }
 
+export async function updateReadingList(
+  id: string,
+  data: { name?: string; description?: string | null; icon?: string }
+) {
+  const session = await requireSession();
+  const trimmed: typeof data = { ...data };
+  if (trimmed.name !== undefined) trimmed.name = trimmed.name.trim();
+  await db
+    .update(readingList)
+    .set(trimmed)
+    .where(and(eq(readingList.id, id), eq(readingList.userId, session.user.id)));
+  revalidatePath("/books/challenges");
+  revalidatePath(`/books/challenges/${id}`);
+}
+
+export async function removeBookFromReadingList(
+  listId: string,
+  bookId: string
+) {
+  const session = await requireSession();
+  await db
+    .delete(readingListItem)
+    .where(
+      and(
+        eq(readingListItem.listId, listId),
+        eq(readingListItem.bookId, bookId),
+        eq(readingListItem.userId, session.user.id)
+      )
+    );
+  await checkReadingListCompletion(session.user.id);
+  revalidatePath("/books/challenges");
+  revalidatePath(`/books/challenges/${listId}`);
+  revalidatePath("/achievements");
+}
+
 // =====================
 // CSV IMPORT
 // =====================
@@ -409,21 +691,37 @@ export async function importGoodreadsCsv(csvText: string) {
       continue;
     }
 
-    await db.insert(book).values({
-      userId: session.user.id,
-      title: r.title,
-      authors: r.authors,
-      isbn: r.isbn,
-      coverUrl: openLibraryCoverUrl(r.isbn, "M"),
-      pages: r.pages,
-      year: r.year,
-      status: r.status,
-      rating: r.rating,
-      startedAt: r.status === "reading" ? r.dateAdded : null,
-      finishedAt: r.status === "read" ? r.dateRead ?? r.dateAdded : null,
-      notes: r.review,
-      source: "goodreads_csv",
-    });
+    const finishedAt =
+      r.status === "read" ? r.dateRead ?? r.dateAdded : null;
+    const [inserted] = await db
+      .insert(book)
+      .values({
+        userId: session.user.id,
+        title: r.title,
+        authors: r.authors,
+        isbn: r.isbn,
+        coverUrl: openLibraryCoverUrl(r.isbn, "M"),
+        pages: r.pages,
+        year: r.year,
+        status: r.status,
+        rating: r.rating,
+        startedAt: r.status === "reading" ? r.dateAdded : null,
+        finishedAt,
+        notes: r.review,
+        source: "goodreads_csv",
+      })
+      .returning();
+
+    if (r.status === "read" && finishedAt) {
+      await db.insert(bookRead).values({
+        bookId: inserted.id,
+        userId: session.user.id,
+        startedAt: null,
+        finishedAt,
+        rating: r.rating,
+        notes: r.review,
+      });
+    }
     imported++;
   }
 
@@ -776,6 +1074,49 @@ async function checkExtraBookAchievements(userId: string) {
     }
   }
   return newlyUnlocked;
+}
+
+// =====================
+// LINKING & HISTORY HELPERS (called client-side from dialogs)
+// =====================
+
+export type BookLinkOptions = {
+  subskillGroups: {
+    categoryId: string;
+    categoryName: string;
+    categoryIcon: string | null;
+    subskills: { id: string; name: string }[];
+  }[];
+  activeQuests: { id: string; name: string; type: "main" | "side" }[];
+};
+
+export async function getBookLinkOptions(): Promise<BookLinkOptions> {
+  const session = await requireSession();
+  const { getSubskillsGrouped } = await import("@/modules/habits/queries");
+  const { getActiveQuests } = await import("@/modules/quests/queries");
+  const [groups, active] = await Promise.all([
+    getSubskillsGrouped(session.user.id),
+    getActiveQuests(session.user.id),
+  ]);
+  const activeQuests = [
+    ...(active.main
+      ? [{ id: active.main.id, name: active.main.name, type: "main" as const }]
+      : []),
+    ...active.side.map((q) => ({ id: q.id, name: q.name, type: "side" as const })),
+  ];
+  return { subskillGroups: groups, activeQuests };
+}
+
+export async function getBookReadHistory(bookId: string) {
+  const session = await requireSession();
+  const rows = await db
+    .select()
+    .from(bookRead)
+    .where(
+      and(eq(bookRead.bookId, bookId), eq(bookRead.userId, session.user.id))
+    )
+    .orderBy(desc(bookRead.finishedAt), desc(bookRead.createdAt));
+  return rows;
 }
 
 async function onBookRead(userId: string) {

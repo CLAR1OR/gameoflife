@@ -12,7 +12,7 @@ import { CurrentlyReadingStrip } from "@/components/books/currently-reading-stri
 import { ReadingStats } from "@/components/books/reading-stats";
 import { ReadingFeed } from "@/components/books/reading-feed";
 import type { Book, BookStatus } from "@/modules/books/types";
-import type { MonthBucket, YearBucket } from "@/modules/books/queries";
+import type { MonthBucket, YearBucket, RecentReadEntry } from "@/modules/books/queries";
 
 type Filter = "all" | BookStatus;
 type Sort = "recent" | "rating" | "author" | "title";
@@ -41,7 +41,7 @@ export function BooksView({
   months: MonthBucket[];
   years: YearBucket[];
   ratings: number[];
-  recent: Book[];
+  recent: RecentReadEntry[];
 }) {
   const PAGE_SIZE = 50;
   const [filter, setFilter] = useState<Filter>("all");
@@ -251,7 +251,7 @@ export function BooksView({
       <ReadingStats months={months} years={years} ratings={ratings} />
 
       {/* Reading feed */}
-      <ReadingFeed books={recent} />
+      <ReadingFeed entries={recent} />
 
       <AddBookDialog open={addOpen} onOpenChange={setAddOpen} />
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />

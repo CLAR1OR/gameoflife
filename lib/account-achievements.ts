@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import {
   achievement,
-  book,
+  bookRead,
   habit,
   habitCompletion,
   quest,
@@ -51,11 +51,11 @@ export async function computeTotalAccountXp(userId: string): Promise<number> {
     .where(and(eq(quest.userId, userId), eq(quest.status, "completed")));
   const questXp = questRows.reduce((sum, r) => sum + r.xp, 0);
 
-  // Books-read XP: flat XP_PER_BOOK per finished book
+  // Books-read XP: flat XP_PER_BOOK per read event (rereads count).
   const [readBooksRow] = await db
     .select({ c: count() })
-    .from(book)
-    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+    .from(bookRead)
+    .where(eq(bookRead.userId, userId));
   const booksXp = Number(readBooksRow?.c ?? 0) * XP_PER_BOOK;
 
   return skillXp + generalXp + questXp + booksXp;

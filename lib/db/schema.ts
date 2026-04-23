@@ -279,11 +279,25 @@ export const book = sqliteTable("book", {
   year: integer("year"),
   description: text("description"),
   status: text("status", { enum: ["want", "reading", "read"] }).notNull().default("want"),
-  rating: integer("rating"), // 1-5
+  rating: integer("rating"), // 1-5 (most recent read)
   startedAt: integer("started_at", { mode: "timestamp" }),
-  finishedAt: integer("finished_at", { mode: "timestamp" }),
+  finishedAt: integer("finished_at", { mode: "timestamp" }), // most recent finish
   notes: text("notes"),
-  source: text("source"), // "manual" | "goodreads_csv" | "template" | "openlibrary"
+  source: text("source"),
+  skillId: text("skill_id").references(() => skill.id, { onDelete: "set null" }),
+  questId: text("quest_id").references(() => quest.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+/** Historical row per completed read — supports rereads. */
+export const bookRead = sqliteTable("book_read", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  bookId: text("book_id").notNull().references(() => book.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  startedAt: integer("started_at", { mode: "timestamp" }),
+  finishedAt: integer("finished_at", { mode: "timestamp" }).notNull(),
+  rating: integer("rating"),
+  notes: text("notes"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
@@ -328,6 +342,14 @@ export const userRelations = relations(user, ({ many }) => ({
 export const bookRelations = relations(book, ({ one, many }) => ({
   user: one(user, { fields: [book.userId], references: [user.id] }),
   readingListItems: many(readingListItem),
+  reads: many(bookRead),
+  skill: one(skill, { fields: [book.skillId], references: [skill.id] }),
+  quest: one(quest, { fields: [book.questId], references: [quest.id] }),
+}));
+
+export const bookReadRelations = relations(bookRead, ({ one }) => ({
+  book: one(book, { fields: [bookRead.bookId], references: [book.id] }),
+  user: one(user, { fields: [bookRead.userId], references: [user.id] }),
 }));
 
 export const readingListRelations = relations(readingList, ({ one, many }) => ({

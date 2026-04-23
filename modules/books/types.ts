@@ -1,7 +1,8 @@
 import { InferSelectModel } from "drizzle-orm";
-import { book, readingList, readingListItem } from "@/lib/db/schema";
+import { book, bookRead, readingList, readingListItem } from "@/lib/db/schema";
 
 export type Book = InferSelectModel<typeof book>;
+export type BookRead = InferSelectModel<typeof bookRead>;
 export type ReadingList = InferSelectModel<typeof readingList>;
 export type ReadingListItem = InferSelectModel<typeof readingListItem>;
 
