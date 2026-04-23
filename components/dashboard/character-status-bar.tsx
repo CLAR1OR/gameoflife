@@ -1,7 +1,6 @@
 import { getLevelProgress, type LevelProgress } from "@/lib/level";
 import { NetWorthRow } from "./net-worth-row";
-import { CurrentlyReadingRow } from "./currently-reading-row";
-import type { Book } from "@/modules/books/types";
+import { BookStatusRow } from "./book-status-row";
 
 const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
   ring: string;
@@ -68,7 +67,11 @@ export function CharacterStatusBar({
   currency,
   staleAccountCount = 0,
   totalAccounts = 0,
-  currentlyReading = [],
+  totalBooksRead = 0,
+  booksReadThisYear = 0,
+  yearlyBookGoal = 0,
+  showNetWorth = true,
+  showBooks = true,
 }: {
   name: string;
   totalXp: number;
@@ -76,7 +79,11 @@ export function CharacterStatusBar({
   currency: string;
   staleAccountCount?: number;
   totalAccounts?: number;
-  currentlyReading?: Book[];
+  totalBooksRead?: number;
+  booksReadThisYear?: number;
+  yearlyBookGoal?: number;
+  showNetWorth?: boolean;
+  showBooks?: boolean;
 }) {
   const progress = getLevelProgress(totalXp);
   const classes = TIER_CLASSES[progress.tier.accent];
@@ -136,15 +143,25 @@ export function CharacterStatusBar({
         </div>
 
         {/* Right column: top-anchored stack */}
-        <div className="shrink-0 self-stretch flex flex-col items-end gap-2 min-w-[140px]">
-          <NetWorthRow
-            initial={netWorth}
-            currency={currency}
-            staleAccountCount={staleAccountCount}
-            totalAccounts={totalAccounts}
-          />
-          <CurrentlyReadingRow books={currentlyReading} />
-        </div>
+        {(showNetWorth || showBooks) && (
+          <div className="shrink-0 self-stretch flex flex-col items-end gap-2 min-w-[140px]">
+            {showNetWorth && (
+              <NetWorthRow
+                initial={netWorth}
+                currency={currency}
+                staleAccountCount={staleAccountCount}
+                totalAccounts={totalAccounts}
+              />
+            )}
+            {showBooks && (
+              <BookStatusRow
+                totalRead={totalBooksRead}
+                yearRead={booksReadThisYear}
+                yearlyGoal={yearlyBookGoal}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

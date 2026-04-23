@@ -8,7 +8,11 @@ import { getQuestStats } from "@/modules/quests/queries";
 import { getAchievementCounts } from "@/lib/account-achievements";
 import { getUserSettings } from "@/modules/settings/queries";
 import { getNetWorth, getAccountAttention } from "@/modules/finance/queries";
-import { getCurrentlyReading } from "@/modules/books/queries";
+import {
+  getBookStats,
+  getBooksReadThisYear,
+} from "@/modules/books/queries";
+import { isFeatureEnabled } from "@/modules/settings/features";
 import { formatMoney } from "@/lib/money";
 import { getLevelProgress } from "@/lib/level";
 import { CharacterStatusBar } from "@/components/dashboard/character-status-bar";
@@ -84,7 +88,8 @@ export default async function AccountPage() {
     totalSubskillsResult,
     totalHabitsResult,
     habitCompletionsResult,
-    currentlyReading,
+    bookStats,
+    booksThisYear,
   ] = await Promise.all([
     getTotalAccountXp(userId),
     getCategoriesByUser(userId),
@@ -102,7 +107,8 @@ export default async function AccountPage() {
       .select({ c: count() })
       .from(habitCompletion)
       .where(eq(habitCompletion.userId, userId)),
-    getCurrentlyReading(userId),
+    getBookStats(userId),
+    getBooksReadThisYear(userId),
   ]);
 
   const level = getLevelProgress(totalAccountXp);
@@ -130,7 +136,11 @@ export default async function AccountPage() {
         currency={settings.currency}
         staleAccountCount={accountAttention.staleAccountCount}
         totalAccounts={accountAttention.totalAccounts}
-        currentlyReading={currentlyReading}
+        totalBooksRead={bookStats.read}
+        booksReadThisYear={booksThisYear}
+        yearlyBookGoal={settings.yearlyBookGoal}
+        showNetWorth={isFeatureEnabled(settings.features, "statusBarNetWorth")}
+        showBooks={isFeatureEnabled(settings.features, "statusBarBooks")}
       />
 
       {/* Identity */}
@@ -263,7 +273,8 @@ export default async function AccountPage() {
         </h2>
         <FeatureToggles initial={settings.features} />
         <p className="text-[11px] text-muted-foreground/70 mt-2">
-          Opt in to experimental dashboard modules. Defaults are off.
+          Toggle dashboard modules and status-bar widgets. Changes apply
+          immediately.
         </p>
       </section>
 
