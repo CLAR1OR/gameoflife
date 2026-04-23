@@ -17,6 +17,7 @@ import { updateBook, deleteBook } from "@/modules/books/actions";
 import { toast } from "sonner";
 import type { Book } from "@/modules/books/types";
 import { CoverPicker } from "./cover-picker";
+import { LinkBookPicker } from "./link-book-picker";
 
 function StatusButton({
   value,
@@ -85,6 +86,7 @@ export function BookDetailsDialog({
   const [finishedAt, setFinishedAt] = useState(dateToInput(book.finishedAt));
   const [coverUrl, setCoverUrl] = useState<string | null>(book.coverUrl);
   const [pickingCover, setPickingCover] = useState(false);
+  const [linking, setLinking] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -95,6 +97,7 @@ export function BookDetailsDialog({
     setFinishedAt(dateToInput(book.finishedAt));
     setCoverUrl(book.coverUrl);
     setPickingCover(false);
+    setLinking(false);
   }, [book, open]);
 
   /** Wrap status changes so the dates auto-populate to today if empty. */
@@ -190,6 +193,13 @@ export function BookDetailsDialog({
                   </Badge>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setLinking((s) => !s)}
+                className="mt-2 text-[11px] text-muted-foreground hover:text-glow transition-colors inline-flex items-center gap-1"
+              >
+                🔗 {linking ? "Close" : "Already read this under another entry?"}
+              </button>
             </div>
           </div>
         </DialogHeader>
@@ -204,6 +214,20 @@ export function BookDetailsDialog({
                 setPickingCover(false);
               }}
               onCancel={() => setPickingCover(false)}
+            />
+          )}
+
+          {linking && (
+            <LinkBookPicker
+              currentBookId={book.id}
+              currentTitle={book.title}
+              currentAuthors={book.authors}
+              onDone={() => {
+                // The source book was deleted by the merge; close the dialog.
+                setLinking(false);
+                onOpenChange(false);
+              }}
+              onCancel={() => setLinking(false)}
             />
           )}
 

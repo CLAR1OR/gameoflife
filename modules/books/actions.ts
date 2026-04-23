@@ -146,6 +146,127 @@ export async function setBookStatus(id: string, status: "want" | "reading" | "re
   return updateBook(id, { status });
 }
 
+/**
+ * Client-side book search across the user's own library — used by the
+ * "this is the same book" picker. Case-insensitive match on title or authors.
+ */
+export async function searchMyBooks(
+  q: string,
+  excludeId: string
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    authors: string;
+    coverUrl: string | null;
+    status: string;
+    rating: number | null;
+    year: number | null;
+  }>
+> {
+  const session = await requireSession();
+  const term = q.trim().toLowerCase();
+  if (!term) return [];
+
+  const rows = await db
+    .select()
+    .from(book)
+    .where(eq(book.userId, session.user.id));
+
+  return rows
+    .filter(
+      (b) =>
+        b.id !== excludeId &&
+        (b.title.toLowerCase().includes(term) ||
+          b.authors.toLowerCase().includes(term))
+    )
+    .slice(0, 20)
+    .map((b) => ({
+      id: b.id,
+      title: b.title,
+      authors: b.authors,
+      coverUrl: b.coverUrl,
+      status: b.status,
+      rating: b.rating,
+      year: b.year,
+    }));
+}
+
+/**
+ * "This is the same book as that one." Moves every reading-list reference
+ * from `sourceId` over to `targetId`, then deletes the source book. Used to
+ * link a template-added placeholder to an existing library entry the user
+ * has already read.
+ */
+export async function mergeBooks(sourceId: string, targetId: string) {
+  const session = await requireSession();
+  if (sourceId === targetId) {
+    throw new Error("Cannot merge a book with itself");
+  }
+
+  const [source, target] = await Promise.all([
+    db.query.book.findFirst({
+      where: (b, { and: a, eq: e }) =>
+        a(e(b.id, sourceId), e(b.userId, session.user.id)),
+    }),
+    db.query.book.findFirst({
+      where: (b, { and: a, eq: e }) =>
+        a(e(b.id, targetId), e(b.userId, session.user.id)),
+    }),
+  ]);
+  if (!source || !target) throw new Error("Book not found");
+
+  // Find which reading-lists contain the target already — skip those for
+  // source so we don't create duplicate items within one list.
+  const targetLists = await db
+    .select({ listId: readingListItem.listId })
+    .from(readingListItem)
+    .where(
+      and(
+        eq(readingListItem.bookId, targetId),
+        eq(readingListItem.userId, session.user.id)
+      )
+    );
+  const targetListIds = new Set(targetLists.map((r) => r.listId));
+
+  const sourceListRows = await db
+    .select({ id: readingListItem.id, listId: readingListItem.listId })
+    .from(readingListItem)
+    .where(
+      and(
+        eq(readingListItem.bookId, sourceId),
+        eq(readingListItem.userId, session.user.id)
+      )
+    );
+
+  for (const row of sourceListRows) {
+    if (targetListIds.has(row.listId)) {
+      // Target is already in this list — just drop the source reference
+      await db.delete(readingListItem).where(eq(readingListItem.id, row.id));
+    } else {
+      // Re-point the item at the target book
+      await db
+        .update(readingListItem)
+        .set({ bookId: targetId })
+        .where(eq(readingListItem.id, row.id));
+    }
+  }
+
+  // Delete the source book. cascade handles any leftover links.
+  await db
+    .delete(book)
+    .where(and(eq(book.id, sourceId), eq(book.userId, session.user.id)));
+
+  // The target may now complete (or un-complete) a reading list — re-check.
+  await checkReadingListCompletion(session.user.id);
+  await checkAccountLevelAchievements(session.user.id);
+
+  revalidatePath("/books");
+  revalidatePath("/books/challenges");
+  revalidatePath("/achievements");
+  return { mergedIntoId: targetId };
+}
+
 export async function rateBook(id: string, rating: number | null) {
   return updateBook(id, { rating });
 }
