@@ -8,6 +8,7 @@ import { getQuestStats } from "@/modules/quests/queries";
 import { getAchievementCounts } from "@/lib/account-achievements";
 import { getUserSettings } from "@/modules/settings/queries";
 import { getNetWorth, getAccountAttention } from "@/modules/finance/queries";
+import { getCurrentlyReading } from "@/modules/books/queries";
 import { formatMoney } from "@/lib/money";
 import { getLevelProgress } from "@/lib/level";
 import { CharacterStatusBar } from "@/components/dashboard/character-status-bar";
@@ -83,6 +84,7 @@ export default async function AccountPage() {
     totalSubskillsResult,
     totalHabitsResult,
     habitCompletionsResult,
+    currentlyReading,
   ] = await Promise.all([
     getTotalAccountXp(userId),
     getCategoriesByUser(userId),
@@ -100,6 +102,7 @@ export default async function AccountPage() {
       .select({ c: count() })
       .from(habitCompletion)
       .where(eq(habitCompletion.userId, userId)),
+    getCurrentlyReading(userId),
   ]);
 
   const level = getLevelProgress(totalAccountXp);
@@ -127,6 +130,7 @@ export default async function AccountPage() {
         currency={settings.currency}
         staleAccountCount={accountAttention.staleAccountCount}
         totalAccounts={accountAttention.totalAccounts}
+        currentlyReading={currentlyReading}
       />
 
       {/* Identity */}

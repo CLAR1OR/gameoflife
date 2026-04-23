@@ -115,6 +115,7 @@ export const userSettings = sqliteTable("user_settings", {
   features: text("features", { mode: "json" }).$type<Record<string, boolean>>(),
   currency: text("currency").notNull().default("EUR"),
   generalXp: integer("general_xp").notNull().default(0),
+  yearlyBookGoal: integer("yearly_book_goal").notNull().default(0),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 

@@ -5,6 +5,7 @@ export type UserSettings = {
   netWorth: number;
   features: Record<string, boolean>;
   currency: string;
+  yearlyBookGoal: number;
 };
 
 export async function getUserSettings(userId: string): Promise<UserSettings> {
@@ -15,5 +16,6 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
     netWorth: row?.netWorth ?? 0,
     features: row?.features ?? {},
     currency: row?.currency ?? DEFAULT_CURRENCY,
+    yearlyBookGoal: row?.yearlyBookGoal ?? 0,
   };
 }

@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { BookCard } from "@/components/books/book-card";
 import { AddBookDialog } from "@/components/books/add-book-dialog";
 import { CsvImportDialog } from "@/components/books/csv-import-dialog";
+import { YearlyGoalRing } from "@/components/books/yearly-goal-ring";
+import { ReadingStats } from "@/components/books/reading-stats";
+import { ReadingFeed } from "@/components/books/reading-feed";
 import type { Book, BookStatus } from "@/modules/books/types";
+import type { MonthBucket, YearBucket } from "@/modules/books/queries";
 
 type Filter = "all" | BookStatus;
 type Sort = "recent" | "rating" | "author" | "title";
@@ -16,6 +19,12 @@ type Sort = "recent" | "rating" | "author" | "title";
 export function BooksView({
   books,
   stats,
+  yearTotal,
+  yearlyGoal,
+  months,
+  years,
+  ratings,
+  recent,
 }: {
   books: Book[];
   stats: {
@@ -26,6 +35,12 @@ export function BooksView({
     pagesRead: number;
     avgRating: number | null;
   };
+  yearTotal: number;
+  yearlyGoal: number;
+  months: MonthBucket[];
+  years: YearBucket[];
+  ratings: number[];
+  recent: Book[];
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
@@ -89,6 +104,9 @@ export function BooksView({
           </Button>
         </div>
       </div>
+
+      {/* Yearly goal ring */}
+      <YearlyGoalRing read={yearTotal} goal={yearlyGoal} />
 
       {/* Currently reading spotlight */}
       {currentlyReading.length > 0 && (
@@ -201,6 +219,12 @@ export function BooksView({
           ))}
         </div>
       )}
+
+      {/* Stats */}
+      <ReadingStats months={months} years={years} ratings={ratings} />
+
+      {/* Reading feed */}
+      <ReadingFeed books={recent} />
 
       <AddBookDialog open={addOpen} onOpenChange={setAddOpen} />
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />

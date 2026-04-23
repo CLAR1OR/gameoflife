@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { book, readingList, readingListItem } from "@/lib/db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte } from "drizzle-orm";
 import type { Book, ReadingList, ReadingListWithProgress } from "./types";
 
 export async function getBooksByUser(userId: string): Promise<Book[]> {
@@ -93,6 +93,132 @@ export async function getActivatedReadingListTemplateIds(
     if (r.templateId) ids.add(r.templateId);
   }
   return ids;
+}
+
+/** Books currently in "reading" status, most recently started first. */
+export async function getCurrentlyReading(userId: string): Promise<Book[]> {
+  return db
+    .select()
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "reading")))
+    .orderBy(desc(book.startedAt), desc(book.createdAt));
+}
+
+/** Number of books finished in the current year (local time). */
+export async function getBooksReadThisYear(userId: string): Promise<number> {
+  const now = new Date();
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const rows = await db
+    .select({ c: book.id })
+    .from(book)
+    .where(
+      and(
+        eq(book.userId, userId),
+        eq(book.status, "read"),
+        gte(book.finishedAt, yearStart)
+      )
+    );
+  return rows.length;
+}
+
+export type MonthBucket = { key: string; label: string; count: number; pages: number };
+export type YearBucket = { year: number; count: number; pages: number };
+
+/**
+ * Monthly breakdown of finishes across the last 12 months, ending with the
+ * current month (buckets are month-of-year labels like "Mar").
+ */
+export async function getBooksPerMonth(
+  userId: string,
+  months = 12
+): Promise<MonthBucket[]> {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+  const rows = await db
+    .select({
+      finishedAt: book.finishedAt,
+      pages: book.pages,
+    })
+    .from(book)
+    .where(
+      and(
+        eq(book.userId, userId),
+        eq(book.status, "read"),
+        gte(book.finishedAt, start)
+      )
+    );
+
+  const buckets: MonthBucket[] = [];
+  for (let i = 0; i < months; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString(undefined, { month: "short" });
+    buckets.push({ key, label, count: 0, pages: 0 });
+  }
+
+  for (const r of rows) {
+    if (!r.finishedAt) continue;
+    const d = typeof r.finishedAt === "number" ? new Date(r.finishedAt * 1000) : r.finishedAt;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const bucket = buckets.find((b) => b.key === key);
+    if (bucket) {
+      bucket.count++;
+      bucket.pages += r.pages ?? 0;
+    }
+  }
+  return buckets;
+}
+
+/** Year-by-year finish counts across the user's full history. */
+export async function getBooksPerYear(userId: string): Promise<YearBucket[]> {
+  const rows = await db
+    .select({ finishedAt: book.finishedAt, pages: book.pages })
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+
+  const map = new Map<number, YearBucket>();
+  for (const r of rows) {
+    if (!r.finishedAt) continue;
+    const d =
+      typeof r.finishedAt === "number" ? new Date(r.finishedAt * 1000) : r.finishedAt;
+    const y = d.getFullYear();
+    if (!map.has(y)) map.set(y, { year: y, count: 0, pages: 0 });
+    const bucket = map.get(y)!;
+    bucket.count++;
+    bucket.pages += r.pages ?? 0;
+  }
+  return Array.from(map.values()).sort((a, b) => a.year - b.year);
+}
+
+/** Rating distribution: count of books at each 1-5 rating. */
+export async function getRatingDistribution(
+  userId: string
+): Promise<number[]> {
+  const rows = await db
+    .select({ rating: book.rating })
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+  const dist = [0, 0, 0, 0, 0]; // indices 0..4 = ratings 1..5
+  for (const r of rows) {
+    if (r.rating && r.rating >= 1 && r.rating <= 5) {
+      dist[r.rating - 1]++;
+    }
+  }
+  return dist;
+}
+
+/** Recently finished books, most recent first. */
+export async function getRecentlyFinished(
+  userId: string,
+  limit = 20
+): Promise<Book[]> {
+  return db
+    .select()
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "read")))
+    .orderBy(desc(book.finishedAt), desc(book.createdAt))
+    .limit(limit);
 }
 
 export async function getBookStats(userId: string): Promise<{

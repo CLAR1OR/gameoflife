@@ -7,6 +7,7 @@ import {
   getTotalAccountXp,
 } from "@/modules/habits/queries";
 import { getActiveQuests } from "@/modules/quests/queries";
+import { getCurrentlyReading } from "@/modules/books/queries";
 import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
 import { todayISO } from "@/lib/date";
 import { ensureLevelAchievementsSeeded } from "@/lib/account-achievements";
@@ -59,6 +60,7 @@ export default async function DashboardPage() {
     settings,
     netWorth,
     accountAttention,
+    currentlyReading,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
@@ -68,6 +70,7 @@ export default async function DashboardPage() {
     getUserSettings(userId),
     getNetWorth(userId),
     getAccountAttention(userId),
+    getCurrentlyReading(userId),
   ]);
 
   const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
@@ -107,6 +110,7 @@ export default async function DashboardPage() {
         currency={settings.currency}
         staleAccountCount={accountAttention.staleAccountCount}
         totalAccounts={accountAttention.totalAccounts}
+        currentlyReading={currentlyReading}
       />
 
       {/* Date */}
