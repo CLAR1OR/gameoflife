@@ -215,6 +215,7 @@ export async function activateReadingListTemplate(templateId: string) {
   });
 
   await ensureBookAchievementsSeeded(session.user.id);
+  await ensureExtraBookAchievementsSeeded(session.user.id);
 
   revalidatePath("/books");
   revalidatePath("/books/challenges");
@@ -306,7 +307,9 @@ export async function importGoodreadsCsv(csvText: string) {
   }
 
   await ensureBookAchievementsSeeded(session.user.id);
+  await ensureExtraBookAchievementsSeeded(session.user.id);
   await checkBooksReadAchievements(session.user.id);
+  await checkExtraBookAchievements(session.user.id);
   await checkAccountLevelAchievements(session.user.id);
 
   revalidatePath("/books");
@@ -429,15 +432,243 @@ async function checkReadingListCompletion(userId: string) {
   }
 }
 
+// =====================
+// ADVANCED BOOK ACHIEVEMENTS
+// =====================
+
+type ExtraBookAchievement = {
+  name: string;
+  description: string;
+  icon: string;
+  triggerType:
+    | "book_max_pages"
+    | "book_total_pages"
+    | "book_burst"
+    | "book_rating_streak"
+    | "book_monthly_streak";
+  triggerCount: number;
+};
+
+const EXTRA_BOOK_ACHIEVEMENTS: ExtraBookAchievement[] = [
+  {
+    name: "Marathon",
+    description: "Finish a book of 1000 pages or more",
+    icon: "🏃",
+    triggerType: "book_max_pages",
+    triggerCount: 1000,
+  },
+  {
+    name: "Ten Thousand Pages",
+    description: "Read 10,000 pages total",
+    icon: "📄",
+    triggerType: "book_total_pages",
+    triggerCount: 10_000,
+  },
+  {
+    name: "Fifty Thousand Pages",
+    description: "Read 50,000 pages total",
+    icon: "📜",
+    triggerType: "book_total_pages",
+    triggerCount: 50_000,
+  },
+  {
+    name: "One Hundred Thousand Pages",
+    description: "Read 100,000 pages total",
+    icon: "🗿",
+    triggerType: "book_total_pages",
+    triggerCount: 100_000,
+  },
+  {
+    name: "Speed Reader",
+    description: "Finish 3 books within any 7-day window",
+    icon: "⚡",
+    triggerType: "book_burst",
+    triggerCount: 3,
+  },
+  {
+    name: "Perfect Shelf",
+    description: "5 consecutive 5-star reads",
+    icon: "⭐",
+    triggerType: "book_rating_streak",
+    triggerCount: 5,
+  },
+  {
+    name: "Year of Reading",
+    description: "Finish at least one book every month for 12 months in a row",
+    icon: "📅",
+    triggerType: "book_monthly_streak",
+    triggerCount: 12,
+  },
+];
+
+export async function ensureExtraBookAchievementsSeeded(userId: string) {
+  const existing = await db.query.achievement.findMany({
+    where: (a, { and: _and, eq: _eq, or: _or }) =>
+      _and(
+        _eq(a.userId, userId),
+        _or(
+          _eq(a.triggerType, "book_max_pages"),
+          _eq(a.triggerType, "book_total_pages"),
+          _eq(a.triggerType, "book_burst"),
+          _eq(a.triggerType, "book_rating_streak"),
+          _eq(a.triggerType, "book_monthly_streak")
+        )
+      ),
+  });
+  // Dedup key: triggerType + triggerCount
+  const existingKeys = new Set(
+    existing.map((a) => `${a.triggerType}:${a.triggerCount}`)
+  );
+  const toInsert = EXTRA_BOOK_ACHIEVEMENTS.filter(
+    (ba) => !existingKeys.has(`${ba.triggerType}:${ba.triggerCount}`)
+  );
+  if (toInsert.length === 0) return;
+
+  await db.insert(achievement).values(
+    toInsert.map((ba) => ({
+      userId,
+      categoryId: null,
+      source: "custom" as const,
+      name: ba.name,
+      description: ba.description,
+      icon: ba.icon,
+      triggerType: ba.triggerType,
+      triggerCount: ba.triggerCount,
+    }))
+  );
+}
+
+/** Iterate sorted timestamps, return true iff any 3 consecutive entries
+ * span <= 6 days (i.e. 3 books within a 7-day window). */
+function hasBurst(
+  timestamps: number[],
+  need: number,
+  windowDays: number
+): boolean {
+  if (timestamps.length < need) return false;
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  const sorted = [...timestamps].sort((a, b) => a - b);
+  for (let i = 0; i <= sorted.length - need; i++) {
+    if (sorted[i + need - 1] - sorted[i] <= windowMs) return true;
+  }
+  return false;
+}
+
+/** Check every non-count book achievement and unlock/re-lock as needed. */
+async function checkExtraBookAchievements(userId: string) {
+  const achievements = await db.query.achievement.findMany({
+    where: (a, { and: _and, eq: _eq, or: _or }) =>
+      _and(
+        _eq(a.userId, userId),
+        _or(
+          _eq(a.triggerType, "book_max_pages"),
+          _eq(a.triggerType, "book_total_pages"),
+          _eq(a.triggerType, "book_burst"),
+          _eq(a.triggerType, "book_rating_streak"),
+          _eq(a.triggerType, "book_monthly_streak")
+        )
+      ),
+  });
+  if (achievements.length === 0) return [];
+
+  const readBooks = await db
+    .select()
+    .from(book)
+    .where(and(eq(book.userId, userId), eq(book.status, "read")));
+
+  // Precompute metrics once
+  const maxPages = readBooks.reduce(
+    (m, b) => Math.max(m, b.pages ?? 0),
+    0
+  );
+  const totalPages = readBooks.reduce((s, b) => s + (b.pages ?? 0), 0);
+
+  // Finish timestamps for burst + monthly calculations
+  const finishes = readBooks
+    .filter((b) => b.finishedAt)
+    .map((b) => {
+      const d =
+        typeof b.finishedAt === "number"
+          ? new Date((b.finishedAt as number) * 1000)
+          : (b.finishedAt as Date);
+      return { t: d.getTime(), d, rating: b.rating };
+    })
+    .sort((a, b) => a.t - b.t);
+
+  // Rating streak: take the most recent N finishes in order, check all are 5
+  function hasRatingStreak(n: number): boolean {
+    if (finishes.length < n) return false;
+    const recent = finishes.slice(-n);
+    return recent.every((f) => f.rating === 5);
+  }
+
+  // Monthly streak: count consecutive months ending in current month,
+  // each containing >= 1 finish.
+  function hasMonthlyStreak(n: number): boolean {
+    if (finishes.length === 0) return false;
+    const byMonth = new Set<string>();
+    for (const f of finishes) {
+      byMonth.add(
+        `${f.d.getFullYear()}-${String(f.d.getMonth() + 1).padStart(2, "0")}`
+      );
+    }
+    const now = new Date();
+    for (let i = 0; i < n; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!byMonth.has(key)) return false;
+    }
+    return true;
+  }
+
+  const newlyUnlocked: string[] = [];
+  for (const a of achievements) {
+    if (a.triggerCount == null) continue;
+    let should = false;
+    if (a.triggerType === "book_max_pages") {
+      should = maxPages >= a.triggerCount;
+    } else if (a.triggerType === "book_total_pages") {
+      should = totalPages >= a.triggerCount;
+    } else if (a.triggerType === "book_burst") {
+      should = hasBurst(
+        finishes.map((f) => f.t),
+        a.triggerCount,
+        7
+      );
+    } else if (a.triggerType === "book_rating_streak") {
+      should = hasRatingStreak(a.triggerCount);
+    } else if (a.triggerType === "book_monthly_streak") {
+      should = hasMonthlyStreak(a.triggerCount);
+    }
+
+    if (should && !a.isUnlocked) {
+      await db
+        .update(achievement)
+        .set({ isUnlocked: true, unlockedAt: new Date() })
+        .where(eq(achievement.id, a.id));
+      newlyUnlocked.push(a.name);
+    } else if (!should && a.isUnlocked) {
+      await db
+        .update(achievement)
+        .set({ isUnlocked: false, unlockedAt: null })
+        .where(eq(achievement.id, a.id));
+    }
+  }
+  return newlyUnlocked;
+}
+
 async function onBookRead(userId: string) {
   await ensureBookAchievementsSeeded(userId);
+  await ensureExtraBookAchievementsSeeded(userId);
   await checkBooksReadAchievements(userId);
+  await checkExtraBookAchievements(userId);
   await checkReadingListCompletion(userId);
   await checkAccountLevelAchievements(userId);
 }
 
 async function onBookUnread(userId: string) {
   await checkBooksReadAchievements(userId);
+  await checkExtraBookAchievements(userId);
   await checkReadingListCompletion(userId);
   await checkAccountLevelAchievements(userId);
 }
