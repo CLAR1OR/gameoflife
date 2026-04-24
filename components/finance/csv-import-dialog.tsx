@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import {
   Dialog,
   DialogContent,
@@ -110,10 +111,7 @@ function CsvImportDialog({
             (xpAwarded ? ` · +${xpAwarded} XP` : "")
         );
         if (newAchievements.length > 0) {
-          toast.success(
-            `🏆 Achievement unlocked: ${newAchievements.join(", ")}!`,
-            { duration: 6000 }
-          );
+          celebrate(newAchievements);
         }
         onOpenChange(false);
       } catch (e) {

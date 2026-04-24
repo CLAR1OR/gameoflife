@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { quest, achievement } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { quest, questTask, achievement } from "@/lib/db/schema";
+import { and, asc, count, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { MAX_SIDE_QUESTS } from "./types";
@@ -25,6 +25,8 @@ export async function createQuest(data: {
   description?: string;
   icon?: string;
   xpReward?: number;
+  dueAt?: Date | null;
+  tasks?: string[];
   autoAchievement?: QuestAutoAchievementSpec;
 }) {
   const session = await requireSession();
@@ -56,9 +58,23 @@ export async function createQuest(data: {
       icon: data.icon ?? (data.type === "main" ? "⚔️" : "📜"),
       xpReward: data.xpReward ?? (data.type === "main" ? 100 : 25),
       status: "active",
+      dueAt: data.dueAt ?? null,
       sortOrder: activeOfType.length,
     })
     .returning();
+
+  if (data.tasks && data.tasks.length > 0) {
+    await db.insert(questTask).values(
+      data.tasks
+        .map((name, i) => ({
+          questId: row.id,
+          userId: session.user.id,
+          name: name.trim(),
+          sortOrder: i,
+        }))
+        .filter((t) => t.name.length > 0)
+    );
+  }
 
   // Create per-quest achievement if requested
   if (data.autoAchievement?.enabled) {
@@ -91,6 +107,7 @@ export async function updateQuest(
     description?: string | null;
     icon?: string;
     xpReward?: number;
+    dueAt?: Date | null;
   }
 ) {
   const session = await requireSession();
@@ -100,6 +117,80 @@ export async function updateQuest(
     .where(and(eq(quest.id, id), eq(quest.userId, session.user.id)));
 
   revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+// =====================
+// TASKS (checklist)
+// =====================
+
+export async function addQuestTask(questId: string, name: string) {
+  const session = await requireSession();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Task name is required");
+  // Confirm the quest belongs to the user — avoid writing a task for someone
+  // else's quest via a crafted ID.
+  const q = await db.query.quest.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, questId), e(row.userId, session.user.id)),
+  });
+  if (!q) throw new Error("Quest not found");
+
+  const [{ c }] = await db
+    .select({ c: count() })
+    .from(questTask)
+    .where(eq(questTask.questId, questId));
+
+  await db.insert(questTask).values({
+    questId,
+    userId: session.user.id,
+    name: trimmed,
+    sortOrder: Number(c),
+  });
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+export async function toggleQuestTask(taskId: string) {
+  const session = await requireSession();
+  const task = await db.query.questTask.findFirst({
+    where: (t, { and: a, eq: e }) =>
+      a(e(t.id, taskId), e(t.userId, session.user.id)),
+  });
+  if (!task) throw new Error("Task not found");
+
+  await db
+    .update(questTask)
+    .set({
+      completed: !task.completed,
+      completedAt: !task.completed ? new Date() : null,
+    })
+    .where(eq(questTask.id, taskId));
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+export async function deleteQuestTask(taskId: string) {
+  const session = await requireSession();
+  await db
+    .delete(questTask)
+    .where(and(eq(questTask.id, taskId), eq(questTask.userId, session.user.id)));
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+export async function renameQuestTask(taskId: string, name: string) {
+  const session = await requireSession();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Task name is required");
+  await db
+    .update(questTask)
+    .set({ name: trimmed })
+    .where(and(eq(questTask.id, taskId), eq(questTask.userId, session.user.id)));
+  revalidatePath("/quests");
+  revalidatePath("/");
 }
 
 export async function completeQuest(id: string) {

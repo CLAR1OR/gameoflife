@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import { deleteTransaction } from "@/modules/finance/actions";
 import { TransactionEditDialog } from "./transaction-edit-dialog";
 import type {
@@ -61,10 +62,7 @@ export function TransactionList({
             (res.xpAwarded ? ` · +${res.xpAwarded} XP` : "")
         );
         if (res.newAchievements && res.newAchievements.length > 0) {
-          toast.success(
-            `🏆 Achievement unlocked: ${res.newAchievements.join(", ")}!`,
-            { duration: 6000 }
-          );
+          celebrate(res.newAchievements);
         }
         if (expandedId === id) setExpandedId(null);
       } catch (err) {

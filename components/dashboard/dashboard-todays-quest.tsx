@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { completeMilestone } from "@/modules/skills/actions";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import type { TodaysQuest } from "@/modules/skills/queries";
 
 export function DashboardTodaysQuestRow({ quest }: { quest: TodaysQuest }) {
@@ -33,10 +34,7 @@ export function DashboardTodaysQuestRow({ quest }: { quest: TodaysQuest }) {
         });
       }
       if (result.newAchievements && result.newAchievements.length > 0) {
-        toast.success(
-          `🏆 Achievement unlocked: ${result.newAchievements.join(", ")}!`,
-          { duration: 6000 }
-        );
+        celebrate(result.newAchievements);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");

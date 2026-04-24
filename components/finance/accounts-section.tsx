@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,10 +131,7 @@ function AccountCard({
             : "Balance updated"
         );
         if (res.newAchievements && res.newAchievements.length > 0) {
-          toast.success(
-            `🏆 Achievement unlocked: ${res.newAchievements.join(", ")}!`,
-            { duration: 6000 }
-          );
+          celebrate(res.newAchievements);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Failed");
@@ -152,10 +150,7 @@ function AccountCard({
             : "Check-in logged"
         );
         if (res.newAchievements && res.newAchievements.length > 0) {
-          toast.success(
-            `🏆 Achievement unlocked: ${res.newAchievements.join(", ")}!`,
-            { duration: 6000 }
-          );
+          celebrate(res.newAchievements);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Failed");
@@ -325,10 +320,7 @@ function AddAccountForm({ onDone }: { onDone: () => void }) {
         });
         toast.success(`"${name.trim()}" added`);
         if (res.newAchievements && res.newAchievements.length > 0) {
-          toast.success(
-            `🏆 Achievement unlocked: ${res.newAchievements.join(", ")}!`,
-            { duration: 6000 }
-          );
+          celebrate(res.newAchievements);
         }
         onDone();
       } catch (e) {

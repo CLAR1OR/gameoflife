@@ -5,13 +5,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { completeQuest } from "@/modules/quests/actions";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import type { Quest } from "@/modules/quests/types";
+import { celebrate } from "@/lib/celebrate";
+import type { QuestWithTasks } from "@/modules/quests/types";
 
 // =====================
 // Main Quest — compact banner
 // =====================
-export function DashboardMainQuest({ quest }: { quest: Quest }) {
+export function DashboardMainQuest({ quest }: { quest: QuestWithTasks }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -23,10 +25,7 @@ export function DashboardMainQuest({ quest }: { quest: Quest }) {
         description: `"${quest.name}"`,
       });
       if (result.newAchievements.length > 0) {
-        toast.success(
-          `🏆 Achievement unlocked: ${result.newAchievements.join(", ")}!`,
-          { duration: 6000 }
-        );
+        celebrate(result.newAchievements);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -69,6 +68,17 @@ export function DashboardMainQuest({ quest }: { quest: Quest }) {
               {quest.description}
             </p>
           )}
+          {quest.progress.total > 0 && (
+            <div className="mt-1.5 space-y-0.5">
+              <div className="flex items-center justify-between text-[9px] font-mono text-xp/80">
+                <span>
+                  {quest.progress.done}/{quest.progress.total} tasks
+                </span>
+                <span>{quest.progress.pct}%</span>
+              </div>
+              <Progress value={quest.progress.pct} className="h-1 xp-bar" />
+            </div>
+          )}
         </div>
         <Button
           size="sm"
@@ -102,7 +112,7 @@ export function DashboardEmptyMainQuest() {
 // =====================
 // Side Quest — compact square tile
 // =====================
-export function DashboardSideQuest({ quest }: { quest: Quest }) {
+export function DashboardSideQuest({ quest }: { quest: QuestWithTasks }) {
   const [loading, setLoading] = useState(false);
 
   async function handleComplete(e: React.MouseEvent) {
@@ -113,10 +123,7 @@ export function DashboardSideQuest({ quest }: { quest: Quest }) {
       const result = await completeQuest(quest.id);
       toast.success(`+${result.xp} XP · "${quest.name}"`);
       if (result.newAchievements.length > 0) {
-        toast.success(
-          `🏆 ${result.newAchievements.join(", ")}!`,
-          { duration: 5000 }
-        );
+        celebrate(result.newAchievements);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -139,6 +146,11 @@ export function DashboardSideQuest({ quest }: { quest: Quest }) {
       <div className="text-[11px] font-medium leading-tight line-clamp-2 mb-1.5 min-h-[1.5em]">
         {quest.name}
       </div>
+      {quest.progress.total > 0 && (
+        <div className="mb-1.5">
+          <Progress value={quest.progress.pct} className="h-0.5 xp-bar" />
+        </div>
+      )}
       <Button
         size="sm"
         onClick={handleComplete}

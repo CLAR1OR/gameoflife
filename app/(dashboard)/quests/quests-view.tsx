@@ -6,15 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { QuestSlot, EmptyQuestSlot } from "@/components/quests/quest-slot";
 import { QuestDialog } from "@/components/quests/quest-dialog";
 import { QuestArchive } from "@/components/quests/quest-archive";
-import { MAX_SIDE_QUESTS, type QuestStats, type Quest } from "@/modules/quests/types";
+import {
+  MAX_SIDE_QUESTS,
+  type QuestStats,
+  type QuestWithTasks,
+} from "@/modules/quests/types";
 
 export function QuestsView({
   active,
   archive,
   stats,
 }: {
-  active: { main: Quest | null; side: Quest[] };
-  archive: Quest[];
+  active: { main: QuestWithTasks | null; side: QuestWithTasks[] };
+  archive: QuestWithTasks[];
   stats: QuestStats;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);

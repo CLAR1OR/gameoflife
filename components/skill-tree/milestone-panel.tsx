@@ -14,6 +14,7 @@ import {
 } from "@/modules/skills/actions";
 import { getLevelName, xpForNextLevel } from "@/lib/xp";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import type { SkillWithPrerequisites } from "@/modules/skills/types";
 
 export function MilestonePanel({ skill }: { skill: SkillWithPrerequisites }) {
@@ -48,10 +49,7 @@ export function MilestonePanel({ skill }: { skill: SkillWithPrerequisites }) {
         });
       }
       if (result.newAchievements && result.newAchievements.length > 0) {
-        toast.success(
-          `🏆 Achievement unlocked: ${result.newAchievements.join(", ")}!`,
-          { duration: 6000 }
-        );
+        celebrate(result.newAchievements);
       }
     }
     setLoading(null);

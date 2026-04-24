@@ -8,6 +8,7 @@ import {
 } from "@/modules/habits/actions";
 import { todayISO } from "@/lib/date";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import type { HabitWithLink } from "@/modules/habits/types";
 
 export function DashboardHabitRow({ habit }: { habit: HabitWithLink }) {
@@ -28,10 +29,7 @@ export function DashboardHabitRow({ habit }: { habit: HabitWithLink }) {
             : `+${habit.xpPerCompletion} XP`,
         });
         if (result.newAchievements.length > 0) {
-          toast.success(
-            `🏆 Achievement unlocked: ${result.newAchievements.join(", ")}!`,
-            { duration: 6000 }
-          );
+          celebrate(result.newAchievements);
         }
       } else {
         const result = await toggleHabitCompletion(habit.id, today);

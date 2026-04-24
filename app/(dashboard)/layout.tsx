@@ -1,5 +1,7 @@
 import { TopNav } from "@/components/layout/top-nav";
 import { BrandMark } from "@/components/layout/brand-mark";
+import { GlobalSearch } from "@/components/layout/global-search";
+import { CelebrationModal } from "@/components/celebrations/celebration-modal";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function DashboardLayout({
@@ -16,6 +18,8 @@ export default function DashboardLayout({
         </div>
       </main>
       <BrandMark />
+      <GlobalSearch />
+      <CelebrationModal />
       <Toaster />
     </div>
   );

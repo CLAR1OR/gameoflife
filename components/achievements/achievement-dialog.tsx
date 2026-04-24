@@ -18,6 +18,7 @@ import {
   deleteAchievement,
 } from "@/modules/skills/actions";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import type { Achievement } from "@/modules/skills/types";
 
 const ICON_CHOICES = [
@@ -65,7 +66,7 @@ export function AchievementDialog({
         toast.success(`Unmarked: ${achievement.name}`);
       } else {
         await markAchievementManual(achievement.id);
-        toast.success(`Achievement unlocked: ${achievement.name}! 🏆`);
+        celebrate([achievement.name]);
       }
       onOpenChange(false);
     } catch (e) {

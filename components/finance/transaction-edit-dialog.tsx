@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
 import {
   Dialog,
   DialogContent,
@@ -86,10 +87,7 @@ export function TransactionEditDialog({
           (res.xpAwarded ? ` · +${res.xpAwarded} XP` : "")
       );
       if (res.newAchievements && res.newAchievements.length > 0) {
-        toast.success(
-          `🏆 Achievement unlocked: ${res.newAchievements.join(", ")}!`,
-          { duration: 6000 }
-        );
+        celebrate(res.newAchievements);
       }
       onOpenChange(false);
     } catch (err) {

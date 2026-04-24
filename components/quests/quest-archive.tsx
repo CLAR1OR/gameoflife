@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { deleteQuest, restoreQuest } from "@/modules/quests/actions";
 import { toast } from "sonner";
-import type { Quest } from "@/modules/quests/types";
+import type { QuestWithTasks } from "@/modules/quests/types";
 
 function formatDate(ts: Date | number): string {
   const d = typeof ts === "number" ? new Date(ts * 1000) : ts;
@@ -16,7 +16,7 @@ function formatDate(ts: Date | number): string {
   });
 }
 
-function ArchivedRow({ quest: q }: { quest: Quest }) {
+function ArchivedRow({ quest: q }: { quest: QuestWithTasks }) {
   const [expanded, setExpanded] = useState(false);
   const completed = q.status === "completed";
 
@@ -114,7 +114,7 @@ function ArchivedRow({ quest: q }: { quest: Quest }) {
   );
 }
 
-export function QuestArchive({ quests }: { quests: Quest[] }) {
+export function QuestArchive({ quests }: { quests: QuestWithTasks[] }) {
   if (quests.length === 0) return null;
   const completed = quests.filter((q) => q.status === "completed").length;
   const abandoned = quests.filter((q) => q.status === "abandoned").length;

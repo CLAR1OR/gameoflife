@@ -3,23 +3,55 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   completeQuest,
   abandonQuest,
   deleteQuest,
 } from "@/modules/quests/actions";
 import { toast } from "sonner";
-import type { Quest } from "@/modules/quests/types";
+import { celebrate } from "@/lib/celebrate";
+import type { QuestWithTasks } from "@/modules/quests/types";
 import { QuestDialog } from "./quest-dialog";
+import { QuestChecklist } from "./quest-checklist";
+
+function formatDueDate(due: Date | number): {
+  label: string;
+  overdue: boolean;
+  soon: boolean;
+} {
+  const d = typeof due === "number" ? new Date(due * 1000) : due;
+  const diffMs = d.getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const overdue = diffMs < 0;
+  const soon = !overdue && diffDays <= 3;
+  let label: string;
+  if (overdue) {
+    const days = Math.abs(diffDays);
+    label = days === 0 ? "due today" : `${days}d overdue`;
+  } else if (diffDays === 0) {
+    label = "due today";
+  } else if (diffDays === 1) {
+    label = "due tomorrow";
+  } else if (diffDays <= 14) {
+    label = `due in ${diffDays}d`;
+  } else {
+    label = `due ${d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    })}`;
+  }
+  return { label, overdue, soon };
+}
 
 export function QuestSlot({
   quest,
   variant,
 }: {
-  quest: Quest;
+  quest: QuestWithTasks;
   variant: "main" | "side";
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(variant === "main");
   const [editOpen, setEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +62,9 @@ export function QuestSlot({
       : "border-glow/30 hover:border-glow/60";
   const accentGlow = variant === "main" ? "glow-gold" : "glow-green";
 
+  const due = quest.dueAt ? formatDueDate(quest.dueAt) : null;
+  const hasTasks = quest.progress.total > 0;
+
   async function handleComplete() {
     setLoading(true);
     try {
@@ -38,10 +73,7 @@ export function QuestSlot({
         description: `"${quest.name}"`,
       });
       if (result.newAchievements.length > 0) {
-        toast.success(
-          `🏆 Achievement unlocked: ${result.newAchievements.join(", ")}!`,
-          { duration: 6000 }
-        );
+        celebrate(result.newAchievements);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -71,76 +103,112 @@ export function QuestSlot({
     }
   }
 
+  function DueBadge() {
+    if (!due) return null;
+    const cls = due.overdue
+      ? "border-destructive/50 text-destructive bg-destructive/10"
+      : due.soon
+        ? "border-yellow-500/40 text-yellow-400 bg-yellow-500/10"
+        : "border-border text-muted-foreground bg-black/20";
+    return (
+      <Badge
+        variant="outline"
+        className={`text-[10px] font-mono ${cls}`}
+      >
+        ⏳ {due.label}
+      </Badge>
+    );
+  }
+
   if (variant === "main") {
     return (
       <>
         <div
           className={`group relative rounded-2xl border-2 bg-card ${accentBorder} ${accentGlow} transition-all overflow-hidden`}
         >
-          <div className="p-5 flex items-start gap-4">
-            <div className="text-5xl shrink-0 drop-shadow-lg">{quest.icon}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge
-                  variant="outline"
-                  className="border-xp/40 text-xp bg-black/20 text-[10px] font-mono"
-                >
-                  ⚔️ MAIN QUEST
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="border-xp/40 text-xp bg-black/20 text-[10px] font-mono"
-                >
-                  +{quest.xpReward} XP
-                </Badge>
+          <div className="p-5 space-y-3">
+            <div className="flex items-start gap-4">
+              <div className="text-5xl shrink-0 drop-shadow-lg">
+                {quest.icon}
               </div>
-              <h3 className="text-2xl font-bold text-foreground leading-tight">
-                {quest.name}
-              </h3>
-              {quest.description && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded((s) => !s)}
-                  className="text-xs text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1 transition-colors"
-                >
-                  <span>{expanded ? "▾" : "▸"}</span>
-                  <span>{expanded ? "Hide details" : "Show details"}</span>
-                </button>
-              )}
-              {expanded && quest.description && (
-                <p className="text-sm text-foreground/80 whitespace-pre-wrap mt-2">
-                  {quest.description}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2 shrink-0">
-              <Button
-                size="sm"
-                onClick={handleComplete}
-                disabled={loading}
-                className="bg-xp/20 hover:bg-xp/30 text-xp border border-xp/40"
-              >
-                ✓ Complete
-              </Button>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className="border-xp/40 text-xp bg-black/20 text-[10px] font-mono"
+                  >
+                    ⚔️ MAIN QUEST
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-xp/40 text-xp bg-black/20 text-[10px] font-mono"
+                  >
+                    +{quest.xpReward} XP
+                  </Badge>
+                  <DueBadge />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground leading-tight">
+                  {quest.name}
+                </h3>
+                {quest.description && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((s) => !s)}
+                    className="text-xs text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1 transition-colors"
+                  >
+                    <span>{expanded ? "▾" : "▸"}</span>
+                    <span>{expanded ? "Hide details" : "Show details"}</span>
+                  </button>
+                )}
+                {expanded && quest.description && (
+                  <p className="text-sm text-foreground/80 whitespace-pre-wrap mt-2">
+                    {quest.description}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => setEditOpen(true)}
+                  onClick={handleComplete}
+                  disabled={loading}
+                  className="bg-xp/20 hover:bg-xp/30 text-xp border border-xp/40"
                 >
-                  Edit
+                  ✓ Complete
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs text-muted-foreground"
-                  onClick={handleAbandon}
-                >
-                  Abandon
-                </Button>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setEditOpen(true)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={handleAbandon}
+                  >
+                    Abandon
+                  </Button>
+                </div>
               </div>
             </div>
+
+            {hasTasks && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-mono text-xp">
+                  <span>
+                    {quest.progress.done} / {quest.progress.total} tasks done
+                  </span>
+                  <span>{quest.progress.pct}%</span>
+                </div>
+                <Progress value={quest.progress.pct} className="h-1.5 xp-bar" />
+              </div>
+            )}
+
+            <QuestChecklist questId={quest.id} tasks={quest.tasks} />
           </div>
         </div>
         <QuestDialog
@@ -171,7 +239,23 @@ export function QuestSlot({
           <h3 className="text-sm font-bold text-foreground leading-tight mb-1">
             {quest.name}
           </h3>
-          {quest.description && (
+          {due && (
+            <div className="mb-1">
+              <DueBadge />
+            </div>
+          )}
+          {hasTasks && (
+            <div className="mt-1.5 mb-1 space-y-0.5">
+              <div className="flex items-center justify-between text-[9px] font-mono text-glow/80">
+                <span>
+                  {quest.progress.done}/{quest.progress.total}
+                </span>
+                <span>{quest.progress.pct}%</span>
+              </div>
+              <Progress value={quest.progress.pct} className="h-1 xp-bar" />
+            </div>
+          )}
+          {(quest.description || hasTasks) && (
             <>
               <button
                 type="button"
@@ -179,14 +263,43 @@ export function QuestSlot({
                 className="text-[10px] text-muted-foreground hover:text-foreground mt-1 flex items-center gap-1 transition-colors"
               >
                 <span>{expanded ? "▾" : "▸"}</span>
-                <span>details</span>
+                <span>{expanded ? "hide" : "details"}</span>
               </button>
               {expanded && (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap mt-2 flex-1">
-                  {quest.description}
-                </p>
+                <div className="mt-2 flex-1 space-y-2">
+                  {quest.description && (
+                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                      {quest.description}
+                    </p>
+                  )}
+                  <QuestChecklist
+                    questId={quest.id}
+                    tasks={quest.tasks}
+                    compact
+                  />
+                </div>
               )}
             </>
+          )}
+          {!quest.description && !hasTasks && !expanded && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                + add tasks
+              </button>
+            </div>
+          )}
+          {!quest.description && !hasTasks && expanded && (
+            <div className="mt-2">
+              <QuestChecklist
+                questId={quest.id}
+                tasks={quest.tasks}
+                compact
+              />
+            </div>
           )}
         </div>
         <div className="px-4 pb-3 flex gap-1">

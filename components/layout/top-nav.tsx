@@ -70,6 +70,23 @@ export function TopNav() {
         {/* Subtle separator */}
         <div className="h-6 w-px bg-border/60 mx-1" />
 
+        {/* Global search — keyboard ⌘K / / */}
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("open-global-search"));
+          }}
+          title="Search (⌘K)"
+          className="group relative flex h-10 w-10 items-center justify-center rounded-full text-xl text-muted-foreground hover:bg-accent hover:text-foreground hover:scale-110 transition-all"
+        >
+          🔍
+          <span className="pointer-events-none absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground border border-border opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+            Search (⌘K)
+          </span>
+        </button>
+
+        <div className="h-6 w-px bg-border/60 mx-1" />
+
         {/* User avatar — opens the account page */}
         <Link
           href="/account"

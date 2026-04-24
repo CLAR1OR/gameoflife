@@ -22,6 +22,22 @@ const ICONS = [
   "📚", "✍️", "🧠", "💪", "🏃", "🎨", "🎸", "🧘",
 ];
 
+function dateToInput(d: Date | number | null | undefined): string {
+  if (!d) return "";
+  const date = typeof d === "number" ? new Date(d * 1000) : d;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function inputToDate(s: string): Date | null {
+  if (!s) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
 export function QuestDialog({
   open,
   onOpenChange,
@@ -40,6 +56,8 @@ export function QuestDialog({
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("📜");
   const [xpReward, setXpReward] = useState("25");
+  const [dueAt, setDueAt] = useState("");
+  const [initialTasks, setInitialTasks] = useState("");
   const [createAchievement, setCreateAchievement] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +68,8 @@ export function QuestDialog({
       setDescription(quest.description ?? "");
       setIcon(quest.icon);
       setXpReward(String(quest.xpReward));
+      setDueAt(dateToInput(quest.dueAt));
+      setInitialTasks("");
       setCreateAchievement(false);
     } else {
       setType(defaultType);
@@ -57,11 +77,12 @@ export function QuestDialog({
       setDescription("");
       setIcon(defaultType === "main" ? "⚔️" : "📜");
       setXpReward(defaultType === "main" ? "100" : "25");
+      setDueAt("");
+      setInitialTasks("");
       setCreateAchievement(false);
     }
   }, [quest, open, defaultType]);
 
-  // Auto-adjust defaults when the type is toggled while creating
   useEffect(() => {
     if (isEditing) return;
     setIcon(type === "main" ? "⚔️" : "📜");
@@ -78,15 +99,21 @@ export function QuestDialog({
         description: description.trim() || null,
         icon,
         xpReward: parseInt(xpReward) || 25,
+        dueAt: inputToDate(dueAt),
       };
       if (isEditing) {
         await updateQuest(quest.id, base);
         toast.success("Quest updated");
       } else {
+        const tasks = initialTasks
+          .split("\n")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0);
         await createQuest({
           ...base,
           description: base.description ?? undefined,
           type,
+          tasks: tasks.length > 0 ? tasks : undefined,
           autoAchievement: createAchievement
             ? { enabled: true }
             : undefined,
@@ -170,6 +197,49 @@ export function QuestDialog({
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="quest-xp">XP Reward</Label>
+                <Input
+                  id="quest-xp"
+                  type="number"
+                  min="5"
+                  max="1000"
+                  value={xpReward}
+                  onChange={(e) => setXpReward(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quest-due">Due date (optional)</Label>
+                <Input
+                  id="quest-due"
+                  type="date"
+                  value={dueAt}
+                  onChange={(e) => setDueAt(e.target.value)}
+                />
+              </div>
+            </div>
+            {!isEditing && (
+              <div className="space-y-2">
+                <Label htmlFor="quest-tasks">
+                  Checklist (optional) —{" "}
+                  <span className="text-muted-foreground font-mono text-[10px]">
+                    one per line
+                  </span>
+                </Label>
+                <textarea
+                  id="quest-tasks"
+                  rows={4}
+                  placeholder="e.g.&#10;Draft the outline&#10;Review with a friend&#10;Ship it"
+                  value={initialTasks}
+                  onChange={(e) => setInitialTasks(e.target.value)}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Break the quest into subtasks. You can add more later.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Icon</Label>
               <div className="flex flex-wrap gap-2">
@@ -188,20 +258,6 @@ export function QuestDialog({
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="quest-xp">XP Reward</Label>
-              <Input
-                id="quest-xp"
-                type="number"
-                min="5"
-                max="1000"
-                value={xpReward}
-                onChange={(e) => setXpReward(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Granted to your general account XP on completion.
-              </p>
             </div>
             {!isEditing && (
               <div className="space-y-2">

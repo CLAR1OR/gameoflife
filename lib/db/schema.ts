@@ -181,6 +181,18 @@ export const quest = sqliteTable("quest", {
   xpReward: integer("xp_reward").notNull().default(10),
   status: text("status", { enum: ["active", "completed", "abandoned"] }).notNull().default("active"),
   completedAt: integer("completed_at", { mode: "timestamp" }),
+  dueAt: integer("due_at", { mode: "timestamp" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const questTask = sqliteTable("quest_task", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  questId: text("quest_id").notNull().references(() => quest.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
@@ -368,8 +380,14 @@ export const readingListItemRelations = relations(readingListItem, ({ one }) => 
   }),
 }));
 
-export const questRelations = relations(quest, ({ one }) => ({
+export const questRelations = relations(quest, ({ one, many }) => ({
   user: one(user, { fields: [quest.userId], references: [user.id] }),
+  tasks: many(questTask),
+}));
+
+export const questTaskRelations = relations(questTask, ({ one }) => ({
+  quest: one(quest, { fields: [questTask.questId], references: [quest.id] }),
+  user: one(user, { fields: [questTask.userId], references: [user.id] }),
 }));
 
 export const userSettingsRelations = relations(userSettings, ({ one }) => ({
