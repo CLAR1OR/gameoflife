@@ -20,6 +20,19 @@ import { Badge } from "@/components/ui/badge";
 import { FeatureToggles } from "@/components/account/feature-toggles";
 import { CurrencyPicker } from "@/components/account/currency-picker";
 import { ResetFinanceButton } from "@/components/account/reset-finance-button";
+import { BackupSection } from "@/components/account/backup-section";
+import { ActivityTimeline } from "@/components/account/activity-timeline";
+import {
+  XpBarChart,
+  HabitHeatmap,
+  ActivitySummaryCards,
+} from "@/components/account/analytics-charts";
+import {
+  getTimeline,
+  getDailyXp,
+  getHabitHeatmap,
+  getActivitySummary,
+} from "@/modules/activity/queries";
 import { SignOutButton } from "./sign-out-button";
 
 function formatDate(d: Date | number | null | undefined): string {
@@ -90,6 +103,10 @@ export default async function AccountPage() {
     habitCompletionsResult,
     bookStats,
     booksThisYear,
+    timeline,
+    dailyXp,
+    habitHeatmap,
+    activitySummary,
   ] = await Promise.all([
     getTotalAccountXp(userId),
     getCategoriesByUser(userId),
@@ -109,6 +126,10 @@ export default async function AccountPage() {
       .where(eq(habitCompletion.userId, userId)),
     getBookStats(userId),
     getBooksReadThisYear(userId),
+    getTimeline(userId, 60),
+    getDailyXp(userId, 30),
+    getHabitHeatmap(userId, 365),
+    getActivitySummary(userId, 30),
   ]);
 
   const level = getLevelProgress(totalAccountXp);
@@ -258,6 +279,26 @@ export default async function AccountPage() {
         </div>
       </section>
 
+      {/* Analytics */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Analytics
+        </h2>
+        <div className="space-y-3">
+          <ActivitySummaryCards summary={activitySummary} days={30} />
+          <XpBarChart buckets={dailyXp} />
+          <HabitHeatmap days={habitHeatmap} />
+        </div>
+      </section>
+
+      {/* Activity timeline */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Recent activity
+        </h2>
+        <ActivityTimeline events={timeline} />
+      </section>
+
       {/* Preferences */}
       <section>
         <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
@@ -276,6 +317,14 @@ export default async function AccountPage() {
           Toggle dashboard modules and status-bar widgets. Changes apply
           immediately.
         </p>
+      </section>
+
+      {/* Backup & migration */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Backup &amp; migration
+        </h2>
+        <BackupSection userEmail={session.user.email} />
       </section>
 
       {/* Danger zone */}
