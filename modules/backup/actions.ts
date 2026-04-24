@@ -21,7 +21,7 @@ import {
   readingList,
   readingListItem,
 } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { BACKUP_VERSION } from "./constants";
@@ -67,11 +67,30 @@ export async function exportBackup(): Promise<BackupFile> {
   const session = await requireSession();
   const userId = session.user.id;
 
+  // skillPrerequisite has no userId column — find it via the user's skills.
+  const userSkillRows = await db
+    .select({ id: skill.id })
+    .from(skill)
+    .where(eq(skill.userId, userId));
+  const userSkillIds = userSkillRows.map((r) => r.id);
+
   const data: Snapshot = {};
   for (const t of TABLES) {
-    // Every user-scoped table has a userId column; Drizzle select() returns
-    // JS values (Dates for timestamp columns) which JSON.stringify serialises
-    // to ISO strings.
+    if (t.name === "skillPrerequisite") {
+      if (userSkillIds.length === 0) {
+        data[t.name] = [];
+        continue;
+      }
+      const rows = await db
+        .select()
+        .from(skillPrerequisite)
+        .where(inArray(skillPrerequisite.skillId, userSkillIds));
+      data[t.name] = rows as Row[];
+      continue;
+    }
+    // Other user-scoped tables all have a userId column. Drizzle select()
+    // returns JS values (Dates for timestamp columns) which JSON.stringify
+    // serialises to ISO strings.
     const rows = await db
       .select()
       .from(t.table as typeof skill)
@@ -155,20 +174,40 @@ export async function importBackup(raw: unknown) {
   const data = file.data as Snapshot;
 
   // Wipe current data — reverse insertion order respects FK constraints.
+  // skillPrerequisite has no userId column; delete by matching the user's
+  // current skill IDs (and let the cascade clean up any stragglers when we
+  // delete the skills below).
+  const existingSkillRows = await db
+    .select({ id: skill.id })
+    .from(skill)
+    .where(eq(skill.userId, userId));
+  const existingSkillIds = existingSkillRows.map((r) => r.id);
+
   for (const t of [...TABLES].reverse()) {
+    if (t.name === "skillPrerequisite") {
+      if (existingSkillIds.length > 0) {
+        await db
+          .delete(skillPrerequisite)
+          .where(inArray(skillPrerequisite.skillId, existingSkillIds));
+      }
+      continue;
+    }
     await db
       .delete(t.table as typeof skill)
       .where(eq((t.table as typeof skill).userId, userId));
   }
 
-  // Insert in parent → child order.
+  // Insert in parent → child order. skillPrerequisite is the only table with
+  // no userId column, so we don't re-stamp it.
   for (const t of TABLES) {
     const rows = data[t.name];
     if (!rows || !Array.isArray(rows) || rows.length === 0) continue;
 
     const prepped = rows.map((r) => {
       const withTs = hydrateTimestamps(t.name, r);
-      return { ...withTs, userId };
+      return t.name === "skillPrerequisite"
+        ? withTs
+        : { ...withTs, userId };
     });
 
     // Chunk to avoid ballooning SQL statement size.
