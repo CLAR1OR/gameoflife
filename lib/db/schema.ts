@@ -179,9 +179,10 @@ export const quest = sqliteTable("quest", {
   description: text("description"),
   icon: text("icon").notNull().default("📜"),
   xpReward: integer("xp_reward").notNull().default(10),
-  status: text("status", { enum: ["active", "completed", "abandoned"] }).notNull().default("active"),
+  status: text("status", { enum: ["active", "backlog", "completed", "abandoned"] }).notNull().default("active"),
   completedAt: integer("completed_at", { mode: "timestamp" }),
   dueAt: integer("due_at", { mode: "timestamp" }),
+  templateId: text("template_id"), // null for custom; non-null when seeded from a template
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });

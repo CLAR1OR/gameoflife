@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { MAX_SIDE_QUESTS } from "./types";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
+import { getQuestTemplate } from "@/lib/quest-templates";
 
 export type QuestAutoAchievementSpec = {
   enabled: boolean;
@@ -27,26 +28,36 @@ export async function createQuest(data: {
   xpReward?: number;
   dueAt?: Date | null;
   tasks?: string[];
+  status?: "active" | "backlog";
   autoAchievement?: QuestAutoAchievementSpec;
 }) {
   const session = await requireSession();
 
-  // Validate slot availability
-  const activeOfType = await db.query.quest.findMany({
-    where: (q, { and: a, eq: e }) =>
-      a(e(q.userId, session.user.id), e(q.status, "active"), e(q.type, data.type)),
-  });
+  const status = data.status ?? "active";
 
-  if (data.type === "main" && activeOfType.length >= 1) {
-    throw new Error(
-      "You already have an active main quest. Complete or abandon it first."
-    );
+  // Slot validation only applies to active quests; backlog has no cap.
+  if (status === "active") {
+    const activeOfType = await db.query.quest.findMany({
+      where: (q, { and: a, eq: e }) =>
+        a(e(q.userId, session.user.id), e(q.status, "active"), e(q.type, data.type)),
+    });
+
+    if (data.type === "main" && activeOfType.length >= 1) {
+      throw new Error(
+        "You already have an active main quest. Complete it, abandon it, or move it to the backlog first."
+      );
+    }
+    if (data.type === "side" && activeOfType.length >= MAX_SIDE_QUESTS) {
+      throw new Error(
+        `You already have ${MAX_SIDE_QUESTS} active side quests. Move one to the backlog or finish it first.`
+      );
+    }
   }
-  if (data.type === "side" && activeOfType.length >= MAX_SIDE_QUESTS) {
-    throw new Error(
-      `You already have ${MAX_SIDE_QUESTS} active side quests. Complete or abandon one first.`
-    );
-  }
+
+  const peers = await db.query.quest.findMany({
+    where: (q, { and: a, eq: e }) =>
+      a(e(q.userId, session.user.id), e(q.status, status), e(q.type, data.type)),
+  });
 
   const [row] = await db
     .insert(quest)
@@ -57,9 +68,9 @@ export async function createQuest(data: {
       description: data.description ?? null,
       icon: data.icon ?? (data.type === "main" ? "⚔️" : "📜"),
       xpReward: data.xpReward ?? (data.type === "main" ? 100 : 25),
-      status: "active",
+      status,
       dueAt: data.dueAt ?? null,
-      sortOrder: activeOfType.length,
+      sortOrder: peers.length,
     })
     .returning();
 
@@ -265,6 +276,162 @@ export async function restoreQuest(id: string) {
   revalidatePath("/quests");
   revalidatePath("/achievements");
   revalidatePath("/");
+}
+
+/** Move an active quest into the backlog (no slot cost, no XP, no completion). */
+export async function moveQuestToBacklog(id: string) {
+  const session = await requireSession();
+  const row = await db.query.quest.findFirst({
+    where: (q, { and: a, eq: e }) =>
+      a(e(q.id, id), e(q.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Quest not found");
+  if (row.status === "backlog") return;
+
+  await db
+    .update(quest)
+    .set({ status: "backlog", completedAt: null })
+    .where(eq(quest.id, id));
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+/** Pull a backlog quest into the active board. */
+export async function activateBacklogQuest(id: string) {
+  const session = await requireSession();
+  const row = await db.query.quest.findFirst({
+    where: (q, { and: a, eq: e }) =>
+      a(e(q.id, id), e(q.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Quest not found");
+  if (row.status === "active") return;
+
+  const activeOfType = await db.query.quest.findMany({
+    where: (q, { and: a, eq: e }) =>
+      a(e(q.userId, session.user.id), e(q.status, "active"), e(q.type, row.type)),
+  });
+  if (row.type === "main" && activeOfType.length >= 1) {
+    throw new Error(
+      "You already have an active main quest. Move it to the backlog first."
+    );
+  }
+  if (row.type === "side" && activeOfType.length >= MAX_SIDE_QUESTS) {
+    throw new Error("No free side-quest slot. Free one up in the active board.");
+  }
+
+  await db
+    .update(quest)
+    .set({ status: "active", completedAt: null })
+    .where(eq(quest.id, id));
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+/** Promote a side quest to the main quest (or vice-versa). Slot rules apply
+ * to whichever side it's moving INTO. */
+export async function changeQuestType(
+  id: string,
+  newType: "main" | "side"
+) {
+  const session = await requireSession();
+  const row = await db.query.quest.findFirst({
+    where: (q, { and: a, eq: e }) =>
+      a(e(q.id, id), e(q.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Quest not found");
+  if (row.type === newType) return;
+
+  // Only enforce slot caps when the quest is active.
+  if (row.status === "active") {
+    const activeOfNewType = await db.query.quest.findMany({
+      where: (q, { and: a, eq: e }) =>
+        a(
+          e(q.userId, session.user.id),
+          e(q.status, "active"),
+          e(q.type, newType)
+        ),
+    });
+    if (newType === "main" && activeOfNewType.length >= 1) {
+      throw new Error(
+        "You already have an active main quest. Demote it to side first, or move it to the backlog."
+      );
+    }
+    if (newType === "side" && activeOfNewType.length >= MAX_SIDE_QUESTS) {
+      throw new Error(
+        `Side-quest slots are full (${MAX_SIDE_QUESTS}/${MAX_SIDE_QUESTS}). Free one up first.`
+      );
+    }
+  }
+
+  await db
+    .update(quest)
+    .set({ type: newType })
+    .where(eq(quest.id, id));
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+/** Drop a quest template into the user's backlog. */
+export async function activateQuestTemplate(templateId: string) {
+  const session = await requireSession();
+  const template = getQuestTemplate(templateId);
+  if (!template) throw new Error("Template not found");
+
+  // Prevent re-activation if a quest from this template already exists in
+  // any state other than abandoned/completed (so we don't spam the backlog
+  // when the user is already working on it).
+  const existing = await db.query.quest.findFirst({
+    where: (q, { and: a, eq: e, or: o }) =>
+      a(
+        e(q.userId, session.user.id),
+        e(q.templateId, templateId),
+        o(e(q.status, "active"), e(q.status, "backlog"))
+      ),
+  });
+  if (existing) {
+    throw new Error("Already in your backlog or active board");
+  }
+
+  const peers = await db.query.quest.findMany({
+    where: (q, { and: a, eq: e }) =>
+      a(
+        e(q.userId, session.user.id),
+        e(q.status, "backlog"),
+        e(q.type, template.type)
+      ),
+  });
+
+  const [row] = await db
+    .insert(quest)
+    .values({
+      userId: session.user.id,
+      type: template.type,
+      name: template.name,
+      description: template.description,
+      icon: template.icon,
+      xpReward: template.xpReward,
+      status: "backlog",
+      templateId: template.id,
+      sortOrder: peers.length,
+    })
+    .returning();
+
+  if (template.tasks && template.tasks.length > 0) {
+    await db.insert(questTask).values(
+      template.tasks.map((name, i) => ({
+        questId: row.id,
+        userId: session.user.id,
+        name,
+        sortOrder: i,
+      }))
+    );
+  }
+
+  revalidatePath("/quests");
+  return row;
 }
 
 export async function deleteQuest(id: string) {

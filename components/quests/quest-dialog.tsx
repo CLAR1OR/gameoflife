@@ -43,11 +43,13 @@ export function QuestDialog({
   onOpenChange,
   quest,
   defaultType = "side",
+  defaultStatus = "active",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   quest?: Quest;
   defaultType?: "main" | "side";
+  defaultStatus?: "active" | "backlog";
 }) {
   const isEditing = !!quest;
 
@@ -113,13 +115,16 @@ export function QuestDialog({
           ...base,
           description: base.description ?? undefined,
           type,
+          status: defaultStatus,
           tasks: tasks.length > 0 ? tasks : undefined,
           autoAchievement: createAchievement
             ? { enabled: true }
             : undefined,
         });
         toast.success(
-          `${type === "main" ? "Main" : "Side"} quest accepted!`
+          defaultStatus === "backlog"
+            ? `Added "${name.trim()}" to backlog`
+            : `${type === "main" ? "Main" : "Side"} quest accepted!`
         );
       }
       onOpenChange(false);

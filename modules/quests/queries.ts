@@ -63,13 +63,45 @@ export async function getActiveQuests(userId: string): Promise<{
 export async function getArchivedQuests(
   userId: string
 ): Promise<QuestWithTasks[]> {
+  // Archive shows completed + abandoned; backlog has its own section now.
   const rows = await db
     .select()
     .from(quest)
     .where(eq(quest.userId, userId))
     .orderBy(desc(quest.completedAt), desc(quest.createdAt));
-  const filtered = rows.filter((r) => r.status !== "active");
+  const filtered = rows.filter(
+    (r) => r.status === "completed" || r.status === "abandoned"
+  );
   return attachTasks(filtered);
+}
+
+export async function getBacklogQuests(
+  userId: string
+): Promise<QuestWithTasks[]> {
+  const rows = await db
+    .select()
+    .from(quest)
+    .where(and(eq(quest.userId, userId), eq(quest.status, "backlog")))
+    .orderBy(asc(quest.sortOrder), asc(quest.createdAt));
+  return attachTasks(rows);
+}
+
+/** Template IDs the user has already activated (in backlog or active),
+ * so the template gallery can hide them. Completed/abandoned templates
+ * are NOT considered active — the user can re-pick them. */
+export async function getActivatedQuestTemplateIds(
+  userId: string
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ templateId: quest.templateId, status: quest.status })
+    .from(quest)
+    .where(eq(quest.userId, userId));
+  const ids = new Set<string>();
+  for (const r of rows) {
+    if (!r.templateId) continue;
+    if (r.status === "active" || r.status === "backlog") ids.add(r.templateId);
+  }
+  return ids;
 }
 
 export async function getQuestStats(userId: string): Promise<QuestStats> {

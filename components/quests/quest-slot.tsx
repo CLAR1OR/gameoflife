@@ -8,6 +8,8 @@ import {
   completeQuest,
   abandonQuest,
   deleteQuest,
+  moveQuestToBacklog,
+  changeQuestType,
 } from "@/modules/quests/actions";
 import { toast } from "sonner";
 import { celebrate } from "@/lib/celebrate";
@@ -87,6 +89,30 @@ export function QuestSlot({
     try {
       await abandonQuest(quest.id);
       toast.info(`Abandoned "${quest.name}"`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setLoading(false);
+  }
+
+  async function handleBacklog() {
+    setLoading(true);
+    try {
+      await moveQuestToBacklog(quest.id);
+      toast.info(`Moved "${quest.name}" to backlog`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setLoading(false);
+  }
+
+  async function handleFlipType() {
+    setLoading(true);
+    try {
+      await changeQuestType(quest.id, variant === "main" ? "side" : "main");
+      toast.success(
+        variant === "main" ? "Demoted to side quest" : "Promoted to main quest"
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
@@ -175,7 +201,7 @@ export function QuestSlot({
                 >
                   ✓ Complete
                 </Button>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -183,6 +209,25 @@ export function QuestSlot({
                     onClick={() => setEditOpen(true)}
                   >
                     Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={handleFlipType}
+                    disabled={loading}
+                    title="Demote to side quest"
+                  >
+                    → Side
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={handleBacklog}
+                    disabled={loading}
+                  >
+                    Backlog
                   </Button>
                   <Button
                     variant="ghost"
@@ -313,7 +358,7 @@ export function QuestSlot({
           </Button>
         </div>
         {/* Hover actions */}
-        <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex flex-wrap gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity max-w-[calc(100%-1rem)] justify-end">
           <Button
             variant="ghost"
             size="sm"
@@ -321,6 +366,25 @@ export function QuestSlot({
             onClick={() => setEditOpen(true)}
           >
             Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] bg-black/40 text-xp"
+            onClick={handleFlipType}
+            disabled={loading}
+            title="Promote to main quest"
+          >
+            ⚔️
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] bg-black/40 text-muted-foreground"
+            onClick={handleBacklog}
+            disabled={loading}
+          >
+            ↓ Backlog
           </Button>
           <Button
             variant="ghost"
