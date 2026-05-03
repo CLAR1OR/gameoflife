@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { getReadingListTemplate } from "@/lib/books-templates";
 import { openLibraryCoverUrl, parseGoodreadsCsv } from "@/lib/books-csv";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
+import { evaluateQuestTaskTriggers } from "@/lib/quest-task-triggers";
 import { calculateLevel } from "@/lib/xp";
 import { XP_PER_BOOK } from "./types";
 
@@ -1126,6 +1127,8 @@ async function onBookRead(userId: string) {
   await checkExtraBookAchievements(userId);
   await checkReadingListCompletion(userId);
   await checkAccountLevelAchievements(userId);
+  await evaluateQuestTaskTriggers(userId);
+  revalidatePath("/quests");
 }
 
 async function onBookUnread(userId: string) {
@@ -1133,6 +1136,8 @@ async function onBookUnread(userId: string) {
   await checkExtraBookAchievements(userId);
   await checkReadingListCompletion(userId);
   await checkAccountLevelAchievements(userId);
+  await evaluateQuestTaskTriggers(userId);
+  revalidatePath("/quests");
 }
 
 void XP_PER_BOOK;

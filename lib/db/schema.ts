@@ -194,6 +194,15 @@ export const questTask = sqliteTable("quest_task", {
   name: text("name").notNull(),
   completed: integer("completed", { mode: "boolean" }).notNull().default(false),
   completedAt: integer("completed_at", { mode: "timestamp" }),
+  // Auto-completion trigger. "manual" = checkbox, others auto-evaluate from
+  // the linked module's state.
+  triggerType: text("trigger_type", {
+    enum: ["manual", "habit_count", "milestone", "book"],
+  }).notNull().default("manual"),
+  triggerHabitId: text("trigger_habit_id").references(() => habit.id, { onDelete: "set null" }),
+  triggerMilestoneId: text("trigger_milestone_id").references(() => milestone.id, { onDelete: "set null" }),
+  triggerBookId: text("trigger_book_id").references(() => book.id, { onDelete: "set null" }),
+  triggerCount: integer("trigger_count"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });

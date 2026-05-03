@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { calculateLevel } from "@/lib/xp";
 import { getTemplate } from "@/lib/skill-templates";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
+import { evaluateQuestTaskTriggers } from "@/lib/quest-task-triggers";
 
 const TOTAL_STAGES = 6;
 
@@ -390,9 +391,11 @@ export async function completeMilestone(milestoneId: string) {
   const levelAchievements = await checkAccountLevelAchievements(
     session.user.id
   );
+  await evaluateQuestTaskTriggers(session.user.id);
 
   revalidatePath(`/skills/${ms.skill.categoryId}`);
   revalidatePath("/achievements");
+  revalidatePath("/quests");
   revalidatePath("/");
 
   return {

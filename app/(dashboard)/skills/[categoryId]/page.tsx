@@ -6,9 +6,15 @@ import {
   getSkillsByCategory,
   getAchievementsByCategory,
 } from "@/modules/skills/queries";
+import {
+  getLinkedHabitsForCategory,
+  getLinkedBooksForCategory,
+  getCategoryContributionStats,
+} from "@/modules/links/queries";
 import { SkillTreeView } from "@/components/skill-tree/skill-tree-view";
 import { SkillStageHeader } from "@/components/skill-tree/skill-stage-header";
 import { AchievementsRow } from "@/components/achievements/achievements-row";
+import { LinkedItemsPanel } from "@/components/skill-tree/linked-items-panel";
 
 export default async function SkillTreePage({
   params,
@@ -21,15 +27,18 @@ export default async function SkillTreePage({
 
   if (!category) notFound();
 
-  const skills = await getSkillsByCategory(categoryId, session.user.id);
-  const achievements = await getAchievementsByCategory(
-    categoryId,
-    session.user.id
-  );
+  const [skills, achievements, linkedHabits, linkedBooks, contribution] =
+    await Promise.all([
+      getSkillsByCategory(categoryId, session.user.id),
+      getAchievementsByCategory(categoryId, session.user.id),
+      getLinkedHabitsForCategory(session.user.id, categoryId),
+      getLinkedBooksForCategory(session.user.id, categoryId),
+      getCategoryContributionStats(session.user.id, categoryId),
+    ]);
 
   return (
-    <div>
-      <div className="mb-3">
+    <div className="space-y-6">
+      <div>
         <Link
           href="/skills"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -48,6 +57,11 @@ export default async function SkillTreePage({
       <AchievementsRow
         categoryId={category.id}
         achievements={achievements}
+      />
+      <LinkedItemsPanel
+        habits={linkedHabits}
+        books={linkedBooks}
+        stats={contribution}
       />
     </div>
   );

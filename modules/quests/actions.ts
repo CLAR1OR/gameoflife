@@ -135,7 +135,17 @@ export async function updateQuest(
 // TASKS (checklist)
 // =====================
 
-export async function addQuestTask(questId: string, name: string) {
+export type QuestTaskTrigger =
+  | { type: "manual" }
+  | { type: "habit_count"; habitId: string; count: number }
+  | { type: "milestone"; milestoneId: string }
+  | { type: "book"; bookId: string };
+
+export async function addQuestTask(
+  questId: string,
+  name: string,
+  trigger: QuestTaskTrigger = { type: "manual" }
+) {
   const session = await requireSession();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Task name is required");
@@ -152,12 +162,43 @@ export async function addQuestTask(questId: string, name: string) {
     .from(questTask)
     .where(eq(questTask.questId, questId));
 
-  await db.insert(questTask).values({
+  const baseValues = {
     questId,
     userId: session.user.id,
     name: trimmed,
     sortOrder: Number(c),
-  });
+  };
+
+  if (trigger.type === "habit_count") {
+    await db.insert(questTask).values({
+      ...baseValues,
+      triggerType: "habit_count",
+      triggerHabitId: trigger.habitId,
+      triggerCount: Math.max(1, trigger.count),
+    });
+  } else if (trigger.type === "milestone") {
+    await db.insert(questTask).values({
+      ...baseValues,
+      triggerType: "milestone",
+      triggerMilestoneId: trigger.milestoneId,
+    });
+  } else if (trigger.type === "book") {
+    await db.insert(questTask).values({
+      ...baseValues,
+      triggerType: "book",
+      triggerBookId: trigger.bookId,
+    });
+  } else {
+    await db.insert(questTask).values(baseValues);
+  }
+
+  // Auto-trigger tasks may already be satisfied — evaluate now.
+  if (trigger.type !== "manual") {
+    const { evaluateQuestTaskTriggers } = await import(
+      "@/lib/quest-task-triggers"
+    );
+    await evaluateQuestTaskTriggers(session.user.id);
+  }
 
   revalidatePath("/quests");
   revalidatePath("/");
@@ -190,6 +231,53 @@ export async function deleteQuestTask(taskId: string) {
     .where(and(eq(questTask.id, taskId), eq(questTask.userId, session.user.id)));
   revalidatePath("/quests");
   revalidatePath("/");
+}
+
+export type TriggerPickerOptions = {
+  habits: { id: string; name: string; icon: string }[];
+  milestones: { id: string; name: string; skillName: string; categoryName: string }[];
+  books: { id: string; title: string; authors: string }[];
+};
+
+/** Snapshot of items the user can pick from when adding an auto-trigger
+ * task. Used by the in-quest task picker. */
+export async function getQuestTaskTriggerOptions(): Promise<TriggerPickerOptions> {
+  const session = await requireSession();
+  const { habit, milestone, skill, skillCategory, book } = await import(
+    "@/lib/db/schema"
+  );
+
+  const habits = await db
+    .select({ id: habit.id, name: habit.name, icon: habit.icon })
+    .from(habit)
+    .where(and(eq(habit.userId, session.user.id), eq(habit.archived, false)))
+    .orderBy(asc(habit.name));
+
+  const milestones = await db
+    .select({
+      id: milestone.id,
+      name: milestone.name,
+      skillName: skill.name,
+      categoryName: skillCategory.name,
+    })
+    .from(milestone)
+    .innerJoin(skill, eq(milestone.skillId, skill.id))
+    .innerJoin(skillCategory, eq(skill.categoryId, skillCategory.id))
+    .where(
+      and(
+        eq(milestone.userId, session.user.id),
+        eq(milestone.completed, false)
+      )
+    )
+    .orderBy(asc(skillCategory.name), asc(skill.name), asc(milestone.name));
+
+  const books = await db
+    .select({ id: book.id, title: book.title, authors: book.authors })
+    .from(book)
+    .where(and(eq(book.userId, session.user.id)))
+    .orderBy(asc(book.title));
+
+  return { habits, milestones, books };
 }
 
 export async function renameQuestTask(taskId: string, name: string) {

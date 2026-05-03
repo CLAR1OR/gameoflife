@@ -1,7 +1,13 @@
 import { db } from "@/lib/db";
-import { quest, questTask } from "@/lib/db/schema";
+import { quest, questTask, book } from "@/lib/db/schema";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import type { Quest, QuestStats, QuestWithTasks, QuestTask } from "./types";
+import type {
+  Quest,
+  QuestStats,
+  QuestWithTasks,
+  QuestTask,
+  LinkedBookForQuest,
+} from "./types";
 export { MAX_SIDE_QUESTS } from "./types";
 export type { QuestStats };
 
@@ -22,15 +28,12 @@ async function attachTasks(
   quests: Quest[]
 ): Promise<QuestWithTasks[]> {
   if (quests.length === 0) return [];
+  const ids = quests.map((q) => q.id);
+
   const tasks = await db
     .select()
     .from(questTask)
-    .where(
-      inArray(
-        questTask.questId,
-        quests.map((q) => q.id)
-      )
-    )
+    .where(inArray(questTask.questId, ids))
     .orderBy(asc(questTask.sortOrder), asc(questTask.createdAt));
 
   const byQuest = new Map<string, QuestTask[]>();
@@ -39,9 +42,41 @@ async function attachTasks(
     list.push(t);
     byQuest.set(t.questId, list);
   }
+
+  // Linked books in one query.
+  const bookRows = await db
+    .select({
+      id: book.id,
+      title: book.title,
+      authors: book.authors,
+      coverUrl: book.coverUrl,
+      status: book.status,
+      questId: book.questId,
+    })
+    .from(book)
+    .where(inArray(book.questId, ids));
+  const booksByQuest = new Map<string, LinkedBookForQuest[]>();
+  for (const b of bookRows) {
+    if (!b.questId) continue;
+    const list = booksByQuest.get(b.questId) ?? [];
+    list.push({
+      id: b.id,
+      title: b.title,
+      authors: b.authors,
+      coverUrl: b.coverUrl,
+      status: b.status,
+    });
+    booksByQuest.set(b.questId, list);
+  }
+
   return quests.map((q) => {
     const list = byQuest.get(q.id) ?? [];
-    return { ...q, tasks: list, progress: computeProgress(list, q.status) };
+    return {
+      ...q,
+      tasks: list,
+      progress: computeProgress(list, q.status),
+      linkedBooks: booksByQuest.get(q.id) ?? [],
+    };
   });
 }
 

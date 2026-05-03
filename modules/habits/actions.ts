@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { calculateLevel } from "@/lib/xp";
 import { todayISO } from "@/lib/date";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
+import { evaluateQuestTaskTriggers } from "@/lib/quest-task-triggers";
 
 const TOTAL_STAGES = 6;
 
@@ -168,9 +169,11 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
       session.user.id
     );
     await checkAccountLevelAchievements(session.user.id);
+    await evaluateQuestTaskTriggers(session.user.id);
 
     revalidatePath("/habits");
     revalidatePath("/achievements");
+    revalidatePath("/quests");
     revalidatePath("/");
     return { completed: false, newAchievements: [] as string[], achievementsReverted };
   }
@@ -193,9 +196,11 @@ export async function toggleHabitCompletion(habitId: string, date?: string) {
   const levelAchievements = await checkAccountLevelAchievements(
     session.user.id
   );
+  await evaluateQuestTaskTriggers(session.user.id);
 
   revalidatePath("/habits");
   revalidatePath("/achievements");
+  revalidatePath("/quests");
   revalidatePath("/");
   return {
     completed: true,
@@ -244,9 +249,11 @@ export async function logIrregularHabit(habitId: string) {
   const levelAchievements = await checkAccountLevelAchievements(
     session.user.id
   );
+  await evaluateQuestTaskTriggers(session.user.id);
 
   revalidatePath("/habits");
   revalidatePath("/achievements");
+  revalidatePath("/quests");
   revalidatePath("/");
   return {
     logged: true,

@@ -13,9 +13,66 @@ import {
 } from "@/modules/quests/actions";
 import { toast } from "sonner";
 import { celebrate } from "@/lib/celebrate";
-import type { QuestWithTasks } from "@/modules/quests/types";
+import type {
+  QuestWithTasks,
+  LinkedBookForQuest,
+} from "@/modules/quests/types";
+import Link from "next/link";
 import { QuestDialog } from "./quest-dialog";
 import { QuestChecklist } from "./quest-checklist";
+
+function LinkedBooksStrip({
+  books,
+  compact = false,
+}: {
+  books: LinkedBookForQuest[];
+  compact?: boolean;
+}) {
+  const read = books.filter((b) => b.status === "read").length;
+  return (
+    <div className="space-y-1">
+      <div
+        className={`text-[${compact ? "9" : "10"}px] font-mono uppercase tracking-wider text-muted-foreground`}
+      >
+        🔗 Linked books{" "}
+        <span className="text-xp">
+          {read}/{books.length} read
+        </span>
+      </div>
+      <div className="flex gap-1 flex-wrap">
+        {books.map((b) => (
+          <Link
+            key={b.id}
+            href={`/books/${b.id}`}
+            title={`${b.title} — ${b.authors}`}
+            className={`block rounded border overflow-hidden ${
+              compact ? "h-9 w-6" : "h-12 w-8"
+            } shrink-0 transition-all ${
+              b.status === "read"
+                ? "border-xp/40 hover:border-xp/70"
+                : b.status === "reading"
+                  ? "border-glow/40 hover:border-glow/70"
+                  : "border-border opacity-60 hover:opacity-100"
+            }`}
+          >
+            {b.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={b.coverUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-muted/30 text-[10px]">
+                📖
+              </div>
+            )}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function formatDueDate(due: Date | number): {
   label: string;
@@ -254,6 +311,10 @@ export function QuestSlot({
             )}
 
             <QuestChecklist questId={quest.id} tasks={quest.tasks} />
+
+            {quest.linkedBooks.length > 0 && (
+              <LinkedBooksStrip books={quest.linkedBooks} />
+            )}
           </div>
         </div>
         <QuestDialog
@@ -322,6 +383,9 @@ export function QuestSlot({
                     tasks={quest.tasks}
                     compact
                   />
+                  {quest.linkedBooks.length > 0 && (
+                    <LinkedBooksStrip books={quest.linkedBooks} compact />
+                  )}
                 </div>
               )}
             </>
