@@ -159,6 +159,92 @@ export async function getQuestStats(userId: string): Promise<QuestStats> {
   };
 }
 
+export type DueQuestEntry = {
+  id: string;
+  name: string;
+  icon: string;
+  type: "main" | "side";
+  dueAt: Date | number;
+  /** Negative = overdue (days past), 0 = today, positive = days away. */
+  daysUntilDue: number;
+  progressPct: number;
+};
+
+/** Active quests that are overdue or due within `withinDays` days. Ordered
+ * with overdue first (most overdue → least), then upcoming (soonest → latest). */
+export async function getQuestsDueSoon(
+  userId: string,
+  withinDays = 7
+): Promise<DueQuestEntry[]> {
+  const rows = await db
+    .select()
+    .from(quest)
+    .where(and(eq(quest.userId, userId), eq(quest.status, "active")));
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() + withinDays);
+
+  const withDates = rows
+    .filter((q): q is typeof q & { dueAt: Date | number } => !!q.dueAt)
+    .map((q) => {
+      const due =
+        typeof q.dueAt === "number"
+          ? new Date(q.dueAt * 1000)
+          : (q.dueAt as Date);
+      const dueDay = new Date(
+        due.getFullYear(),
+        due.getMonth(),
+        due.getDate()
+      );
+      const days = Math.round(
+        (dueDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return { quest: q, due, days };
+    })
+    .filter(({ days }) => days <= withinDays);
+
+  if (withDates.length === 0) return [];
+
+  // Pull tasks for progress-percent calculation.
+  const ids = withDates.map((x) => x.quest.id);
+  const tasks = await db
+    .select()
+    .from(questTask)
+    .where(inArray(questTask.questId, ids));
+  const byQuest = new Map<string, { done: number; total: number }>();
+  for (const t of tasks) {
+    const cur = byQuest.get(t.questId) ?? { done: 0, total: 0 };
+    cur.total++;
+    if (t.completed) cur.done++;
+    byQuest.set(t.questId, cur);
+  }
+
+  const out: DueQuestEntry[] = withDates
+    .map(({ quest: q, due, days }) => {
+      const progress = byQuest.get(q.id);
+      const pct = progress
+        ? progress.total === 0
+          ? 0
+          : Math.round((progress.done / progress.total) * 100)
+        : 0;
+      return {
+        id: q.id,
+        name: q.name,
+        icon: q.icon,
+        type: q.type,
+        dueAt: due,
+        daysUntilDue: days,
+        progressPct: pct,
+      };
+    })
+    // Overdue first (most negative), then upcoming.
+    .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
+  return out;
+}
+
 export async function getCompletedQuestsXp(userId: string): Promise<number> {
   const rows = await db
     .select({ xpReward: quest.xpReward })

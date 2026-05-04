@@ -6,7 +6,7 @@ import {
   getHabitsWithStatus,
   getTotalAccountXp,
 } from "@/modules/habits/queries";
-import { getActiveQuests } from "@/modules/quests/queries";
+import { getActiveQuests, getQuestsDueSoon } from "@/modules/quests/queries";
 import {
   getBookStats,
   getBooksReadThisYear,
@@ -34,6 +34,7 @@ import {
   DashboardEmptySideQuest,
 } from "@/components/dashboard/dashboard-quest-tiles";
 import { DashboardTodaysQuestRow } from "@/components/dashboard/dashboard-todays-quest";
+import { QuestDueAlert } from "@/components/dashboard/quest-due-alert";
 
 const FOCUS_SLOTS = 3;
 
@@ -65,6 +66,7 @@ export default async function DashboardPage() {
     accountAttention,
     bookStats,
     booksThisYear,
+    dueQuests,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
@@ -76,6 +78,7 @@ export default async function DashboardPage() {
     getAccountAttention(userId),
     getBookStats(userId),
     getBooksReadThisYear(userId),
+    getQuestsDueSoon(userId, 7),
   ]);
 
   const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
@@ -126,6 +129,9 @@ export default async function DashboardPage() {
       <p className="text-sm text-muted-foreground -mt-4 font-mono">
         {formatFriendlyDate(today)}
       </p>
+
+      {/* Quest due / overdue alert */}
+      <QuestDueAlert quests={dueQuests} />
 
       {/* Current Focus */}
       <section>
