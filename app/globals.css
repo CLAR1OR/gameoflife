@@ -42,6 +42,7 @@
   --color-glow: var(--glow);
   --color-glow-purple: var(--glow-purple);
   --color-xp: var(--xp);
+  --color-warning: var(--warning);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -51,8 +52,23 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-  /* Dark RPG palette */
+/* =========================================================================
+ * THEMES
+ *
+ * Every theme defines the same set of tokens. Swap the data-theme attribute
+ * on <html> to switch — no JS, no flicker, no per-component overrides.
+ *
+ * Token semantics (use these instead of hard-coded colors anywhere):
+ *   --glow         primary accent — main "good", confirmations, primary CTAs
+ *   --glow-purple  secondary accent — side quests, alt highlights
+ *   --xp           warm accent — XP, rewards, stars, achievements
+ *   --warning      amber — "due soon", "attention", non-fatal
+ *   --destructive  red — destructive actions, overdue, errors
+ * ========================================================================= */
+
+/* ---- Forest (default — current dark green RPG palette) ---- */
+:root,
+:root[data-theme="forest"] {
   --background: #0a0b14;
   --foreground: #e2e4f0;
   --card: #12132a;
@@ -73,19 +89,17 @@
   --ring: #00ff88;
   --radius: 0.625rem;
 
-  /* Custom RPG tokens */
   --glow: #00ff88;
   --glow-purple: #a855f7;
   --xp: #facc15;
+  --warning: #fbbf24;
 
-  /* Charts */
   --chart-1: #00ff88;
   --chart-2: #a855f7;
   --chart-3: #38bdf8;
   --chart-4: #facc15;
   --chart-5: #f472b6;
 
-  /* Sidebar */
   --sidebar: #0d0e1a;
   --sidebar-foreground: #c4c7e0;
   --sidebar-primary: #00ff88;
@@ -94,6 +108,92 @@
   --sidebar-accent-foreground: #e2e4f0;
   --sidebar-border: #1e2044;
   --sidebar-ring: #00ff88;
+}
+
+/* ---- Sunset (warm dark — coral / amber / teal) ---- */
+:root[data-theme="sunset"] {
+  --background: #1a0d09;
+  --foreground: #f5e6d3;
+  --card: #281410;
+  --card-foreground: #f5e6d3;
+  --popover: #2e1814;
+  --popover-foreground: #f5e6d3;
+  --primary: #fb923c;
+  --primary-foreground: #1a0d09;
+  --secondary: #3d1f17;
+  --secondary-foreground: #f5e6d3;
+  --muted: #2e1814;
+  --muted-foreground: #b08070;
+  --accent: #3d2218;
+  --accent-foreground: #f5e6d3;
+  --destructive: #ef4444;
+  --border: #4d2a1c;
+  --input: #3d1f17;
+  --ring: #fb923c;
+  --radius: 0.625rem;
+
+  --glow: #fb923c;        /* coral orange — primary */
+  --glow-purple: #ec4899; /* pink — secondary */
+  --xp: #fbbf24;          /* amber gold — XP */
+  --warning: #f59e0b;
+
+  --chart-1: #fb923c;
+  --chart-2: #ec4899;
+  --chart-3: #14b8a6;
+  --chart-4: #fbbf24;
+  --chart-5: #f87171;
+
+  --sidebar: #1a0d09;
+  --sidebar-foreground: #f5e6d3;
+  --sidebar-primary: #fb923c;
+  --sidebar-primary-foreground: #1a0d09;
+  --sidebar-accent: #2e1814;
+  --sidebar-accent-foreground: #f5e6d3;
+  --sidebar-border: #3d1f17;
+  --sidebar-ring: #fb923c;
+}
+
+/* ---- Arctic (light cool — slate / cyan / violet) ---- */
+:root[data-theme="arctic"] {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0891b2;
+  --primary-foreground: #ffffff;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #0f172a;
+  --muted: #e2e8f0;
+  --muted-foreground: #64748b;
+  --accent: #cbd5e1;
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+  --border: #cbd5e1;
+  --input: #e2e8f0;
+  --ring: #0891b2;
+  --radius: 0.625rem;
+
+  --glow: #0891b2;        /* cyan-600 — primary */
+  --glow-purple: #7c3aed; /* violet-600 — secondary */
+  --xp: #ea580c;          /* orange-600 — XP */
+  --warning: #d97706;     /* amber-600 */
+
+  --chart-1: #0891b2;
+  --chart-2: #7c3aed;
+  --chart-3: #2563eb;
+  --chart-4: #ea580c;
+  --chart-5: #db2777;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #0891b2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e2e8f0;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #cbd5e1;
+  --sidebar-ring: #0891b2;
 }
 
 @layer base {
@@ -119,24 +219,30 @@
   cursor: pointer !important;
 }
 
-/* RPG glow effects */
+/* RPG glow effects — driven by tokens via color-mix so they re-tint per theme. */
 .glow-green {
-  box-shadow: 0 0 12px rgba(0, 255, 136, 0.3), 0 0 4px rgba(0, 255, 136, 0.1);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--glow) 30%, transparent),
+    0 0 4px color-mix(in srgb, var(--glow) 15%, transparent);
 }
 .glow-purple {
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3), 0 0 4px rgba(168, 85, 247, 0.1);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--glow-purple) 30%, transparent),
+    0 0 4px color-mix(in srgb, var(--glow-purple) 15%, transparent);
 }
 .glow-gold {
-  box-shadow: 0 0 12px rgba(250, 204, 21, 0.3), 0 0 4px rgba(250, 204, 21, 0.1);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--xp) 30%, transparent),
+    0 0 4px color-mix(in srgb, var(--xp) 15%, transparent);
 }
 .glow-green-text {
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--glow) 50%, transparent);
 }
 .glow-purple-text {
-  text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--glow-purple) 50%, transparent);
 }
 
 /* XP bar glow */
 .xp-bar [data-slot="progress-indicator"] {
-  box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--glow) 50%, transparent);
 }

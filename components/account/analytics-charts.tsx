@@ -49,7 +49,14 @@ export function XpBarChart({ buckets }: { buckets: DailyXpBucket[] }) {
           const x = padX + i * (barW + gap);
           const y = height - padY - h;
           const isToday = i === buckets.length - 1;
-          const color = b.xp === 0 ? "rgba(255,255,255,0.05)" : isToday ? "#facc15" : "#84cc16";
+          // Theme-tinted: empty cells use a foreground-tinted veil; today
+          // pops as --xp (warm), other active days as --glow (primary).
+          const fill =
+            b.xp === 0
+              ? "color-mix(in srgb, currentColor 8%, transparent)"
+              : isToday
+                ? "var(--xp)"
+                : "var(--glow)";
           return (
             <rect
               key={b.date}
@@ -57,7 +64,7 @@ export function XpBarChart({ buckets }: { buckets: DailyXpBucket[] }) {
               y={y}
               width={barW}
               height={Math.max(1, h)}
-              fill={color}
+              fill={fill}
               rx="1"
             >
               <title>
@@ -102,13 +109,14 @@ export function HabitHeatmap({
   const total = days.reduce((s, d) => s + d.count, 0);
   const activeDays = days.filter((d) => d.count > 0).length;
 
+  // Theme-tinted heatmap: each step mixes the theme's primary accent with
+  // the page background so cells stay legible in light or dark themes.
   function color(count: number): string {
-    if (count === 0) return "rgba(255,255,255,0.04)";
+    if (count === 0) return "color-mix(in srgb, currentColor 5%, transparent)";
     const intensity = Math.min(1, count / max);
-    if (intensity < 0.25) return "rgba(132,204,22,0.25)";
-    if (intensity < 0.5) return "rgba(132,204,22,0.5)";
-    if (intensity < 0.75) return "rgba(132,204,22,0.75)";
-    return "#84cc16";
+    const pct =
+      intensity < 0.25 ? 25 : intensity < 0.5 ? 45 : intensity < 0.75 ? 70 : 100;
+    return `color-mix(in srgb, var(--glow) ${pct}%, transparent)`;
   }
 
   // Month labels: pick the first cell of each month in the column of its
@@ -166,7 +174,7 @@ export function HabitHeatmap({
               y={10}
               fontSize="9"
               fontFamily="monospace"
-              fill="rgba(255,255,255,0.45)"
+              fill="var(--muted-foreground)"
             >
               {l.label}
             </text>
@@ -233,7 +241,7 @@ export function ActivitySummaryCards({
     {
       label: "Achievements",
       value: summary.achievementsUnlocked,
-      color: "text-yellow-400",
+      color: "text-xp",
     },
   ];
   return (

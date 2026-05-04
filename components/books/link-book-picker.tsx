@@ -174,7 +174,7 @@ export function LinkBookPicker({
                 <div className="mt-1 flex items-center gap-1.5">
                   <StatusPill status={r.status} />
                   {r.rating && (
-                    <span className="text-[10px] text-yellow-400 tracking-widest">
+                    <span className="text-[10px] text-xp tracking-widest">
                       {"★".repeat(r.rating)}
                     </span>
                   )}

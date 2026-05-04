@@ -38,8 +38,8 @@ const LEVEL_STYLES: Record<number, { badge: string; border: string; glow: string
     glow: "shadow-[0_0_12px_rgba(168,85,247,0.3)]",
   },
   4: {
-    badge: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    border: "border-yellow-500/50",
+    badge: "bg-xp/20 text-xp border-xp/30",
+    border: "border-xp/50",
     glow: "shadow-[0_0_16px_rgba(250,204,21,0.3)]",
   },
 };

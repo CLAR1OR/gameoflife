@@ -57,7 +57,7 @@ export function BookCard({ book }: { book: Book }) {
         {/* Rating stars if rated */}
         {isRead && book.rating && (
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 py-1">
-            <div className="text-[10px] text-yellow-400 font-mono tracking-widest">
+            <div className="text-[10px] text-xp font-mono tracking-widest">
               {"★".repeat(book.rating)}
               <span className="text-muted-foreground/60">
                 {"★".repeat(5 - book.rating)}

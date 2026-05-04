@@ -143,7 +143,7 @@ function RecurringRow({
     >
       <div
         className={`shrink-0 w-1 h-10 rounded-full ${
-          recurring.type === "income" ? "bg-glow/70" : "bg-red-500/70"
+          recurring.type === "income" ? "bg-glow/70" : "bg-destructive/70"
         }`}
       />
       <div className="flex-1 min-w-0">
@@ -165,7 +165,7 @@ function RecurringRow({
       </div>
       <div
         className={`font-mono text-sm font-bold shrink-0 ${
-          recurring.type === "income" ? "text-glow" : "text-red-400"
+          recurring.type === "income" ? "text-glow" : "text-destructive"
         }`}
       >
         {recurring.type === "income" ? "+" : "−"}
@@ -192,7 +192,7 @@ function RecurringRow({
         type="button"
         onClick={handleDelete}
         disabled={pending}
-        className="text-xs text-muted-foreground/40 hover:text-red-400 transition-colors"
+        className="text-xs text-muted-foreground/40 hover:text-destructive transition-colors"
         aria-label="Delete"
       >
         ✕
@@ -272,7 +272,7 @@ function AddRecurringForm({
           onClick={() => setType("expense")}
           className={`flex-1 py-1.5 rounded-md border text-xs font-mono uppercase tracking-wider transition-all ${
             type === "expense"
-              ? "border-red-500/60 bg-red-500/10 text-red-400"
+              ? "border-destructive/60 bg-destructive/10 text-destructive"
               : "border-border bg-muted/20 text-muted-foreground"
           }`}
         >

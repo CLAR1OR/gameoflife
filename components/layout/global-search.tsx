@@ -24,7 +24,7 @@ const KIND_CLS: Record<SearchHit["kind"], string> = {
   book: "text-xp border-xp/40",
   quest: "text-glow-purple border-glow-purple/40",
   habit: "text-glow border-glow/40",
-  achievement: "text-yellow-400 border-yellow-400/40",
+  achievement: "text-xp border-xp/40",
 };
 
 export function GlobalSearch() {

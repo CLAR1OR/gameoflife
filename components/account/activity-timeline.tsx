@@ -31,7 +31,7 @@ const KIND_STYLE: Record<
   milestone: { label: "Milestone", color: "text-glow border-glow/40" },
   quest: { label: "Quest", color: "text-glow-purple border-glow-purple/40" },
   book: { label: "Book", color: "text-xp border-xp/40" },
-  achievement: { label: "🏆", color: "text-yellow-400 border-yellow-400/40" },
+  achievement: { label: "🏆", color: "text-xp border-xp/40" },
 };
 
 export function ActivityTimeline({ events }: { events: TimelineEvent[] }) {

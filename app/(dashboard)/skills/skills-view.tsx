@@ -166,7 +166,7 @@ function FocusBanner({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs bg-black/60 text-red-400 hover:text-red-300 hover:bg-black/80"
+            className="h-7 px-2 text-xs bg-black/60 text-destructive hover:text-red-300 hover:bg-black/80"
             onClick={(e) => {
               e.preventDefault();
               onDelete();
@@ -297,7 +297,7 @@ function SkillTile({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-1.5 text-[10px] bg-black/60 text-red-400 hover:text-red-300 hover:bg-black/80"
+            className="h-6 px-1.5 text-[10px] bg-black/60 text-destructive hover:text-red-300 hover:bg-black/80"
             onClick={(e) => {
               e.preventDefault();
               onDelete();

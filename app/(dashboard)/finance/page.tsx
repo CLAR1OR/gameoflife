@@ -189,7 +189,7 @@ function SummaryCard({
   absolute?: boolean;
 }) {
   const accentClass =
-    accent === "glow" ? "text-glow border-glow/20" : "text-red-400 border-red-500/20";
+    accent === "glow" ? "text-glow border-glow/20" : "text-destructive border-destructive/20";
   const shown = absolute ? Math.abs(value) : value;
   return (
     <div className={`rounded-xl border bg-card p-4 ${accentClass}`}>

@@ -35,12 +35,12 @@ export function NetWorthRow({
       title={showBadge ? badgeLabel : "Open finance"}
     >
       <span className="text-xl leading-none">🪙</span>
-      <span className="font-mono text-lg font-bold text-yellow-400 leading-none group-hover:text-yellow-300 transition-colors">
+      <span className="font-mono text-lg font-bold text-xp leading-none group-hover:text-xp transition-colors">
         {formatMoney(initial, currency)}
       </span>
       {showBadge && (
         <span
-          className="absolute -right-2 -top-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-background bg-amber-500 text-[10px] font-bold text-black shadow-sm px-1"
+          className="absolute -right-2 -top-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-background bg-warning text-[10px] font-bold text-black shadow-sm px-1"
           aria-label={badgeLabel}
         >
           {badgeContent}

@@ -45,7 +45,7 @@ export function ResetFinanceButton() {
         type="button"
         variant="outline"
         onClick={() => setOpen(true)}
-        className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+        className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-red-300"
       >
         Reset finance data…
       </Button>
@@ -67,7 +67,7 @@ export function ResetFinanceButton() {
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor="confirm-input">
-              Type <span className="font-mono text-red-400">{CONFIRM_WORD}</span> to confirm
+              Type <span className="font-mono text-destructive">{CONFIRM_WORD}</span> to confirm
             </Label>
             <Input
               id="confirm-input"
@@ -94,7 +94,7 @@ export function ResetFinanceButton() {
               type="button"
               onClick={handleConfirm}
               disabled={pending || input.trim().toUpperCase() !== CONFIRM_WORD}
-              className="bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/40"
+              className="bg-destructive/20 text-red-300 hover:bg-destructive/30 border border-destructive/40"
             >
               {pending ? "Resetting…" : "Reset everything"}
             </Button>

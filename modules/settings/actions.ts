@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import type { FeatureKey } from "./features";
 import { isSupportedCurrency } from "@/lib/money";
+import { isValidTheme, type ThemeId } from "@/lib/themes";
 
 export async function updateNetWorth(value: number) {
   const session = await requireSession();
@@ -76,6 +77,31 @@ export async function updateYearlyBookGoal(value: number) {
   revalidatePath("/books");
   revalidatePath("/");
   return { yearlyBookGoal: safe };
+}
+
+export async function setTheme(theme: string) {
+  const session = await requireSession();
+  if (!isValidTheme(theme)) throw new Error("Unknown theme");
+
+  const existing = await db.query.userSettings.findFirst({
+    where: (s, { eq: e }) => e(s.userId, session.user.id),
+  });
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({ theme, updatedAt: new Date() })
+      .where(eq(userSettings.userId, session.user.id));
+  } else {
+    await db.insert(userSettings).values({
+      userId: session.user.id,
+      theme,
+    });
+  }
+
+  // Theme attribute is set on <html> in the root layout, which is shared
+  // across every route — invalidate the whole tree.
+  revalidatePath("/", "layout");
+  return { theme: theme as ThemeId };
 }
 
 export async function setFeatureEnabled(key: FeatureKey, enabled: boolean) {

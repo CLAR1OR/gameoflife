@@ -63,7 +63,7 @@ function FeedEntry({ entry }: { entry: RecentReadEntry }) {
           </div>
           <div className="flex items-center gap-2 mt-1.5">
             {read.rating ? (
-              <span className="text-[11px] text-yellow-400 tracking-widest">
+              <span className="text-[11px] text-xp tracking-widest">
                 {"★".repeat(read.rating)}
                 <span className="text-muted-foreground/30">
                   {"★".repeat(5 - read.rating)}

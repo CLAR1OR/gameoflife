@@ -68,7 +68,7 @@ export function AccountsSection({
           </span>
           <span
             className={`font-mono text-lg font-bold ${
-              totalNetWorth >= 0 ? "text-yellow-400" : "text-red-400"
+              totalNetWorth >= 0 ? "text-xp" : "text-destructive"
             }`}
           >
             {formatMoney(totalNetWorth, currency)}
@@ -186,7 +186,7 @@ function AccountCard({
   return (
     <div
       className={`rounded-xl border bg-card p-4 flex flex-col gap-3 min-h-[120px] ${
-        stale ? "border-amber-500/40" : ""
+        stale ? "border-warning/40" : ""
       }`}
     >
       <div className="flex items-start gap-2">
@@ -223,7 +223,7 @@ function AccountCard({
             <span>{account.type}</span>
             {stale && (
               <span
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold"
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-warning/20 text-warning text-[10px] font-bold"
                 title={`Not checked in for ${CHECKIN_STALE_DAYS}+ days`}
               >
                 !
@@ -235,7 +235,7 @@ function AccountCard({
           type="button"
           onClick={handleDelete}
           disabled={pending}
-          className="text-xs text-muted-foreground/40 hover:text-red-400 transition-colors"
+          className="text-xs text-muted-foreground/40 hover:text-destructive transition-colors"
           aria-label="Archive"
           title="Archive"
         >
@@ -277,7 +277,7 @@ function AccountCard({
               setEditingBalance(true);
             }}
             className={`font-mono text-xl font-bold w-full text-left hover:opacity-80 transition-opacity ${
-              balance >= 0 ? "text-foreground" : "text-red-400"
+              balance >= 0 ? "text-foreground" : "text-destructive"
             }`}
           >
             {formatMoney(balance, currency)}
@@ -288,7 +288,7 @@ function AccountCard({
             type="button"
             onClick={handleDeclareUnchanged}
             disabled={pending}
-            className="mt-2 w-full text-[10px] font-mono px-2 py-1 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors"
+            className="mt-2 w-full text-[10px] font-mono px-2 py-1 rounded-md border border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
             title={`Confirm balance hasn't changed in ${CHECKIN_STALE_DAYS}+ days`}
           >
             Nothing changed · +1 XP

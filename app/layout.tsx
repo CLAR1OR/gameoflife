@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { getSession } from "@/lib/auth-server";
+import { getUserSettings } from "@/modules/settings/queries";
+import { DEFAULT_THEME, isValidTheme } from "@/lib/themes";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,14 +20,30 @@ export const metadata: Metadata = {
   description: "Gamify your life with skill trees, habits, and achievements",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Resolve the user's theme on the server so the right palette is in
+  // place on first paint — no flash of default theme.
+  let theme: string = DEFAULT_THEME;
+  try {
+    const session = await getSession();
+    if (session) {
+      const settings = await getUserSettings(session.user.id);
+      if (settings.theme && isValidTheme(settings.theme)) {
+        theme = settings.theme;
+      }
+    }
+  } catch {
+    // unauthenticated or DB error → default theme
+  }
+
   return (
     <html
       lang="en"
+      data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

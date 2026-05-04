@@ -121,7 +121,7 @@ export default async function BookDetailPage({
                   : "📖 Want"}
             </span>
             {b.rating && (
-              <span className="text-yellow-400">
+              <span className="text-xp">
                 {"★".repeat(b.rating)}
                 <span className="text-muted-foreground/30">
                   {"★".repeat(5 - b.rating)}
@@ -225,7 +225,7 @@ export default async function BookDetailPage({
                         : "—"}
                     </span>
                     {r.rating && (
-                      <span className="text-yellow-400 text-xs">
+                      <span className="text-xp text-xs">
                         {"★".repeat(r.rating)}
                       </span>
                     )}

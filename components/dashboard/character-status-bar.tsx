@@ -39,7 +39,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
   },
   xp: {
     ring: "ring-yellow-500/30",
-    text: "text-yellow-400",
+    text: "text-xp",
     bar: "bg-yellow-500",
     glow: "shadow-[0_0_24px_rgba(250,204,21,0.3)]",
     bg: "from-yellow-500/15",
@@ -53,7 +53,7 @@ const TIER_CLASSES: Record<LevelProgress["tier"]["accent"], {
   },
   legend: {
     ring: "ring-red-500/40",
-    text: "text-red-400",
+    text: "text-destructive",
     bar: "bg-gradient-to-r from-yellow-400 via-red-500 to-purple-500",
     glow: "shadow-[0_0_32px_rgba(239,68,68,0.4)]",
     bg: "from-red-500/15",

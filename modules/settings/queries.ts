@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
 import { DEFAULT_CURRENCY } from "@/lib/money";
+import { DEFAULT_THEME, type ThemeId } from "@/lib/themes";
 
 export type UserSettings = {
   netWorth: number;
   features: Record<string, boolean>;
   currency: string;
   yearlyBookGoal: number;
+  theme: ThemeId;
 };
 
 export async function getUserSettings(userId: string): Promise<UserSettings> {
@@ -17,5 +19,6 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
     features: row?.features ?? {},
     currency: row?.currency ?? DEFAULT_CURRENCY,
     yearlyBookGoal: row?.yearlyBookGoal ?? 0,
+    theme: (row?.theme as ThemeId | undefined) ?? DEFAULT_THEME,
   };
 }

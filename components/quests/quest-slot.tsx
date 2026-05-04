@@ -191,7 +191,7 @@ export function QuestSlot({
     const cls = due.overdue
       ? "border-destructive/50 text-destructive bg-destructive/10"
       : due.soon
-        ? "border-yellow-500/40 text-yellow-400 bg-yellow-500/10"
+        ? "border-xp/40 text-xp bg-xp/10"
         : "border-border text-muted-foreground bg-black/20";
     return (
       <Badge

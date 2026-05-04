@@ -87,7 +87,7 @@ export function RecurringEditDialog({
               onClick={() => setType("expense")}
               className={`flex-1 py-1.5 rounded-md border text-xs font-mono uppercase tracking-wider transition-all ${
                 type === "expense"
-                  ? "border-red-500/60 bg-red-500/10 text-red-400"
+                  ? "border-destructive/60 bg-destructive/10 text-destructive"
                   : "border-border bg-muted/20 text-muted-foreground"
               }`}
             >

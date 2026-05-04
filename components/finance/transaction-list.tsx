@@ -98,14 +98,14 @@ export function TransactionList({
             t.type === "income"
               ? "bg-glow/70"
               : t.type === "expense"
-                ? "bg-red-500/70"
-                : "bg-yellow-400/70";
+                ? "bg-destructive/70"
+                : "bg-xp/70";
           const amountClass =
             t.type === "income"
               ? "text-glow"
               : t.type === "expense"
-                ? "text-red-400"
-                : "text-yellow-400";
+                ? "text-destructive"
+                : "text-xp";
           const prefixSymbol =
             t.type === "income" ? "+" : t.type === "expense" ? "−" : "↔";
           const expanded = expandedId === t.id;
@@ -213,7 +213,7 @@ export function TransactionList({
                       type="button"
                       onClick={() => handleDelete(t.id)}
                       disabled={deletingId === t.id}
-                      className="text-[10px] font-mono px-2 py-1 rounded border border-border hover:border-red-500/40 hover:text-red-400 transition-colors"
+                      className="text-[10px] font-mono px-2 py-1 rounded border border-border hover:border-destructive/40 hover:text-destructive transition-colors"
                     >
                       Delete
                     </button>

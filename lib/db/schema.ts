@@ -116,6 +116,7 @@ export const userSettings = sqliteTable("user_settings", {
   currency: text("currency").notNull().default("EUR"),
   generalXp: integer("general_xp").notNull().default(0),
   yearlyBookGoal: integer("yearly_book_goal").notNull().default(0),
+  theme: text("theme").notNull().default("forest"),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 

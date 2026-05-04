@@ -22,7 +22,7 @@ export function BookStatusRow({
 
   const textColor = hasGoal
     ? goalMet
-      ? "text-yellow-400"
+      ? "text-xp"
       : "text-emerald-400"
     : "text-emerald-400";
 

@@ -95,12 +95,12 @@ function RatingDistribution({ dist }: { dist: number[] }) {
           const pct = (n / max) * 100;
           return (
             <div key={stars} className="flex items-center gap-2 text-xs">
-              <span className="w-16 text-yellow-400 font-mono">
+              <span className="w-16 text-xp font-mono">
                 {"★".repeat(stars)}
               </span>
               <div className="flex-1 h-4 rounded-sm bg-muted/40 overflow-hidden">
                 <div
-                  className="h-full bg-yellow-500/60 transition-all"
+                  className="h-full bg-xp/60 transition-all"
                   style={{ width: `${pct}%` }}
                 />
               </div>

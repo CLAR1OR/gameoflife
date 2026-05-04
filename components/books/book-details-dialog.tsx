@@ -369,7 +369,7 @@ export function BookDetailsDialog({
                     onClick={() => setRating(rating === n ? null : n)}
                     className={`h-8 w-8 rounded-md text-lg transition-colors ${
                       rating != null && n <= rating
-                        ? "text-yellow-400"
+                        ? "text-xp"
                         : "text-muted-foreground/30 hover:text-muted-foreground"
                     }`}
                   >
@@ -521,7 +521,7 @@ export function BookDetailsDialog({
                             }
                             className={`h-6 w-6 text-base transition-colors ${
                               rereadRating != null && n <= rereadRating
-                                ? "text-yellow-400"
+                                ? "text-xp"
                                 : "text-muted-foreground/30 hover:text-muted-foreground"
                             }`}
                           >
@@ -561,7 +561,7 @@ export function BookDetailsDialog({
                           {formatReadDate(r.finishedAt)}
                         </span>
                         {r.rating && (
-                          <span className="text-yellow-400 text-[10px]">
+                          <span className="text-xp text-[10px]">
                             {"★".repeat(r.rating)}
                           </span>
                         )}

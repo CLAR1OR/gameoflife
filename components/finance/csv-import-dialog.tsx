@@ -255,7 +255,7 @@ function PreviewPanel({
 
       {preview.errors.length > 0 && (
         <details className="text-xs">
-          <summary className="cursor-pointer text-red-400 font-mono">
+          <summary className="cursor-pointer text-destructive font-mono">
             Parse errors ({preview.errors.length})
           </summary>
           <ul className="mt-2 space-y-1 text-[11px] font-mono text-red-300 max-h-32 overflow-auto">
@@ -295,7 +295,7 @@ function PreviewPanel({
                 </td>
                 <td
                   className={`p-2 text-right font-mono font-bold ${
-                    r.amount >= 0 ? "text-glow" : "text-red-400"
+                    r.amount >= 0 ? "text-glow" : "text-destructive"
                   }`}
                 >
                   {formatMoney(r.amount, currency, { sign: "always" })}
@@ -327,7 +327,7 @@ function Badge({
     tone === "glow"
       ? "border-glow/50 text-glow bg-glow/10"
       : tone === "red"
-        ? "border-red-500/50 text-red-400 bg-red-500/10"
+        ? "border-destructive/50 text-destructive bg-destructive/10"
         : "border-border text-muted-foreground bg-muted/30";
   return (
     <span

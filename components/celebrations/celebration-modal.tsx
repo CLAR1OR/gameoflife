@@ -154,10 +154,10 @@ export function CelebrationModal() {
 
       {/* Card */}
       <div
-        className="relative z-10 rounded-3xl border-2 border-yellow-400/60 bg-card/95 shadow-2xl shadow-yellow-500/20 p-8 max-w-md mx-4 text-center"
+        className="relative z-10 rounded-3xl border-2 border-xp/60 bg-card/95 shadow-2xl shadow-xp/20 p-8 max-w-md mx-4 text-center"
         style={{ animation: "celebrate-pop 0.6s cubic-bezier(.2,1.1,.6,1)" }}
       >
-        <div className="text-[11px] font-mono uppercase tracking-[0.25em] text-yellow-400/90 mb-3">
+        <div className="text-[11px] font-mono uppercase tracking-[0.25em] text-xp/90 mb-3">
           {isLevelAchievement ? "Level milestone" : "Achievement unlocked"}
         </div>
         <div
@@ -166,7 +166,7 @@ export function CelebrationModal() {
         >
           {current.icon}
         </div>
-        <h2 className="text-2xl font-bold text-yellow-300 mb-2">
+        <h2 className="text-2xl font-bold text-xp mb-2">
           {current.name}
         </h2>
         {current.description && (
@@ -182,7 +182,7 @@ export function CelebrationModal() {
         <Button
           size="sm"
           onClick={dismiss}
-          className="mt-6 bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/40"
+          className="mt-6 bg-xp/20 hover:bg-xp/30 text-xp border border-xp/40"
         >
           Continue
         </Button>

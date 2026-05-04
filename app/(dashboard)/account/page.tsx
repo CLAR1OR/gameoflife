@@ -19,6 +19,7 @@ import { CharacterStatusBar } from "@/components/dashboard/character-status-bar"
 import { Badge } from "@/components/ui/badge";
 import { FeatureToggles } from "@/components/account/feature-toggles";
 import { CurrencyPicker } from "@/components/account/currency-picker";
+import { ThemePicker } from "@/components/account/theme-picker";
 import { ResetFinanceButton } from "@/components/account/reset-finance-button";
 import { BackupSection } from "@/components/account/backup-section";
 import { ActivityTimeline } from "@/components/account/activity-timeline";
@@ -297,6 +298,17 @@ export default async function AccountPage() {
           Recent activity
         </h2>
         <ActivityTimeline events={timeline} />
+      </section>
+
+      {/* Theme */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Theme
+        </h2>
+        <ThemePicker initial={settings.theme} />
+        <p className="text-[11px] text-muted-foreground/70 mt-2">
+          Picks the colour palette for the entire app. Switches instantly.
+        </p>
       </section>
 
       {/* Preferences */}

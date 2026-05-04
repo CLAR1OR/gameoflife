@@ -42,8 +42,12 @@ export function NetWorthSparkline({ snapshots, current, currency }: Props) {
   const lastX = (snapshots.length - 1) * stepX;
   const lastY = height - ((snapshots[snapshots.length - 1].netWorth - min) / range) * height;
 
-  const stroke = delta >= 0 ? "#84cc16" : "#f87171";
-  const fill = delta >= 0 ? "rgba(132,204,22,0.15)" : "rgba(248,113,113,0.15)";
+  // Use theme tokens so the line re-tints with the active theme.
+  const stroke = delta >= 0 ? "var(--glow)" : "var(--destructive)";
+  const fill =
+    delta >= 0
+      ? "color-mix(in srgb, var(--glow) 15%, transparent)"
+      : "color-mix(in srgb, var(--destructive) 15%, transparent)";
 
   return (
     <div className="rounded-xl border bg-card p-5">
@@ -54,7 +58,7 @@ export function NetWorthSparkline({ snapshots, current, currency }: Props) {
           </div>
           <div
             className={`text-xs font-mono mt-1 ${
-              delta >= 0 ? "text-glow" : "text-red-400"
+              delta >= 0 ? "text-glow" : "text-destructive"
             }`}
           >
             {delta >= 0 ? "▲" : "▼"} {formatMoney(delta, currency, { sign: "always" })}

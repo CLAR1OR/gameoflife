@@ -113,7 +113,7 @@ export function TransactionForm({ today, categorySuggestions, accounts, currency
           onClick={() => setType("expense")}
           className={`flex-1 py-2 rounded-lg border-2 text-xs font-mono uppercase tracking-wider transition-all ${
             type === "expense"
-              ? "border-red-500/60 bg-red-500/10 text-red-400"
+              ? "border-destructive/60 bg-destructive/10 text-destructive"
               : "border-border bg-muted/20 text-muted-foreground hover:border-border"
           }`}
         >
@@ -135,7 +135,7 @@ export function TransactionForm({ today, categorySuggestions, accounts, currency
           onClick={() => setType("transfer")}
           className={`flex-1 py-2 rounded-lg border-2 text-xs font-mono uppercase tracking-wider transition-all ${
             type === "transfer"
-              ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400"
+              ? "border-xp/60 bg-xp/10 text-xp"
               : "border-border bg-muted/20 text-muted-foreground hover:border-border"
           }`}
         >
