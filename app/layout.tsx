@@ -45,8 +45,16 @@ export default async function RootLayout({
       lang="en"
       data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // Theme attribute is computed from the session cookie at request time.
+      // Dev tools (or browsers in some configs) inject `data-*` attributes on
+      // <html> after the server response, which React's strict hydration
+      // diff flags as a mismatch even though our markup is correct. This is
+      // the standard next-themes / nextjs theme pattern.
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }
