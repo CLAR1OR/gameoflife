@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,19 +61,33 @@ function distributeMinutes(
 }
 
 export function DeliberatePractice({
-  routines: initialRoutines,
+  routines,
   categoryId,
 }: {
   routines: PracticeRoutine[];
   categoryId: string;
 }) {
-  const [routines] = useState(initialRoutines);
+  const router = useRouter();
   const [activeRoutineId, setActiveRoutineId] = useState<string | null>(
-    initialRoutines[0]?.id ?? null
+    routines[0]?.id ?? null
   );
   const [duration, setDuration] = useState<number>(50);
   const [editing, setEditing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Keep activeRoutineId valid when the routine list changes (e.g. after
+  // adding or deleting one). Without this, `routines.find(...)` could miss
+  // and the picker would silently jump to the first routine.
+  useEffect(() => {
+    if (
+      activeRoutineId &&
+      !routines.find((r) => r.id === activeRoutineId)
+    ) {
+      setActiveRoutineId(routines[0]?.id ?? null);
+    } else if (!activeRoutineId && routines.length > 0) {
+      setActiveRoutineId(routines[0].id);
+    }
+  }, [routines, activeRoutineId]);
 
   if (routines.length === 0) {
     return (
@@ -209,6 +224,7 @@ export function DeliberatePractice({
                     try {
                       await resetRoutineToTemplate(active.id);
                       toast.success("Reset to template");
+                      router.refresh();
                     } catch (e) {
                       toast.error(
                         e instanceof Error ? e.message : "Failed"
@@ -232,6 +248,7 @@ export function DeliberatePractice({
                     try {
                       await deleteRoutine(active.id);
                       toast.success("Routine deleted");
+                      router.refresh();
                     } catch (e) {
                       toast.error(
                         e instanceof Error ? e.message : "Failed"
@@ -346,6 +363,7 @@ function BlockRow({
   busy: boolean;
   setBusyId: (s: string | null) => void;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const tint = FOCUS_TINT[b.focus];
@@ -354,6 +372,7 @@ function BlockRow({
     setBusyId(b.id);
     try {
       await moveBlock(b.id, direction);
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
@@ -366,6 +385,7 @@ function BlockRow({
     try {
       await deleteBlock(b.id);
       toast.success("Block deleted");
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
@@ -485,6 +505,7 @@ function BlockEditor({
   block: PracticeBlock;
   onDone: () => void;
 }) {
+  const router = useRouter();
   const [name, setName] = useState(b.name);
   const [focus, setFocus] = useState<PracticeFocus>(b.focus);
   const [weight, setWeight] = useState(String(b.weight));
@@ -503,6 +524,7 @@ function BlockEditor({
         notes: notes,
       });
       toast.success("Block updated");
+      router.refresh();
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -579,6 +601,7 @@ function BlockEditor({
 }
 
 function NewBlockForm({ routineId }: { routineId: string }) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -589,6 +612,7 @@ function NewBlockForm({ routineId }: { routineId: string }) {
       await addBlock(routineId, { name });
       setName("");
       toast.success("Block added");
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
@@ -618,6 +642,7 @@ function RoutineHeaderEditor({
   routine: PracticeRoutine;
   onDone: () => void;
 }) {
+  const router = useRouter();
   const [name, setName] = useState(r.name);
   const [description, setDescription] = useState(r.description ?? "");
   const [busy, setBusy] = useState(false);
@@ -627,6 +652,7 @@ function RoutineHeaderEditor({
     try {
       await updateRoutine(r.id, { name, description });
       toast.success("Routine updated");
+      router.refresh();
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -662,6 +688,7 @@ function RoutineHeaderEditor({
 }
 
 function CreateRoutineButton({ categoryId }: { categoryId: string }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function add() {
     const name = prompt("Name for the new routine?");
@@ -670,6 +697,7 @@ function CreateRoutineButton({ categoryId }: { categoryId: string }) {
     try {
       await createRoutine({ categoryId, name });
       toast.success("Routine created");
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
@@ -683,6 +711,7 @@ function CreateRoutineButton({ categoryId }: { categoryId: string }) {
 }
 
 function CreateFirstRoutine({ categoryId }: { categoryId: string }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function add() {
     setBusy(true);
@@ -693,6 +722,7 @@ function CreateFirstRoutine({ categoryId }: { categoryId: string }) {
         description: "Add blocks below to lay out a session.",
       });
       toast.success("Routine created");
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
