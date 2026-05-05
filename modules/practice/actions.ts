@@ -254,20 +254,38 @@ export async function resetRoutineToTemplate(routineId: string) {
 }
 
 /**
+ * Mark the category's practice routines as having been seeded so the
+ * page-level lazy-seed never silently re-adds deleted ones. Re-adding has
+ * to be explicit via `reseedMissingTemplateRoutines`.
+ */
+export async function markPracticeRoutinesSeeded(categoryId: string) {
+  await db
+    .update(skillCategory)
+    .set({ practiceRoutinesSeeded: true, updatedAt: new Date() })
+    .where(eq(skillCategory.id, categoryId));
+}
+
+/**
  * Seed the user's category with the template's default routines.
- * Called from `activateTemplate`. Idempotent — skips if routines already
- * exist for the category.
+ * Idempotent and additive: only inserts seeds whose `templateId` (= seed
+ * name) isn't already present for this user/category. Safe to re-run when
+ * new template routines ship; existing customised routines aren't touched.
+ *
+ * Returns the number of routines that were added.
  */
 export async function seedRoutinesForCategory(
   userId: string,
   categoryId: string,
   templateId: string
-) {
+): Promise<number> {
   const seeds = getPracticeRoutinesForTemplate(templateId);
-  if (seeds.length === 0) return;
+  if (seeds.length === 0) return 0;
 
   const existing = await db
-    .select({ id: practiceRoutine.id })
+    .select({
+      id: practiceRoutine.id,
+      templateId: practiceRoutine.templateId,
+    })
     .from(practiceRoutine)
     .where(
       and(
@@ -275,10 +293,16 @@ export async function seedRoutinesForCategory(
         eq(practiceRoutine.categoryId, categoryId)
       )
     );
-  if (existing.length > 0) return;
+  const existingTemplateNames = new Set(
+    existing.map((r) => r.templateId).filter((t): t is string => !!t)
+  );
 
-  for (let i = 0; i < seeds.length; i++) {
-    const seed = seeds[i];
+  // Append new ones at the end of whatever ordering the user already has.
+  let nextSortOrder = existing.length;
+  let added = 0;
+
+  for (const seed of seeds) {
+    if (existingTemplateNames.has(seed.name)) continue;
     const [routine] = await db
       .insert(practiceRoutine)
       .values({
@@ -289,26 +313,46 @@ export async function seedRoutinesForCategory(
         templateId: seed.name,
         name: seed.name,
         description: seed.description,
-        sortOrder: i,
+        sortOrder: nextSortOrder++,
       })
       .returning();
-    if (seed.blocks.length === 0) continue;
-    await db.insert(practiceBlock).values(
-      seed.blocks.map((b, idx) => ({
-        routineId: routine.id,
-        userId,
-        name: b.name,
-        focus: b.focus,
-        weight: b.weight,
-        minLevel: b.minLevel,
-        notes: b.notes,
-        sortOrder: idx,
-      }))
-    );
+    if (seed.blocks.length > 0) {
+      await db.insert(practiceBlock).values(
+        seed.blocks.map((b, idx) => ({
+          routineId: routine.id,
+          userId,
+          name: b.name,
+          focus: b.focus,
+          weight: b.weight,
+          minLevel: b.minLevel,
+          notes: b.notes,
+          sortOrder: idx,
+        }))
+      );
+    }
+    added++;
   }
 
-  // Best-effort revalidation; the caller (activateTemplate) revalidates too.
-  revalidatePath(`/skills/${categoryId}`);
+  if (added > 0) revalidatePath(`/skills/${categoryId}`);
   // Avoid the unused-import lint warning for skillCategory.
   void skillCategory;
+  return added;
+}
+
+/**
+ * Convenience wrapper for the "↺ Re-add template routines" button — runs
+ * the additive seed for the current session user, reads the templateId
+ * off the category, and returns how many were added.
+ */
+export async function reseedMissingTemplateRoutines(categoryId: string) {
+  const session = await requireSession();
+  const cat = await ownsCategory(session.user.id, categoryId);
+  if (!cat.templateId) return { added: 0, hadTemplate: false };
+
+  const added = await seedRoutinesForCategory(
+    session.user.id,
+    categoryId,
+    cat.templateId
+  );
+  return { added, hadTemplate: true };
 }

@@ -12,7 +12,10 @@ import {
   getCategoryContributionStats,
 } from "@/modules/links/queries";
 import { getRoutinesForCategory } from "@/modules/practice/queries";
-import { seedRoutinesForCategory } from "@/modules/practice/actions";
+import {
+  seedRoutinesForCategory,
+  markPracticeRoutinesSeeded,
+} from "@/modules/practice/actions";
 import { SkillTreeView } from "@/components/skill-tree/skill-tree-view";
 import { SkillStageHeader } from "@/components/skill-tree/skill-stage-header";
 import { AchievementsRow } from "@/components/achievements/achievements-row";
@@ -39,17 +42,22 @@ export default async function SkillTreePage({
       getCategoryContributionStats(session.user.id, categoryId),
     ]);
 
-  // Lazy-seed default deliberate-practice routines for users who activated
-  // this skill template before the practice feature shipped.
-  let routines = await getRoutinesForCategory(session.user.id, categoryId);
-  if (routines.length === 0 && category.templateId) {
+  // First-visit lazy-seed: if this category has a template but hasn't
+  // been seeded yet, run the additive seed once. This catches both fresh
+  // activations (no routines yet → seed them) and skills the user
+  // activated before this feature shipped (some routines may exist; seed
+  // adds any new template routines that ship later). After the first
+  // visit we mark practiceRoutinesSeeded so deletions stay sticky and
+  // future re-adds have to go through the "↺ Re-add" button.
+  if (category.templateId && !category.practiceRoutinesSeeded) {
     await seedRoutinesForCategory(
       session.user.id,
       categoryId,
       category.templateId
     );
-    routines = await getRoutinesForCategory(session.user.id, categoryId);
+    await markPracticeRoutinesSeeded(categoryId);
   }
+  const routines = await getRoutinesForCategory(session.user.id, categoryId);
 
   return (
     <div className="space-y-6">
@@ -78,7 +86,11 @@ export default async function SkillTreePage({
         books={linkedBooks}
         stats={contribution}
       />
-      <DeliberatePractice routines={routines} categoryId={category.id} />
+      <DeliberatePractice
+        routines={routines}
+        categoryId={category.id}
+        hasTemplate={!!category.templateId}
+      />
     </div>
   );
 }

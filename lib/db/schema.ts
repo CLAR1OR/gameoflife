@@ -65,6 +65,9 @@ export const skillCategory = sqliteTable("skill_category", {
   status: text("status", { enum: ["active", "background", "inactive"] }).notNull().default("inactive"),
   templateId: text("template_id"),
   coverImage: text("cover_image"),
+  /** Set the first time we auto-seed deliberate-practice routines from the
+   * template, so subsequent visits don't silently re-add deleted ones. */
+  practiceRoutinesSeeded: integer("practice_routines_seeded", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),

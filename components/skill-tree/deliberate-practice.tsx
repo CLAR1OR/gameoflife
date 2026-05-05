@@ -15,6 +15,7 @@ import {
   deleteBlock,
   moveBlock,
   resetRoutineToTemplate,
+  reseedMissingTemplateRoutines,
 } from "@/modules/practice/actions";
 import { toast } from "sonner";
 import {
@@ -63,9 +64,11 @@ function distributeMinutes(
 export function DeliberatePractice({
   routines,
   categoryId,
+  hasTemplate,
 }: {
   routines: PracticeRoutine[];
   categoryId: string;
+  hasTemplate: boolean;
 }) {
   const router = useRouter();
   const [activeRoutineId, setActiveRoutineId] = useState<string | null>(
@@ -91,7 +94,7 @@ export function DeliberatePractice({
 
   if (routines.length === 0) {
     return (
-      <CreateFirstRoutine categoryId={categoryId} />
+      <CreateFirstRoutine categoryId={categoryId} hasTemplate={hasTemplate} />
     );
   }
 
@@ -155,6 +158,9 @@ export function DeliberatePractice({
                 ✎ Edit
               </Button>
               <CreateRoutineButton categoryId={categoryId} />
+              {hasTemplate && (
+                <ReaddTemplateButton categoryId={categoryId} />
+              )}
             </div>
           </div>
         )}
@@ -236,30 +242,27 @@ export function DeliberatePractice({
                   ↺ Reset to default
                 </Button>
               )}
-              {routines.length > 1 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    if (
-                      !confirm(`Delete routine "${active.name}"?`)
-                    )
-                      return;
-                    try {
-                      await deleteRoutine(active.id);
-                      toast.success("Routine deleted");
-                      router.refresh();
-                    } catch (e) {
-                      toast.error(
-                        e instanceof Error ? e.message : "Failed"
-                      );
-                    }
-                  }}
-                  className="h-7 text-xs text-destructive"
-                >
-                  Delete routine
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  const wasOnly = routines.length === 1;
+                  const msg = wasOnly
+                    ? `Delete routine "${active.name}"? This is the last routine for this skill — you can re-add the template default afterwards if it had one.`
+                    : `Delete routine "${active.name}"?`;
+                  if (!confirm(msg)) return;
+                  try {
+                    await deleteRoutine(active.id);
+                    toast.success("Routine deleted");
+                    router.refresh();
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Failed");
+                  }
+                }}
+                className="h-7 text-xs text-destructive"
+              >
+                Delete routine
+              </Button>
             </div>
           </div>
         )}
@@ -710,7 +713,49 @@ function CreateRoutineButton({ categoryId }: { categoryId: string }) {
   );
 }
 
-function CreateFirstRoutine({ categoryId }: { categoryId: string }) {
+function ReaddTemplateButton({ categoryId }: { categoryId: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  async function readd() {
+    setBusy(true);
+    try {
+      const res = await reseedMissingTemplateRoutines(categoryId);
+      if (!res.hadTemplate) {
+        toast.info("This skill has no template defaults to re-add.");
+      } else if (res.added === 0) {
+        toast.info("All template routines are already present.");
+      } else {
+        toast.success(
+          `Re-added ${res.added} template routine${res.added === 1 ? "" : "s"}`
+        );
+        router.refresh();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setBusy(false);
+  }
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={readd}
+      disabled={busy}
+      className="h-7 text-xs"
+      title="Re-add any missing template routines"
+    >
+      ↺ Template
+    </Button>
+  );
+}
+
+function CreateFirstRoutine({
+  categoryId,
+  hasTemplate,
+}: {
+  categoryId: string;
+  hasTemplate: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function add() {
@@ -728,6 +773,23 @@ function CreateFirstRoutine({ categoryId }: { categoryId: string }) {
     }
     setBusy(false);
   }
+  async function readd() {
+    setBusy(true);
+    try {
+      const res = await reseedMissingTemplateRoutines(categoryId);
+      if (!res.hadTemplate || res.added === 0) {
+        toast.info("No template defaults to add for this skill.");
+      } else {
+        toast.success(
+          `Re-added ${res.added} template routine${res.added === 1 ? "" : "s"}`
+        );
+        router.refresh();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setBusy(false);
+  }
   return (
     <section className="space-y-3">
       <h2 className="text-xs font-mono uppercase tracking-wider text-glow-purple">
@@ -739,9 +801,21 @@ function CreateFirstRoutine({ categoryId }: { categoryId: string }) {
           (warm-up, technique, repertoire…), set their weights, then pick a
           session length to see how to spend each minute.
         </p>
-        <Button size="sm" onClick={add} disabled={busy}>
-          {busy ? "Creating…" : "+ Start a routine"}
-        </Button>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <Button size="sm" onClick={add} disabled={busy}>
+            {busy ? "Working…" : "+ Start a routine"}
+          </Button>
+          {hasTemplate && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={readd}
+              disabled={busy}
+            >
+              ↺ Re-add template defaults
+            </Button>
+          )}
+        </div>
       </div>
     </section>
   );
