@@ -11,10 +11,13 @@ import {
   getLinkedBooksForCategory,
   getCategoryContributionStats,
 } from "@/modules/links/queries";
+import { getRoutinesForCategory } from "@/modules/practice/queries";
+import { seedRoutinesForCategory } from "@/modules/practice/actions";
 import { SkillTreeView } from "@/components/skill-tree/skill-tree-view";
 import { SkillStageHeader } from "@/components/skill-tree/skill-stage-header";
 import { AchievementsRow } from "@/components/achievements/achievements-row";
 import { LinkedItemsPanel } from "@/components/skill-tree/linked-items-panel";
+import { DeliberatePractice } from "@/components/skill-tree/deliberate-practice";
 
 export default async function SkillTreePage({
   params,
@@ -35,6 +38,18 @@ export default async function SkillTreePage({
       getLinkedBooksForCategory(session.user.id, categoryId),
       getCategoryContributionStats(session.user.id, categoryId),
     ]);
+
+  // Lazy-seed default deliberate-practice routines for users who activated
+  // this skill template before the practice feature shipped.
+  let routines = await getRoutinesForCategory(session.user.id, categoryId);
+  if (routines.length === 0 && category.templateId) {
+    await seedRoutinesForCategory(
+      session.user.id,
+      categoryId,
+      category.templateId
+    );
+    routines = await getRoutinesForCategory(session.user.id, categoryId);
+  }
 
   return (
     <div className="space-y-6">
@@ -63,6 +78,7 @@ export default async function SkillTreePage({
         books={linkedBooks}
         stats={contribution}
       />
+      <DeliberatePractice routines={routines} categoryId={category.id} />
     </div>
   );
 }

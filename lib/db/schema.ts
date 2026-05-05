@@ -277,6 +277,31 @@ export const achievement = sqliteTable("achievement", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const practiceRoutine = sqliteTable("practice_routine", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  categoryId: text("category_id").notNull().references(() => skillCategory.id, { onDelete: "cascade" }),
+  templateId: text("template_id"),
+  name: text("name").notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const practiceBlock = sqliteTable("practice_block", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  routineId: text("routine_id").notNull().references(() => practiceRoutine.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  focus: text("focus").notNull().default("general"),
+  weight: integer("weight").notNull().default(10),
+  minLevel: integer("min_level").notNull().default(1),
+  notes: text("notes"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const xpSession = sqliteTable("xp_session", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

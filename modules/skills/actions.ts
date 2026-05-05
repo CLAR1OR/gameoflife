@@ -9,6 +9,7 @@ import { calculateLevel } from "@/lib/xp";
 import { getTemplate } from "@/lib/skill-templates";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
 import { evaluateQuestTaskTriggers } from "@/lib/quest-task-triggers";
+import { seedRoutinesForCategory } from "@/modules/practice/actions";
 
 const TOTAL_STAGES = 6;
 
@@ -211,6 +212,9 @@ export async function activateTemplate(templateId: string) {
       })
     );
   }
+
+  // Drop in default deliberate-practice routines for this template, if any.
+  await seedRoutinesForCategory(session.user.id, category.id, template.id);
 
   revalidatePath("/skills");
   revalidatePath("/achievements");
