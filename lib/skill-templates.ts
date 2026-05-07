@@ -1761,7 +1761,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Meditation",
     description: "From first mindful breath to steady presence in daily life",
     icon: "🧘",
-    coverImage: "linear-gradient(135deg, #0a0a1a 0%, #1e1b4b 40%, #4c1d95 75%, #a78bfa 100%)",
+    coverImage: "url('/meditation.png') center/cover",
     subskills: [
       // =====================
       // ROOT
@@ -2866,7 +2866,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Archery",
     description: "From your first arrow to Olympic-class accuracy",
     icon: "🏹",
-    coverImage: "linear-gradient(135deg, #0a1a0a 0%, #14532d 35%, #65a30d 70%, #fbbf24 100%)",
+    coverImage: "url('/archery.png') center/cover",
     subskills: [
       {
         name: "Equipment & Safety",

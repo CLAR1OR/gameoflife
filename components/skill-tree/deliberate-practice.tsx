@@ -27,6 +27,7 @@ import type {
   PracticeRoutine,
   PracticeBlock,
 } from "@/modules/practice/queries";
+import { PracticeTimer, type TimerBlock } from "./practice-timer";
 
 const PRESET_DURATIONS = [25, 50, 75] as const;
 
@@ -40,6 +41,21 @@ const FOCUS_TINT: Record<PracticeFocus, string> = {
   review: "border-border text-muted-foreground",
   general: "border-border text-muted-foreground",
 };
+
+function buildTimerBlocks(
+  routine: PracticeRoutine,
+  totalMinutes: number
+): TimerBlock[] {
+  const lvl = routine.highestSubskillLevel;
+  const unlocked = routine.blocks.filter((b) => b.minLevel <= lvl);
+  const minutes = distributeMinutes(unlocked, totalMinutes);
+  return unlocked.map((b, i) => ({
+    id: b.id,
+    name: b.name,
+    focus: b.focus,
+    minutes: minutes[i],
+  }));
+}
 
 function distributeMinutes(
   blocks: { weight: number }[],
@@ -77,6 +93,7 @@ export function DeliberatePractice({
   const [duration, setDuration] = useState<number>(50);
   const [editing, setEditing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [runningBlockId, setRunningBlockId] = useState<string | null>(null);
 
   // Keep activeRoutineId valid when the routine list changes (e.g. after
   // adding or deleting one). Without this, `routines.find(...)` could miss
@@ -175,7 +192,8 @@ export function DeliberatePractice({
               key={m}
               type="button"
               onClick={() => setDuration(m)}
-              className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
+              disabled={runningBlockId !== null}
+              className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors disabled:opacity-50 ${
                 duration === m
                   ? "border-glow text-glow bg-glow/10"
                   : "border-border text-muted-foreground hover:text-foreground"
@@ -195,6 +213,7 @@ export function DeliberatePractice({
                 const n = Number(e.target.value);
                 if (Number.isFinite(n)) setDuration(Math.max(5, Math.min(240, n)));
               }}
+              disabled={runningBlockId !== null}
               className="h-7 w-16 text-xs"
             />
             <span className="text-[10px] font-mono text-muted-foreground">
@@ -203,6 +222,16 @@ export function DeliberatePractice({
           </div>
         </div>
 
+        {/* Session timer */}
+        <PracticeTimer
+          categoryId={categoryId}
+          routineId={active.id}
+          blocks={buildTimerBlocks(active, duration)}
+          totalMinutes={duration}
+          onActiveBlockChange={setRunningBlockId}
+          disabled={editing}
+        />
+
         {/* Block list */}
         <BlockList
           routine={active}
@@ -210,6 +239,7 @@ export function DeliberatePractice({
           editing={editing}
           busyId={busyId}
           setBusyId={setBusyId}
+          activeBlockId={runningBlockId}
         />
 
         {editing && (
@@ -277,12 +307,14 @@ function BlockList({
   editing,
   busyId,
   setBusyId,
+  activeBlockId,
 }: {
   routine: PracticeRoutine;
   duration: number;
   editing: boolean;
   busyId: string | null;
   setBusyId: (s: string | null) => void;
+  activeBlockId: string | null;
 }) {
   const lvl = routine.highestSubskillLevel;
   const unlocked = routine.blocks.filter((b) => b.minLevel <= lvl);
@@ -305,6 +337,14 @@ function BlockList({
 
   const totalUnlockedWeight = unlocked.reduce((s, b) => s + b.weight, 0) || 1;
 
+  // Once the timer is running, mark blocks before the active one as done
+  // and after as upcoming. activeIndex is the index of the running block in
+  // the unlocked list (or -1 if no block is running / found).
+  const activeIndex = activeBlockId
+    ? unlocked.findIndex((b) => b.id === activeBlockId)
+    : -1;
+  const sessionRunning = activeIndex !== -1;
+
   return (
     <ul className="space-y-2">
       {unlocked.map((b, i) => (
@@ -318,6 +358,15 @@ function BlockList({
           isLast={i === unlocked.length - 1 && locked.length === 0}
           busy={busyId === b.id}
           setBusyId={setBusyId}
+          sessionState={
+            sessionRunning
+              ? i < activeIndex
+                ? "done"
+                : i === activeIndex
+                  ? "active"
+                  : "upcoming"
+              : "idle"
+          }
         />
       ))}
       {locked.length > 0 && (
@@ -337,6 +386,7 @@ function BlockList({
               isLast={false}
               busy={busyId === b.id}
               setBusyId={setBusyId}
+              sessionState="idle"
             />
           ))}
         </>
@@ -355,6 +405,7 @@ function BlockRow({
   isLast,
   busy,
   setBusyId,
+  sessionState,
 }: {
   block: PracticeBlock;
   minutes: number;
@@ -365,11 +416,27 @@ function BlockRow({
   isLast: boolean;
   busy: boolean;
   setBusyId: (s: string | null) => void;
+  sessionState: "idle" | "done" | "active" | "upcoming";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const tint = FOCUS_TINT[b.focus];
+
+  // Auto-expand the active block during a session so the notes are visible
+  // without an extra click.
+  useEffect(() => {
+    if (sessionState === "active") setOpen(true);
+  }, [sessionState]);
+
+  const sessionCls =
+    sessionState === "active"
+      ? "border-glow ring-1 ring-glow/50 bg-glow/5"
+      : sessionState === "done"
+        ? "opacity-50"
+        : sessionState === "upcoming"
+          ? "opacity-80"
+          : "";
 
   async function handleMove(direction: "up" | "down") {
     setBusyId(b.id);
@@ -399,15 +466,30 @@ function BlockRow({
     <li
       className={`rounded-md border bg-card/40 transition-colors ${
         locked ? "opacity-50" : "hover:border-glow/30"
-      } border-border/60`}
+      } border-border/60 ${sessionCls}`}
+      data-session-state={sessionState}
     >
       <button
         type="button"
         onClick={() => setOpen((s) => !s)}
         className="w-full flex items-center gap-3 p-3 text-left"
       >
-        <span className="text-base shrink-0 font-mono text-muted-foreground/60 w-12 text-right">
-          {locked ? "—" : `${minutes}m`}
+        <span
+          className={`text-base shrink-0 font-mono w-12 text-right ${
+            sessionState === "active"
+              ? "text-glow"
+              : sessionState === "done"
+                ? "text-xp"
+                : "text-muted-foreground/60"
+          }`}
+        >
+          {locked
+            ? "—"
+            : sessionState === "done"
+              ? "✓"
+              : sessionState === "active"
+                ? "▶"
+                : `${minutes}m`}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
