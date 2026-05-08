@@ -224,10 +224,20 @@
  * fully hydrated. Tailwind's preflight resets cursor on some elements,
  * and Tailwind's reset adds a focus-ring outline on the container. */
 .leaflet-container {
+  /* CRITICAL: establishes a stacking context so Leaflet's internal pane
+   * z-indexes (up to 800) don't leak into the document root and float
+   * above modal dialogs / dropdown menus. */
+  isolation: isolate;
   cursor: grab;
   background: #1a1b35;
   outline: none !important;
   font-family: var(--font-sans);
+}
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-tile,
+.leaflet-marker-pane {
+  cursor: inherit;
 }
 .leaflet-dragging .leaflet-container,
 .leaflet-grab .leaflet-container:active {
@@ -240,6 +250,7 @@
   cursor: pointer;
 }
 .leaflet-container.gol-add-mode,
+.leaflet-container.gol-add-mode .leaflet-pane,
 .leaflet-container.gol-add-mode .leaflet-interactive {
   cursor: crosshair !important;
 }
