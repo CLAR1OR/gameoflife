@@ -1,11 +1,28 @@
-"use client";
+// Server component — renders the choropleth as inline SVG so there's
+// no client-side fetch and no hydration cost.
 
-import { WorldMap, type ISOCode } from "react-svg-worldmap";
+import { geoEqualEarth, geoPath } from "d3-geo";
+import { feature } from "topojson-client";
+import worldTopo from "world-atlas/countries-110m.json";
+import type {
+  Topology,
+  GeometryCollection as TopoGeometryCollection,
+} from "topojson-specification";
+import type { FeatureCollection, Geometry } from "geojson";
+import { alpha2FromNumeric } from "@/lib/iso-numeric-to-alpha2";
+
+type CountryProps = { name: string };
+
+// Convert TopoJSON → GeoJSON FeatureCollection once at module load.
+const collection = feature(
+  worldTopo as unknown as Topology,
+  (worldTopo as unknown as Topology).objects.countries as TopoGeometryCollection
+) as unknown as FeatureCollection<Geometry, CountryProps>;
 
 /**
- * Choropleth: every country the user has visited is filled with the
- * theme accent. Built on react-svg-worldmap (~30 KB), pure SVG, no map
- * tiles to fetch. Renders to a fixed aspect ratio that scales fluidly.
+ * Equal-Earth choropleth. Equal Earth is an equal-area projection
+ * (introduced 2018) with much friendlier proportions than Mercator —
+ * Greenland looks like Greenland, not South America. Used by NASA EOSDIS.
  */
 export function DashboardCountryFill({
   countryCodes,
@@ -14,51 +31,60 @@ export function DashboardCountryFill({
 }) {
   if (countryCodes.length === 0) return null;
 
-  const data = countryCodes.map((c) => ({
-    country: c.toLowerCase() as ISOCode,
-    value: 1,
-  }));
+  const visited = new Set(countryCodes.map((c) => c.toUpperCase()));
+
+  // Tighter aspect ratio than Mercator — Equal Earth is 2.05:1.
+  const width = 1024;
+  const height = 500;
+
+  const projection = geoEqualEarth().fitSize([width, height], collection);
+  const path = geoPath(projection);
 
   return (
-    <div className="w-full overflow-hidden flex justify-center">
-      <WorldMap
-        // The library has a finicky size API; "responsive" lets it fill
-        // the container width.
-        size="responsive"
-        // Theme accent for visited; everything else fades into card bg.
-        color="var(--glow)"
-        backgroundColor="transparent"
-        strokeOpacity={0.4}
-        // Single bucket — every visited country shares the same fill.
-        valueSuffix=""
-        richInteraction={false}
-        data={data}
-        // Slightly muted unvisited fill via low fill on baseline countries.
-        styleFunction={({ countryValue, color, minValue, maxValue }) => {
-          // Visited: full accent. Unvisited: a faint muted fill so the
-          // outline is still visible against a dark card.
-          if (countryValue) {
-            return {
-              fill: "var(--glow)",
-              fillOpacity: 0.85,
-              stroke: "var(--glow)",
-              strokeOpacity: 0.6,
-              strokeWidth: 0.4,
-            };
-          }
-          // silence unused-var warning while keeping the lib API tidy
-          void color;
-          void minValue;
-          void maxValue;
-          return {
-            fill: "var(--muted-foreground)",
-            fillOpacity: 0.12,
-            stroke: "var(--muted-foreground)",
-            strokeOpacity: 0.25,
-            strokeWidth: 0.3,
-          };
-        }}
-      />
+    <div className="w-full">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-auto block"
+        aria-label="World map showing visited countries"
+      >
+        {/* Subtle ocean / outline of the world's edge — gives the map a
+         * frame against the dark card. */}
+        <defs>
+          <path id="gol-graticule" d={path({ type: "Sphere" }) ?? undefined} />
+        </defs>
+        <use
+          href="#gol-graticule"
+          fill="color-mix(in srgb, var(--muted-foreground) 6%, transparent)"
+          stroke="color-mix(in srgb, var(--muted-foreground) 25%, transparent)"
+          strokeWidth={0.6}
+        />
+
+        {collection.features.map((f) => {
+          const numericId = String(f.id ?? "");
+          const a2 = alpha2FromNumeric(numericId);
+          const isVisited = a2 ? visited.has(a2) : false;
+          const d = path(f);
+          if (!d) return null;
+          return (
+            <path
+              key={numericId || f.properties.name}
+              d={d}
+              fill={isVisited ? "var(--glow)" : "var(--muted-foreground)"}
+              fillOpacity={isVisited ? 0.85 : 0.12}
+              stroke={isVisited ? "var(--glow)" : "var(--muted-foreground)"}
+              strokeOpacity={isVisited ? 0.7 : 0.25}
+              strokeWidth={0.4}
+            >
+              <title>
+                {f.properties.name}
+                {isVisited ? " · visited" : ""}
+              </title>
+            </path>
+          );
+        })}
+      </svg>
     </div>
   );
 }
