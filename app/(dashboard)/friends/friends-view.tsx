@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AddFriendDialog } from "@/components/friends/add-friend-dialog";
 import { CheckInButton } from "@/components/friends/check-in-button";
+import { FriendsGallery } from "@/components/friends/friends-gallery";
 import type { FriendCardData, FriendsStats } from "@/modules/friends/queries";
 import type { Place } from "@/modules/places/queries";
+
+type ViewMode = "cards" | "gallery";
 
 function dueLabel(daysUntilDue: number | null, daysSince: number | null) {
   if (daysUntilDue === null) {
@@ -50,6 +53,7 @@ export function FriendsView({
   knownPlaces: Pick<Place, "id" | "name" | "countryName">[];
 }) {
   const [addOpen, setAddOpen] = useState(false);
+  const [view, setView] = useState<ViewMode>("cards");
 
   // Order: overdue first, then due-soon, then everyone else by name.
   const ordered = [...friends].sort((a, b) => {
@@ -96,6 +100,33 @@ export function FriendsView({
         </div>
       </div>
 
+      {ordered.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setView("cards")}
+            className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
+              view === "cards"
+                ? "border-glow-purple text-glow-purple bg-glow-purple/10"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            ☰ Cards
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("gallery")}
+            className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
+              view === "gallery"
+                ? "border-glow-purple text-glow-purple bg-glow-purple/10"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🖼️ Gallery
+          </button>
+        </div>
+      )}
+
       {ordered.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-muted/20 p-8 text-center">
           <div className="text-5xl mb-2">🫂</div>
@@ -108,6 +139,8 @@ export function FriendsView({
             <Button onClick={() => setAddOpen(true)}>+ Add friend</Button>
           </div>
         </div>
+      ) : view === "gallery" ? (
+        <FriendsGallery friends={ordered} />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {ordered.map((f) => {

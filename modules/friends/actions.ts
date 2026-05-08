@@ -12,6 +12,8 @@ import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
 import { FRIEND_INTERACTION_XP } from "./constants";
+import { writeFile, mkdir, unlink } from "node:fs/promises";
+import path from "node:path";
 
 export async function createFriend(data: {
   name: string;
@@ -104,6 +106,98 @@ export async function deleteFriend(id: string) {
     .delete(friend)
     .where(and(eq(friend.id, id), eq(friend.userId, session.user.id)));
   revalidatePath("/friends");
+}
+
+const PHOTO_DIR = path.join(process.cwd(), "public", "friends");
+const ALLOWED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Upload a photo for a friend. The file is written under public/friends/
+ * with a UUID filename and the friend's photoUrl is set to the public path.
+ * Replaces any previous upload.
+ */
+export async function uploadFriendPhoto(friendId: string, formData: FormData) {
+  const session = await requireSession();
+  const f = await db.query.friend.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, friendId), e(row.userId, session.user.id)),
+  });
+  if (!f) throw new Error("Friend not found");
+
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("No file uploaded");
+  }
+  if (!ALLOWED_TYPES.has(file.type)) {
+    throw new Error("Unsupported image type — use JPG, PNG, WebP, or GIF");
+  }
+  if (file.size > MAX_BYTES) {
+    throw new Error("Image too large (max 10 MB)");
+  }
+
+  await mkdir(PHOTO_DIR, { recursive: true });
+
+  const ext =
+    file.type === "image/png"
+      ? "png"
+      : file.type === "image/webp"
+        ? "webp"
+        : file.type === "image/gif"
+          ? "gif"
+          : "jpg";
+  const filename = `${friendId}-${Date.now()}.${ext}`;
+  const dest = path.join(PHOTO_DIR, filename);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await writeFile(dest, bytes);
+  const publicUrl = `/friends/${filename}`;
+
+  // Best-effort: remove the previous photo file if it was one we wrote.
+  if (f.photoUrl && f.photoUrl.startsWith("/friends/")) {
+    const prev = path.join(process.cwd(), "public", f.photoUrl);
+    try {
+      await unlink(prev);
+    } catch {
+      // already gone — ignore
+    }
+  }
+
+  await db
+    .update(friend)
+    .set({ photoUrl: publicUrl, updatedAt: new Date() })
+    .where(eq(friend.id, friendId));
+
+  revalidatePath("/friends");
+  revalidatePath(`/friends/${friendId}`);
+  return { photoUrl: publicUrl };
+}
+
+/** Drop the photo from a friend (and delete the file if we wrote it). */
+export async function clearFriendPhoto(friendId: string) {
+  const session = await requireSession();
+  const f = await db.query.friend.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, friendId), e(row.userId, session.user.id)),
+  });
+  if (!f) throw new Error("Friend not found");
+  if (f.photoUrl && f.photoUrl.startsWith("/friends/")) {
+    try {
+      await unlink(path.join(process.cwd(), "public", f.photoUrl));
+    } catch {
+      // already gone — ignore
+    }
+  }
+  await db
+    .update(friend)
+    .set({ photoUrl: null, updatedAt: new Date() })
+    .where(eq(friend.id, friendId));
+  revalidatePath("/friends");
+  revalidatePath(`/friends/${friendId}`);
 }
 
 /** Add (or move) a friend to a new residence. The previous "current" gets

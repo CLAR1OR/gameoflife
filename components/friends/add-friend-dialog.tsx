@@ -11,7 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createFriend } from "@/modules/friends/actions";
+import {
+  createFriend,
+  uploadFriendPhoto,
+} from "@/modules/friends/actions";
 import {
   searchPlaces,
   addPlaceFromGeocode,
@@ -40,6 +43,8 @@ export function AddFriendDialog({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Inline place-search if user wants to add a new residence right here.
@@ -82,7 +87,7 @@ export function AddFriendDialog({
     setBusy(true);
     try {
       const cad = cadenceDays.trim() ? Number(cadenceDays) : null;
-      await createFriend({
+      const created = await createFriend({
         name,
         nickname: nickname || null,
         currentResidenceId: residenceId || null,
@@ -94,6 +99,19 @@ export function AddFriendDialog({
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
       });
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append("photo", photoFile);
+        try {
+          await uploadFriendPhoto(created.id, fd);
+        } catch (e) {
+          // Friend was created; photo failed. Don't block.
+          toast.error(
+            "Friend added but photo upload failed: " +
+              (e instanceof Error ? e.message : "unknown error")
+          );
+        }
+      }
       toast.success(`Added ${name.trim()}`);
       setName("");
       setNickname("");
@@ -104,6 +122,9 @@ export function AddFriendDialog({
       setPhone("");
       setEmail("");
       setNotes("");
+      setPhotoFile(null);
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setPhotoPreview(null);
       onOpenChange(false);
       router.refresh();
     } catch (e) {
@@ -120,15 +141,56 @@ export function AddFriendDialog({
             <DialogTitle>Add a friend</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label>Name</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Anna Müller"
-                required
-                autoFocus
-              />
+            <div className="flex items-start gap-3">
+              <label className="cursor-pointer shrink-0">
+                {photoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoPreview}
+                    alt=""
+                    className="h-16 w-16 rounded-full object-cover border border-glow-purple/50"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full border-2 border-dashed border-border bg-muted/40 flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:border-glow-purple/50 transition-colors">
+                    + photo
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    if (photoPreview) URL.revokeObjectURL(photoPreview);
+                    setPhotoFile(f);
+                    setPhotoPreview(URL.createObjectURL(f));
+                  }}
+                  className="hidden"
+                />
+              </label>
+              <div className="flex-1 space-y-1">
+                <Label>Name</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Anna Müller"
+                  required
+                  autoFocus
+                />
+                {photoFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (photoPreview) URL.revokeObjectURL(photoPreview);
+                      setPhotoFile(null);
+                      setPhotoPreview(null);
+                    }}
+                    className="text-[10px] font-mono text-muted-foreground hover:text-destructive"
+                  >
+                    remove photo
+                  </button>
+                )}
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Nickname (optional)</Label>

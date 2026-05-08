@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckInButton } from "@/components/friends/check-in-button";
+import { FriendPhotoUpload } from "@/components/friends/friend-photo-upload";
 import {
   updateFriend,
   deleteFriend,
@@ -214,18 +215,20 @@ export function FriendDetailView({
       </div>
 
       <div className="flex items-start gap-4 flex-wrap">
-        {friend.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={friend.photoUrl}
-            alt=""
-            className="h-20 w-20 rounded-full object-cover border border-border"
-          />
-        ) : (
-          <div className="h-20 w-20 rounded-full border border-border bg-muted/40 flex items-center justify-center text-2xl font-bold text-glow-purple shrink-0">
-            {initials}
-          </div>
-        )}
+        <FriendPhotoUpload friendId={friend.id} hasPhoto={!!friend.photoUrl}>
+          {friend.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={friend.photoUrl}
+              alt=""
+              className="h-24 w-24 rounded-full object-cover border border-border"
+            />
+          ) : (
+            <div className="h-24 w-24 rounded-full border border-border bg-muted/40 flex items-center justify-center text-2xl font-bold text-glow-purple shrink-0">
+              {initials}
+            </div>
+          )}
+        </FriendPhotoUpload>
         <div className="flex-1 min-w-0">
           {editing ? (
             <div className="space-y-2">
