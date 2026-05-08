@@ -219,6 +219,26 @@
   cursor: pointer !important;
 }
 
+/* Leaflet: make sure cursors stay visible even if the package CSS hasn't
+ * fully hydrated. Tailwind's preflight resets cursor on some elements. */
+.leaflet-container {
+  cursor: grab;
+  background: var(--card);
+}
+.leaflet-dragging .leaflet-container,
+.leaflet-grab .leaflet-container:active {
+  cursor: grabbing;
+}
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-clickable,
+.leaflet-popup-pane {
+  cursor: pointer;
+}
+.leaflet-container.gol-add-mode {
+  cursor: crosshair !important;
+}
+
 /* RPG glow effects — driven by tokens via color-mix so they re-tint per theme. */
 .glow-green {
   box-shadow:

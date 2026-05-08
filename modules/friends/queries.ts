@@ -187,3 +187,78 @@ export async function getFriendsDueToReach(
     .filter((f) => f.daysUntilDue !== null && f.daysUntilDue <= 0)
     .sort((a, b) => (a.daysUntilDue ?? 0) - (b.daysUntilDue ?? 0));
 }
+
+export type UpcomingBirthday = {
+  friendId: string;
+  name: string;
+  nickname: string | null;
+  photoUrl: string | null;
+  /** Friendly month/day label, e.g. "May 12". */
+  label: string;
+  /** Days until the next occurrence (0 = today). */
+  daysUntil: number;
+  /** Will they be N years old? null if year unknown. */
+  turningAge: number | null;
+};
+
+/** Friends with a birthday in the next `withinDays` days (or today). */
+export async function getUpcomingBirthdays(
+  userId: string,
+  withinDays = 30
+): Promise<UpcomingBirthday[]> {
+  const rows = await db
+    .select({
+      id: friend.id,
+      name: friend.name,
+      nickname: friend.nickname,
+      photoUrl: friend.photoUrl,
+      birthday: friend.birthday,
+    })
+    .from(friend)
+    .where(and(eq(friend.userId, userId), eq(friend.archived, false)));
+
+  const out: UpcomingBirthday[] = [];
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  for (const r of rows) {
+    if (!r.birthday) continue;
+    const noYear = r.birthday.startsWith("--");
+    const parts = r.birthday.replace(/^--/, "").split("-");
+    const yOrig = noYear ? null : Number(parts[0]);
+    const m = Number(parts[noYear ? 0 : 1]);
+    const d = Number(parts[noYear ? 1 : 2]);
+    if (!m || !d) continue;
+
+    // Find the next occurrence: this year if not yet passed, else next year.
+    let occYear = today.getFullYear();
+    let occ = new Date(occYear, m - 1, d);
+    if (occ.getTime() < today.getTime()) {
+      occYear += 1;
+      occ = new Date(occYear, m - 1, d);
+    }
+    const days = Math.round(
+      (occ.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (days < 0 || days > withinDays) continue;
+
+    const turningAge = yOrig ? occYear - yOrig : null;
+    const label = occ.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+
+    out.push({
+      friendId: r.id,
+      name: r.name,
+      nickname: r.nickname,
+      photoUrl: r.photoUrl,
+      label,
+      daysUntil: days,
+      turningAge,
+    });
+  }
+
+  out.sort((a, b) => a.daysUntil - b.daysUntil);
+  return out;
+}

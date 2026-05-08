@@ -4,8 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { WorldMapClient, type MapPin } from "@/components/map/world-map-client";
+import {
+  WorldMapClient,
+  type MapPin,
+} from "@/components/map/world-map-client";
 import { AddPlaceDialog } from "@/components/places/add-place-dialog";
+import { ConfirmAddAtPointDialog } from "@/components/places/confirm-add-at-point-dialog";
 import type { PlaceWithStats, PlacesStats } from "@/modules/places/queries";
 import type { FriendCardData } from "@/modules/friends/queries";
 
@@ -22,6 +26,11 @@ export function PlacesView({
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
+  const [addMode, setAddMode] = useState(false);
+  const [pickedCoords, setPickedCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const pins = useMemo<MapPin[]>(() => {
     const out: MapPin[] = [];
@@ -82,6 +91,19 @@ export function PlacesView({
           <Badge variant="outline" className="border-glow-purple/30 text-glow-purple/80 font-mono text-xs">
             🫂 {friends.length} friends mapped
           </Badge>
+          <Button
+            size="sm"
+            variant={addMode ? "default" : "outline"}
+            onClick={() => setAddMode((s) => !s)}
+            title="Click anywhere on the map to drop a pin"
+            className={
+              addMode
+                ? "bg-glow/20 hover:bg-glow/30 text-glow border border-glow/40"
+                : ""
+            }
+          >
+            {addMode ? "✕ Cancel pick" : "🎯 Pick on map"}
+          </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
             + Add place
           </Button>
@@ -103,7 +125,27 @@ export function PlacesView({
         </span>
       </div>
 
-      <WorldMapClient pins={pins} />
+      <WorldMapClient
+        pins={pins}
+        addMode={addMode}
+        onMapClick={
+          addMode
+            ? (info) => {
+                setPickedCoords({ lat: info.lat, lng: info.lng });
+                setAddMode(false);
+              }
+            : undefined
+        }
+      />
+      {addMode && (
+        <p className="text-xs font-mono text-glow text-center">
+          🎯 Click anywhere on the map to drop a pin and add a place there.
+        </p>
+      )}
+      <ConfirmAddAtPointDialog
+        coords={pickedCoords}
+        onClose={() => setPickedCoords(null)}
+      />
 
       <section>
         <h2 className="text-xs font-mono uppercase tracking-wider text-glow mb-3">

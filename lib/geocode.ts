@@ -38,6 +38,18 @@ type NominatimRow = {
     town?: string;
     village?: string;
     municipality?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    road?: string;
+    house_number?: string;
+    pedestrian?: string;
+    attraction?: string;
+    tourism?: string;
+    historic?: string;
+    leisure?: string;
+    amenity?: string;
+    shop?: string;
+    building?: string;
   };
 };
 
@@ -50,6 +62,62 @@ function pickKind(row: NominatimRow): GeocodeResult["kind"] {
   if (t === "city" || t === "town" || t === "village" || t === "municipality")
     return "city";
   return "spot";
+}
+
+/**
+ * Build a clean, human-readable name from Nominatim's address components.
+ * Avoids the bug where `display_name.split(",")[0]` returns just "8" for
+ * German-style addresses where the leading chunk is the house number.
+ */
+function buildName(row: NominatimRow): string {
+  const a = row.address ?? {};
+  const kind = pickKind(row);
+
+  if (kind === "country") return a.country ?? row.display_name;
+
+  const city =
+    a.city ?? a.town ?? a.village ?? a.municipality ?? a.suburb ?? null;
+  const region = a.state ?? a.region ?? a.province ?? a.county ?? null;
+
+  if (kind === "city") {
+    return [city ?? row.display_name.split(",")[0]?.trim(), region]
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (kind === "region") {
+    return [region ?? row.display_name.split(",")[0]?.trim(), a.country]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  // Spot: try to compose street-style names properly.
+  const street = a.road ?? a.pedestrian ?? null;
+  const number = a.house_number ?? null;
+  let street_part: string | null = null;
+  if (street && number) {
+    // Heuristic: in German/Dutch the number comes after the road; in many
+    // other places before. Just emit "Road N" — readable everywhere.
+    street_part = `${street} ${number}`;
+  } else if (street) {
+    street_part = street;
+  }
+
+  // Named POIs (a museum, a café…) often appear in attraction/amenity/etc.
+  const named =
+    a.attraction ?? a.tourism ?? a.historic ?? a.leisure ?? a.amenity ?? null;
+
+  const head = named ?? street_part;
+  if (head) {
+    return [head, city, a.country].filter(Boolean).join(", ");
+  }
+
+  // Fallback: use the first chunk of display_name *unless* it's purely a
+  // number (the German-address bug we're working around).
+  const first = row.display_name.split(",")[0]?.trim() ?? row.display_name;
+  if (/^\d+$/.test(first)) {
+    return [city ?? region, a.country].filter(Boolean).join(", ") || row.display_name;
+  }
+  return [first, city, a.country].filter(Boolean).join(", ");
 }
 
 /** Forward-geocode a free-text query — returns up to `limit` candidates. */
@@ -78,7 +146,7 @@ export async function geocode(
   if (!res.ok) return [];
   const rows = (await res.json()) as NominatimRow[];
   return rows.map((row) => ({
-    name: row.display_name,
+    name: buildName(row),
     lat: Number(row.lat),
     lng: Number(row.lon),
     countryCode: row.address?.country_code?.toUpperCase() ?? null,
@@ -91,6 +159,48 @@ export async function geocode(
       null,
     kind: pickKind(row),
   }));
+}
+
+/** Reverse-geocode a lat/lng pair — what's at this point? */
+export async function reverseGeocode(
+  lat: number,
+  lng: number
+): Promise<GeocodeResult | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const url = new URL("https://nominatim.openstreetmap.org/reverse");
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lng));
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("accept-language", "en");
+  url.searchParams.set("zoom", "14"); // city-level by default
+
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      headers: { "User-Agent": USER_AGENT },
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null;
+  const row = (await res.json()) as NominatimRow & { error?: string };
+  if (!row || (row as { error?: string }).error || !row.lat) return null;
+  return {
+    name: buildName(row),
+    lat: Number(row.lat),
+    lng: Number(row.lon),
+    countryCode: row.address?.country_code?.toUpperCase() ?? null,
+    countryName: row.address?.country ?? null,
+    region:
+      row.address?.state ??
+      row.address?.region ??
+      row.address?.province ??
+      row.address?.county ??
+      null,
+    kind: pickKind(row),
+  };
 }
 
 /** A short label suitable for display: "Lisbon, Portugal" not the full path. */

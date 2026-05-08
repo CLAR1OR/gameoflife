@@ -5,12 +5,22 @@ import { place, placeVisit } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
-import { geocode, type GeocodeResult } from "@/lib/geocode";
+import { geocode, reverseGeocode, type GeocodeResult } from "@/lib/geocode";
 
 /** Forward-geocode helper exposed to client search dialogs. */
 export async function searchPlaces(query: string): Promise<GeocodeResult[]> {
   await requireSession();
   return geocode(query, 6);
+}
+
+/** Reverse-geocode a lat/lng — what's at this point? Used by click-to-add
+ * on the world map. */
+export async function lookupCoords(
+  lat: number,
+  lng: number
+): Promise<GeocodeResult | null> {
+  await requireSession();
+  return reverseGeocode(lat, lng);
 }
 
 export async function createPlace(data: {
@@ -42,10 +52,12 @@ export async function createPlace(data: {
   return row;
 }
 
-/** Convenience: pick from a geocoder result and add it. */
+/** Convenience: pick from a geocoder result and add it. The geocoder's
+ * buildName() already returns a tidy "Café, City, Country" string, so we
+ * keep it whole and let the user rename later if they like. */
 export async function addPlaceFromGeocode(g: GeocodeResult, notes?: string) {
   return createPlace({
-    name: g.name.split(",")[0]?.trim() || g.name,
+    name: g.name,
     type: g.kind,
     countryCode: g.countryCode,
     countryName: g.countryName,

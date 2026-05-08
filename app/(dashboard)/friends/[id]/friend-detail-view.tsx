@@ -28,6 +28,22 @@ import type { Place } from "@/modules/places/queries";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+function formatBirthday(iso: string): string {
+  // Accept "YYYY-MM-DD" or "--MM-DD" (year unknown).
+  const noYear = iso.startsWith("--");
+  const parts = iso.replace(/^--/, "").split("-");
+  const y = noYear ? null : Number(parts[0]);
+  const m = Number(parts[noYear ? 0 : 1]);
+  const d = Number(parts[noYear ? 1 : 2]);
+  if (!m || !d) return iso;
+  const date = new Date(2000, m - 1, d);
+  const md = date.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+  });
+  return y ? `${md}, ${y}` : md;
+}
+
 const KIND_ICON: Record<FriendInteraction["kind"], string> = {
   message: "💬",
   call: "📞",
@@ -60,6 +76,9 @@ export function FriendDetailView({
   const [cadence, setCadence] = useState(
     friend.contactCadenceDays?.toString() ?? ""
   );
+  const [birthday, setBirthday] = useState(friend.birthday ?? "");
+  const [phone, setPhone] = useState(friend.phone ?? "");
+  const [email, setEmail] = useState(friend.email ?? "");
   const [busy, setBusy] = useState(false);
 
   const [residenceQuery, setResidenceQuery] = useState("");
@@ -83,6 +102,9 @@ export function FriendDetailView({
         nickname: nickname || null,
         howWeMet: howWeMet || null,
         notes: notes || null,
+        birthday: birthday || null,
+        phone: phone || null,
+        email: email || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
       });
@@ -243,6 +265,27 @@ export function FriendDetailView({
                     🔔 every {friend.contactCadenceDays}d
                   </Badge>
                 )}
+                {friend.birthday && (
+                  <Badge variant="outline" className="font-mono">
+                    🎂 {formatBirthday(friend.birthday)}
+                  </Badge>
+                )}
+                {friend.phone && (
+                  <a
+                    href={`tel:${friend.phone}`}
+                    className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[10px] font-mono hover:border-glow/40 transition-colors"
+                  >
+                    📞 {friend.phone}
+                  </a>
+                )}
+                {friend.email && (
+                  <a
+                    href={`mailto:${friend.email}`}
+                    className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[10px] font-mono hover:border-glow/40 transition-colors"
+                  >
+                    ✉️ {friend.email}
+                  </a>
+                )}
               </div>
             </>
           )}
@@ -295,10 +338,11 @@ export function FriendDetailView({
         <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-3">
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-[10px]">How we met</Label>
+              <Label className="text-[10px]">Birthday</Label>
               <Input
-                value={howWeMet}
-                onChange={(e) => setHowWeMet(e.target.value)}
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
@@ -314,12 +358,41 @@ export function FriendDetailView({
               />
             </div>
           </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px]">Phone</Label>
+              <Input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Email</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px]">How we met</Label>
+            <Input
+              value={howWeMet}
+              onChange={(e) => setHowWeMet(e.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
           <div className="space-y-1">
             <Label className="text-[10px]">Notes</Label>
             <textarea
-              rows={3}
+              rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              placeholder="Anything you want to remember — favourites, kids' names, in-jokes…"
               className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs resize-y"
             />
           </div>

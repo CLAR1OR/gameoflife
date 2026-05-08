@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { MapPin } from "./world-map";
+import type { MapPin, MapClickInfo } from "./world-map";
 
 /**
  * Dynamic-import wrapper so Leaflet's window-only code never hits SSR.
@@ -26,8 +26,10 @@ export function WorldMapClient(props: {
   pins: MapPin[];
   height?: number;
   initialZoom?: number;
+  onMapClick?: (info: MapClickInfo) => void;
+  addMode?: boolean;
 }) {
   return <WorldMap {...props} />;
 }
 
-export type { MapPin };
+export type { MapPin, MapClickInfo };

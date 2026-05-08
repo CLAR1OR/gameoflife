@@ -357,7 +357,9 @@ export const friend = sqliteTable("friend", {
   nickname: text("nickname"),
   photoUrl: text("photo_url"),
   currentResidenceId: text("current_residence_id").references(() => place.id, { onDelete: "set null" }),
-  birthday: text("birthday"), // YYYY-MM-DD; year may be 0001 if unknown
+  birthday: text("birthday"), // YYYY-MM-DD; or "--MM-DD" if year unknown
+  phone: text("phone"),
+  email: text("email"),
   metAt: text("met_at"),
   howWeMet: text("how_we_met"),
   notes: text("notes"),

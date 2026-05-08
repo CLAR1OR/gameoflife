@@ -36,9 +36,13 @@ import {
 import { DashboardTodaysQuestRow } from "@/components/dashboard/dashboard-todays-quest";
 import { QuestDueAlert } from "@/components/dashboard/quest-due-alert";
 import { DashboardFriendsDue } from "@/components/dashboard/dashboard-friends-due";
+import { DashboardBirthdays } from "@/components/dashboard/dashboard-birthdays";
 import { DashboardPlacesTile } from "@/components/dashboard/dashboard-places-tile";
 import { getPlacesStats } from "@/modules/places/queries";
-import { getFriendsDueToReach } from "@/modules/friends/queries";
+import {
+  getFriendsDueToReach,
+  getUpcomingBirthdays,
+} from "@/modules/friends/queries";
 
 const FOCUS_SLOTS = 3;
 
@@ -73,6 +77,7 @@ export default async function DashboardPage() {
     dueQuests,
     placesStats,
     friendsDue,
+    upcomingBirthdays,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
@@ -87,6 +92,7 @@ export default async function DashboardPage() {
     getQuestsDueSoon(userId, 7),
     getPlacesStats(userId),
     getFriendsDueToReach(userId),
+    getUpcomingBirthdays(userId, 30),
   ]);
 
   const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
@@ -145,6 +151,9 @@ export default async function DashboardPage() {
       {isFeatureEnabled(settings.features, "dashboardFriendsDue") && (
         <DashboardFriendsDue friends={friendsDue} />
       )}
+
+      {/* Upcoming birthdays */}
+      <DashboardBirthdays birthdays={upcomingBirthdays} />
 
       {/* Current Focus */}
       <section>

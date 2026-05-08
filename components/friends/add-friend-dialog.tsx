@@ -36,6 +36,10 @@ export function AddFriendDialog({
   const [residenceId, setResidenceId] = useState<string>("");
   const [howWeMet, setHowWeMet] = useState("");
   const [cadenceDays, setCadenceDays] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Inline place-search if user wants to add a new residence right here.
@@ -83,6 +87,10 @@ export function AddFriendDialog({
         nickname: nickname || null,
         currentResidenceId: residenceId || null,
         howWeMet: howWeMet || null,
+        birthday: birthday || null,
+        phone: phone || null,
+        email: email || null,
+        notes: notes || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
       });
@@ -92,6 +100,10 @@ export function AddFriendDialog({
       setResidenceId("");
       setHowWeMet("");
       setCadenceDays("");
+      setBirthday("");
+      setPhone("");
+      setEmail("");
+      setNotes("");
       onOpenChange(false);
       router.refresh();
     } catch (e) {
@@ -186,6 +198,49 @@ export function AddFriendDialog({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>Birthday</Label>
+                <Input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Cadence (days)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={cadenceDays}
+                  onChange={(e) => setCadenceDays(e.target.value)}
+                  placeholder="e.g. 30"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>Phone</Label>
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+49 …"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="anna@example.com"
+                />
+              </div>
+            </div>
+
             <div className="space-y-1">
               <Label>How we met (optional)</Label>
               <Input
@@ -196,14 +251,13 @@ export function AddFriendDialog({
             </div>
 
             <div className="space-y-1">
-              <Label>Reach-out cadence (days, optional)</Label>
-              <Input
-                type="number"
-                min={1}
-                max={365}
-                value={cadenceDays}
-                onChange={(e) => setCadenceDays(e.target.value)}
-                placeholder="e.g. 30 — sets a reminder if you go this long without contact"
+              <Label>Notes</Label>
+              <textarea
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Anything you want to remember — favourites, kids' names, in-jokes…"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
           </div>
