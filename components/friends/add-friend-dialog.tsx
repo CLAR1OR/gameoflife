@@ -1,0 +1,227 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createFriend } from "@/modules/friends/actions";
+import {
+  searchPlaces,
+  addPlaceFromGeocode,
+} from "@/modules/places/actions";
+import type { GeocodeResult } from "@/lib/geocode";
+import type { Place } from "@/modules/places/queries";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
+export function AddFriendDialog({
+  open,
+  onOpenChange,
+  knownPlaces,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  knownPlaces: Pick<Place, "id" | "name" | "countryName">[];
+}) {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [residenceId, setResidenceId] = useState<string>("");
+  const [howWeMet, setHowWeMet] = useState("");
+  const [cadenceDays, setCadenceDays] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Inline place-search if user wants to add a new residence right here.
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState<GeocodeResult[]>([]);
+  const [placeSearching, setPlaceSearching] = useState(false);
+
+  async function runPlaceSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = placeQuery.trim();
+    if (!q) return;
+    setPlaceSearching(true);
+    try {
+      const rows = await searchPlaces(q);
+      setPlaceResults(rows);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Search failed");
+    }
+    setPlaceSearching(false);
+  }
+
+  async function pickGeocoded(g: GeocodeResult) {
+    setBusy(true);
+    try {
+      const p = await addPlaceFromGeocode(g);
+      setResidenceId(p.id);
+      setPlaceResults([]);
+      setPlaceQuery("");
+      router.refresh();
+      toast.success(`Added "${p.name}" — selected as residence.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      const cad = cadenceDays.trim() ? Number(cadenceDays) : null;
+      await createFriend({
+        name,
+        nickname: nickname || null,
+        currentResidenceId: residenceId || null,
+        howWeMet: howWeMet || null,
+        contactCadenceDays:
+          cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
+      });
+      toast.success(`Added ${name.trim()}`);
+      setName("");
+      setNickname("");
+      setResidenceId("");
+      setHowWeMet("");
+      setCadenceDays("");
+      onOpenChange(false);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Add a friend</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Anna Müller"
+                required
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Nickname (optional)</Label>
+              <Input
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="Annie"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Current residence</Label>
+              <select
+                value={residenceId}
+                onChange={(e) => setResidenceId(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">— none —</option>
+                {knownPlaces.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.countryName ? ` · ${p.countryName}` : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="rounded-md border border-border/60 bg-muted/20 p-2 mt-1 space-y-1.5">
+                <div className="text-[10px] font-mono text-muted-foreground">
+                  …or add a new place:
+                </div>
+                <div className="flex gap-1">
+                  <Input
+                    value={placeQuery}
+                    onChange={(e) => setPlaceQuery(e.target.value)}
+                    placeholder="Search a city, country…"
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        runPlaceSearch(e as unknown as React.FormEvent);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={runPlaceSearch}
+                    disabled={placeSearching || !placeQuery.trim()}
+                    className="h-8 text-xs"
+                  >
+                    {placeSearching ? "…" : "🔍"}
+                  </Button>
+                </div>
+                {placeResults.map((r) => {
+                  const k = `${r.lat},${r.lng}`;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => pickGeocoded(r)}
+                      className="w-full text-left rounded-md border border-border bg-card/40 hover:border-glow/40 transition-colors px-2 py-1 text-xs flex justify-between items-center"
+                    >
+                      <span className="line-clamp-1">{r.name}</span>
+                      <span className="text-glow shrink-0 ml-2">+ Add</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>How we met (optional)</Label>
+              <Input
+                value={howWeMet}
+                onChange={(e) => setHowWeMet(e.target.value)}
+                placeholder="University, Berlin 2018"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Reach-out cadence (days, optional)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={cadenceDays}
+                onChange={(e) => setCadenceDays(e.target.value)}
+                placeholder="e.g. 30 — sets a reminder if you go this long without contact"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy || !name.trim()}>
+              {busy ? "…" : "Add friend"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

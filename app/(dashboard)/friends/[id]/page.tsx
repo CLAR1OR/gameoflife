@@ -1,0 +1,41 @@
+import { notFound } from "next/navigation";
+import { requireSession } from "@/lib/auth-server";
+import {
+  getFriendById,
+  getResidencesForFriend,
+  getInteractionsForFriend,
+} from "@/modules/friends/queries";
+import { getPlacesByUser } from "@/modules/places/queries";
+import { FriendDetailView } from "./friend-detail-view";
+
+export default async function FriendPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const session = await requireSession();
+  const friend = await getFriendById(id, session.user.id);
+  if (!friend) notFound();
+
+  const [residences, interactions, places] = await Promise.all([
+    getResidencesForFriend(id, session.user.id),
+    getInteractionsForFriend(id, session.user.id),
+    getPlacesByUser(session.user.id),
+  ]);
+
+  const knownPlaces = places.map((p) => ({
+    id: p.id,
+    name: p.name,
+    countryName: p.countryName,
+  }));
+
+  return (
+    <FriendDetailView
+      friend={friend}
+      residences={residences}
+      interactions={interactions}
+      knownPlaces={knownPlaces}
+    />
+  );
+}

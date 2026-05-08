@@ -316,6 +316,85 @@ export const xpSession = sqliteTable("xp_session", {
 });
 
 // =====================
+// PLACES (world map)
+// =====================
+
+export const place = sqliteTable("place", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["spot", "city", "region", "country"] }).notNull().default("spot"),
+  countryCode: text("country_code"), // ISO-3166-1 alpha-2
+  countryName: text("country_name"),
+  region: text("region"),
+  lat: real("lat"),
+  lng: real("lng"),
+  notes: text("notes"),
+  coverImage: text("cover_image"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const placeVisit = sqliteTable("place_visit", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  placeId: text("place_id").notNull().references(() => place.id, { onDelete: "cascade" }),
+  startedOn: text("started_on").notNull(),
+  endedOn: text("ended_on"),
+  rating: integer("rating"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+// =====================
+// FRIENDS
+// =====================
+
+export const friend = sqliteTable("friend", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  nickname: text("nickname"),
+  photoUrl: text("photo_url"),
+  currentResidenceId: text("current_residence_id").references(() => place.id, { onDelete: "set null" }),
+  birthday: text("birthday"), // YYYY-MM-DD; year may be 0001 if unknown
+  metAt: text("met_at"),
+  howWeMet: text("how_we_met"),
+  notes: text("notes"),
+  /** How often the user wants to reach out, in days. NULL = no reminder. */
+  contactCadenceDays: integer("contact_cadence_days"),
+  lastContactedAt: integer("last_contacted_at", { mode: "timestamp" }),
+  archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const friendResidence = sqliteTable("friend_residence", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  friendId: text("friend_id").notNull().references(() => friend.id, { onDelete: "cascade" }),
+  placeId: text("place_id").notNull().references(() => place.id, { onDelete: "cascade" }),
+  startedOn: text("started_on"),
+  endedOn: text("ended_on"),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const friendInteraction = sqliteTable("friend_interaction", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  friendId: text("friend_id").notNull().references(() => friend.id, { onDelete: "cascade" }),
+  placeId: text("place_id").references(() => place.id, { onDelete: "set null" }),
+  occurredOn: text("occurred_on").notNull(),
+  kind: text("kind", {
+    enum: ["message", "call", "meet", "trip", "event", "letter", "other"],
+  }).notNull().default("message"),
+  notes: text("notes"),
+  xpAwarded: integer("xp_awarded").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+// =====================
 // BOOKS
 // =====================
 

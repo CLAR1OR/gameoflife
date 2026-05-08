@@ -32,6 +32,8 @@ const KIND_STYLE: Record<
   quest: { label: "Quest", color: "text-glow-purple border-glow-purple/40" },
   book: { label: "Book", color: "text-xp border-xp/40" },
   achievement: { label: "🏆", color: "text-xp border-xp/40" },
+  place: { label: "Place", color: "text-glow border-glow/40" },
+  friend: { label: "Friend", color: "text-glow-purple border-glow-purple/40" },
 };
 
 export function ActivityTimeline({ events }: { events: TimelineEvent[] }) {

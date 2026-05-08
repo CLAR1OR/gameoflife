@@ -16,6 +16,8 @@ const KIND_LABEL: Record<SearchHit["kind"], string> = {
   quest: "Quest",
   habit: "Habit",
   achievement: "Achievement",
+  place: "Place",
+  friend: "Friend",
 };
 
 const KIND_CLS: Record<SearchHit["kind"], string> = {
@@ -25,6 +27,8 @@ const KIND_CLS: Record<SearchHit["kind"], string> = {
   quest: "text-glow-purple border-glow-purple/40",
   habit: "text-glow border-glow/40",
   achievement: "text-xp border-xp/40",
+  place: "text-glow border-glow/40",
+  friend: "text-glow-purple border-glow-purple/40",
 };
 
 export function GlobalSearch() {

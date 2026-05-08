@@ -955,7 +955,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Writing",
     description: "From daily practice to publishing finished work that reaches readers",
     icon: "✍️",
-    coverImage: "linear-gradient(135deg, #0c0a0a 0%, #2a1f15 35%, #4a3a28 65%, #8a6a3a 100%)",
+    coverImage: "url('/writing.png') center/cover",
     subskills: [
       // =====================
       // ROOT: HABIT
@@ -1910,7 +1910,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Mathematics",
     description: "From arithmetic fluency to proving theorems that hold up",
     icon: "🧮",
-    coverImage: "linear-gradient(135deg, #020617 0%, #0c4a6e 40%, #0891b2 75%, #67e8f9 100%)",
+    coverImage: "url('/math.png') center/cover",
     subskills: [
       // =====================
       // ROOT
@@ -2079,7 +2079,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Spanish Language",
     description: "From first hola to reading Cervantes and arguing politics in Madrid",
     icon: "🇪🇸",
-    coverImage: "linear-gradient(135deg, #1a0a0a 0%, #7c2d12 35%, #ea580c 70%, #fde047 100%)",
+    coverImage: "url('/spanish.png') center/cover",
     subskills: [
       // ROOT
       {
@@ -2284,7 +2284,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "French Language",
     description: "From bonjour to reading Camus and ordering wine in Paris like you live there",
     icon: "🇫🇷",
-    coverImage: "linear-gradient(135deg, #0a0a2a 0%, #1e3a8a 40%, #ffffff 70%, #dc2626 100%)",
+    coverImage: "url('/french.png') center/cover",
     subskills: [
       {
         name: "First Words & Sounds",
@@ -2484,7 +2484,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Singing",
     description: "From your first scale to performing repertoire that moves people",
     icon: "🎤",
-    coverImage: "linear-gradient(135deg, #1a0a1a 0%, #4c1d95 35%, #db2777 70%, #fbbf24 100%)",
+    coverImage: "url('/singing.png') center/cover",
     subskills: [
       {
         name: "Breath & Posture",

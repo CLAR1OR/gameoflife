@@ -35,6 +35,10 @@ import {
 } from "@/components/dashboard/dashboard-quest-tiles";
 import { DashboardTodaysQuestRow } from "@/components/dashboard/dashboard-todays-quest";
 import { QuestDueAlert } from "@/components/dashboard/quest-due-alert";
+import { DashboardFriendsDue } from "@/components/dashboard/dashboard-friends-due";
+import { DashboardPlacesTile } from "@/components/dashboard/dashboard-places-tile";
+import { getPlacesStats } from "@/modules/places/queries";
+import { getFriendsDueToReach } from "@/modules/friends/queries";
 
 const FOCUS_SLOTS = 3;
 
@@ -67,6 +71,8 @@ export default async function DashboardPage() {
     bookStats,
     booksThisYear,
     dueQuests,
+    placesStats,
+    friendsDue,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
@@ -79,6 +85,8 @@ export default async function DashboardPage() {
     getBookStats(userId),
     getBooksReadThisYear(userId),
     getQuestsDueSoon(userId, 7),
+    getPlacesStats(userId),
+    getFriendsDueToReach(userId),
   ]);
 
   const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
@@ -132,6 +140,11 @@ export default async function DashboardPage() {
 
       {/* Quest due / overdue alert */}
       <QuestDueAlert quests={dueQuests} />
+
+      {/* Friends due to reach out */}
+      {isFeatureEnabled(settings.features, "dashboardFriendsDue") && (
+        <DashboardFriendsDue friends={friendsDue} />
+      )}
 
       {/* Current Focus */}
       <section>
@@ -277,6 +290,11 @@ export default async function DashboardPage() {
           )}
         </section>
       </div>
+
+      {/* Places — countries-visited summary at the bottom */}
+      {isFeatureEnabled(settings.features, "dashboardCountryFill") && (
+        <DashboardPlacesTile stats={placesStats} />
+      )}
     </div>
   );
 }

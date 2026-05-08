@@ -10,47 +10,31 @@ import {
   book,
   bookRead,
   xpSession,
+  place,
+  placeVisit,
+  friend,
+  friendInteraction,
 } from "@/lib/db/schema";
 import { and, eq, gte, desc, isNotNull } from "drizzle-orm";
 import { XP_PER_BOOK } from "@/modules/books/types";
 
-export type TimelineEvent =
-  | {
-      kind: "milestone";
-      at: Date;
-      title: string;
-      subtitle: string;
-      icon: string;
-      xp: number | null;
-      href?: string;
-    }
-  | {
-      kind: "quest";
-      at: Date;
-      title: string;
-      subtitle: string;
-      icon: string;
-      xp: number | null;
-      href?: string;
-    }
-  | {
-      kind: "book";
-      at: Date;
-      title: string;
-      subtitle: string;
-      icon: string;
-      xp: number | null;
-      href?: string;
-    }
-  | {
-      kind: "achievement";
-      at: Date;
-      title: string;
-      subtitle: string;
-      icon: string;
-      xp: number | null;
-      href?: string;
-    };
+type TimelineKind =
+  | "milestone"
+  | "quest"
+  | "book"
+  | "achievement"
+  | "place"
+  | "friend";
+
+export type TimelineEvent = {
+  kind: TimelineKind;
+  at: Date;
+  title: string;
+  subtitle: string;
+  icon: string;
+  xp: number | null;
+  href?: string;
+};
 
 function ts(d: Date | number | null | undefined): Date | null {
   if (!d) return null;
@@ -181,6 +165,61 @@ export async function getTimeline(
       icon: a.icon,
       xp: null,
       href: "/achievements",
+    });
+  }
+
+  // Place visits
+  const visits = await db
+    .select({ v: placeVisit, p: place })
+    .from(placeVisit)
+    .innerJoin(place, eq(placeVisit.placeId, place.id))
+    .where(eq(placeVisit.userId, userId))
+    .orderBy(desc(placeVisit.startedOn))
+    .limit(limit);
+  for (const row of visits) {
+    const [y, m, d] = row.v.startedOn.split("-").map(Number);
+    if (!y) continue;
+    events.push({
+      kind: "place",
+      at: new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0),
+      title: row.p.name,
+      subtitle: row.p.countryName
+        ? `Visit · ${row.p.countryName}`
+        : "Place visited",
+      icon: "🗺️",
+      xp: null,
+      href: `/places/${row.p.id}`,
+    });
+  }
+
+  // Friend interactions
+  const ints = await db
+    .select({ i: friendInteraction, f: friend })
+    .from(friendInteraction)
+    .innerJoin(friend, eq(friendInteraction.friendId, friend.id))
+    .where(eq(friendInteraction.userId, userId))
+    .orderBy(desc(friendInteraction.occurredOn))
+    .limit(limit);
+  const friendKindIcon: Record<string, string> = {
+    message: "💬",
+    call: "📞",
+    meet: "🤝",
+    letter: "💌",
+    event: "🎉",
+    trip: "✈️",
+    other: "🫂",
+  };
+  for (const row of ints) {
+    const [y, m, d] = row.i.occurredOn.split("-").map(Number);
+    if (!y) continue;
+    events.push({
+      kind: "friend",
+      at: new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0),
+      title: row.f.name,
+      subtitle: `${row.i.kind.charAt(0).toUpperCase() + row.i.kind.slice(1)} · check-in`,
+      icon: friendKindIcon[row.i.kind] ?? "🫂",
+      xp: row.i.xpAwarded > 0 ? row.i.xpAwarded : null,
+      href: `/friends/${row.f.id}`,
     });
   }
 

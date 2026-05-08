@@ -8,13 +8,23 @@ import {
   quest,
   habit,
   achievement,
+  place,
+  friend,
 } from "@/lib/db/schema";
 import { and, eq, like, or } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 
 export type SearchHit = {
   id: string;
-  kind: "category" | "subskill" | "book" | "quest" | "habit" | "achievement";
+  kind:
+    | "category"
+    | "subskill"
+    | "book"
+    | "quest"
+    | "habit"
+    | "achievement"
+    | "place"
+    | "friend";
   title: string;
   subtitle: string;
   icon: string;
@@ -197,6 +207,63 @@ export async function globalSearch(rawQuery: string): Promise<SearchHit[]> {
       icon: a.icon,
       href: "/achievements",
       sortKey: scoreMatch(a.name, q) + (a.isUnlocked ? 0 : 0.3),
+    });
+  }
+
+  // Places — name + countryName
+  const places = await db
+    .select()
+    .from(place)
+    .where(
+      and(
+        eq(place.userId, userId),
+        or(like(place.name, needle), like(place.countryName, needle))
+      )
+    )
+    .limit(10);
+  for (const p of places) {
+    hits.push({
+      id: p.id,
+      kind: "place",
+      title: p.name,
+      subtitle: [p.countryName, p.region].filter(Boolean).join(" · ") || p.type,
+      icon: "🗺️",
+      href: `/places/${p.id}`,
+      sortKey: Math.min(
+        scoreMatch(p.name, q),
+        p.countryName ? scoreMatch(p.countryName, q) + 0.3 : 100
+      ),
+    });
+  }
+
+  // Friends — name, nickname, howWeMet
+  const friends = await db
+    .select()
+    .from(friend)
+    .where(
+      and(
+        eq(friend.userId, userId),
+        eq(friend.archived, false),
+        or(
+          like(friend.name, needle),
+          like(friend.nickname, needle),
+          like(friend.howWeMet, needle)
+        )
+      )
+    )
+    .limit(10);
+  for (const f of friends) {
+    hits.push({
+      id: f.id,
+      kind: "friend",
+      title: f.name,
+      subtitle: f.nickname ? `“${f.nickname}”` : "Friend",
+      icon: "🫂",
+      href: `/friends/${f.id}`,
+      sortKey: Math.min(
+        scoreMatch(f.name, q),
+        f.nickname ? scoreMatch(f.nickname, q) + 0.2 : 100
+      ),
     });
   }
 
