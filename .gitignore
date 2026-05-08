@@ -40,6 +40,10 @@ yarn-error.log*
 /samples/*.csv
 /samples/*.CSV
 
+# user-uploaded friend photos (personal, shouldn't be tracked)
+/public/friends/*
+!/public/friends/.gitkeep
+
 # vercel
 .vercel
 
