@@ -2,7 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+// Leaflet CSS is imported globally via app/globals.css to ensure it loads
+// before any tile renders (Tailwind preflight + Turbopack interaction
+// would otherwise leave us with squashed tiles + invisible cursor).
 
 export type MapPin = {
   id: string;
@@ -49,8 +51,24 @@ export function WorldMap({
   onMapClickRef.current = onMapClick;
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, {
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+
+    // React 18+ StrictMode double-mounts in dev, leaving _leaflet_id on the
+    // container after the first mount's cleanup. Calling L.map() on a
+    // dirty container throws "Map container is already initialized" — which
+    // would silently break the entire map. Clear the marker first.
+    interface LeafletyDiv extends HTMLDivElement {
+      _leaflet_id?: number;
+    }
+    const dirty = container as LeafletyDiv;
+    if (dirty._leaflet_id) {
+      // Remove existing leaflet DOM artifacts.
+      while (container.firstChild) container.removeChild(container.firstChild);
+      delete dirty._leaflet_id;
+    }
+
+    const map = L.map(container, {
       worldCopyJump: true,
       attributionControl: true,
       zoomControl: true,
@@ -73,6 +91,12 @@ export function WorldMap({
     map.on("click", (e: L.LeafletMouseEvent) => {
       onMapClickRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
+
+    // Tile layers measure the container at init; if the container had
+    // height 0 at that moment (which can happen behind dynamic-imports +
+    // hydration), Leaflet draws nothing. Force a size recalc on the next
+    // frame to be safe.
+    setTimeout(() => map.invalidateSize(), 0);
 
     return () => {
       map.remove();

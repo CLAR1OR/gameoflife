@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -220,23 +221,32 @@
 }
 
 /* Leaflet: make sure cursors stay visible even if the package CSS hasn't
- * fully hydrated. Tailwind's preflight resets cursor on some elements. */
+ * fully hydrated. Tailwind's preflight resets cursor on some elements,
+ * and Tailwind's reset adds a focus-ring outline on the container. */
 .leaflet-container {
   cursor: grab;
-  background: var(--card);
+  background: #1a1b35;
+  outline: none !important;
+  font-family: var(--font-sans);
 }
 .leaflet-dragging .leaflet-container,
 .leaflet-grab .leaflet-container:active {
   cursor: grabbing;
 }
+.leaflet-interactive,
 .leaflet-marker-icon,
-.leaflet-marker-shadow,
 .leaflet-clickable,
 .leaflet-popup-pane {
   cursor: pointer;
 }
-.leaflet-container.gol-add-mode {
+.leaflet-container.gol-add-mode,
+.leaflet-container.gol-add-mode .leaflet-interactive {
   cursor: crosshair !important;
+}
+/* Tailwind's preflight sets img max-width:100%, height:auto on raw <img>;
+ * Leaflet positions tile images via inline CSS so we need to opt them out. */
+.leaflet-container img {
+  max-width: none !important;
 }
 
 /* RPG glow effects — driven by tokens via color-mix so they re-tint per theme. */
