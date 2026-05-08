@@ -28,6 +28,10 @@ import {
   friend,
   friendResidence,
   friendInteraction,
+  friendTag,
+  friendTagAssignment,
+  friendContact,
+  friendEvent,
 } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
@@ -61,6 +65,10 @@ const TABLES = [
   { name: "friend", table: friend },
   { name: "friendResidence", table: friendResidence },
   { name: "friendInteraction", table: friendInteraction },
+  { name: "friendTag", table: friendTag },
+  { name: "friendTagAssignment", table: friendTagAssignment },
+  { name: "friendContact", table: friendContact },
+  { name: "friendEvent", table: friendEvent },
   { name: "financeAccount", table: financeAccount },
   { name: "financeTransaction", table: financeTransaction },
   { name: "financeRecurring", table: financeRecurring },
@@ -150,6 +158,10 @@ const TIMESTAMP_COLS: Partial<Record<TableName, string[]>> = {
   friend: ["lastContactedAt", "createdAt", "updatedAt"],
   friendResidence: ["createdAt"],
   friendInteraction: ["createdAt"],
+  friendTag: ["createdAt"],
+  friendTagAssignment: ["createdAt"],
+  friendContact: ["createdAt"],
+  friendEvent: ["createdAt"],
   financeAccount: ["archivedAt", "lastCheckedAt", "createdAt", "updatedAt"],
   financeTransaction: ["createdAt"],
   financeRecurring: ["createdAt"],

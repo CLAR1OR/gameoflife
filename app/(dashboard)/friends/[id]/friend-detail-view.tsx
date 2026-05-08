@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckInButton } from "@/components/friends/check-in-button";
 import { FriendPhotoUpload } from "@/components/friends/friend-photo-upload";
+import { FriendTagsSection } from "@/components/friends/friend-tags-section";
+import { FriendContactsSection } from "@/components/friends/friend-contacts-section";
+import { FriendEventsSection } from "@/components/friends/friend-events-section";
+import { TagChip } from "@/components/friends/tag-chip";
 import {
   updateFriend,
   deleteFriend,
@@ -24,6 +28,11 @@ import type {
   Friend,
   FriendInteraction,
   FriendResidence,
+} from "@/modules/friends/queries";
+import type {
+  FriendTag,
+  FriendContact,
+  FriendEvent,
 } from "@/modules/friends/queries";
 import type { Place } from "@/modules/places/queries";
 import { toast } from "sonner";
@@ -60,6 +69,10 @@ export function FriendDetailView({
   residences,
   interactions,
   knownPlaces,
+  friendTags,
+  allTags,
+  contacts,
+  events,
 }: {
   friend: Friend;
   residences: (FriendResidence & {
@@ -67,6 +80,10 @@ export function FriendDetailView({
   })[];
   interactions: FriendInteraction[];
   knownPlaces: Pick<Place, "id" | "name" | "countryName">[];
+  friendTags: FriendTag[];
+  allTags: FriendTag[];
+  contacts: FriendContact[];
+  events: FriendEvent[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -273,6 +290,9 @@ export function FriendDetailView({
                     🎂 {formatBirthday(friend.birthday)}
                   </Badge>
                 )}
+                {friendTags.map((t) => (
+                  <TagChip key={t.id} tag={t} />
+                ))}
                 {friend.phone && (
                   <a
                     href={`tel:${friend.phone}`}
@@ -336,6 +356,19 @@ export function FriendDetailView({
       <div>
         <CheckInButton friendId={friend.id} />
       </div>
+
+      <FriendTagsSection
+        friendId={friend.id}
+        friendTags={friendTags}
+        allTags={allTags}
+      />
+
+      <FriendContactsSection
+        friendId={friend.id}
+        contacts={contacts}
+        legacyPhone={friend.phone}
+        legacyEmail={friend.email}
+      />
 
       {editing && (
         <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-3">
@@ -492,6 +525,8 @@ export function FriendDetailView({
           </ul>
         )}
       </section>
+
+      <FriendEventsSection friendId={friend.id} events={events} />
 
       <section className="space-y-2">
         <h2 className="text-xs font-mono uppercase tracking-wider text-glow">

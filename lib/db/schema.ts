@@ -382,6 +382,78 @@ export const friendResidence = sqliteTable("friend_residence", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const friendTag = sqliteTable("friend_tag", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  /** A theme token name — "glow" / "glow-purple" / "xp" / "warning" /
+   * "destructive" — used to colour the tag chip. */
+  color: text("color").notNull().default("glow"),
+  /** Optional default contact-cadence (days) for friends in this tag.
+   * Applied at creation time only — editing the tag doesn't retroactively
+   * change every member's cadence. */
+  defaultCadenceDays: integer("default_cadence_days"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const friendTagAssignment = sqliteTable("friend_tag_assignment", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  friendId: text("friend_id").notNull().references(() => friend.id, { onDelete: "cascade" }),
+  tagId: text("tag_id").notNull().references(() => friendTag.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const friendContact = sqliteTable("friend_contact", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  friendId: text("friend_id").notNull().references(() => friend.id, { onDelete: "cascade" }),
+  kind: text("kind", {
+    enum: [
+      "phone",
+      "whatsapp",
+      "telegram",
+      "signal",
+      "email",
+      "instagram",
+      "linkedin",
+      "twitter",
+      "facebook",
+      "discord",
+      "snapchat",
+      "address",
+      "other",
+    ],
+  }).notNull(),
+  value: text("value").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const friendEvent = sqliteTable("friend_event", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  friendId: text("friend_id").notNull().references(() => friend.id, { onDelete: "cascade" }),
+  occurredOn: text("occurred_on").notNull(), // YYYY-MM-DD
+  kind: text("kind", {
+    enum: [
+      "milestone",   // generic life milestone
+      "moved",       // changed residence
+      "job",         // new job / promotion
+      "married",
+      "child",
+      "loss",        // bereavement
+      "health",
+      "achievement",
+      "other",
+    ],
+  }).notNull().default("milestone"),
+  title: text("title").notNull(),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const friendInteraction = sqliteTable("friend_interaction", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

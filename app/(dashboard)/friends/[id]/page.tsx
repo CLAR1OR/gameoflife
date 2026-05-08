@@ -4,6 +4,10 @@ import {
   getFriendById,
   getResidencesForFriend,
   getInteractionsForFriend,
+  getTagsForFriend,
+  getFriendTags,
+  getContactsForFriend,
+  getEventsForFriend,
 } from "@/modules/friends/queries";
 import { getPlacesByUser } from "@/modules/places/queries";
 import { FriendDetailView } from "./friend-detail-view";
@@ -18,10 +22,22 @@ export default async function FriendPage({
   const friend = await getFriendById(id, session.user.id);
   if (!friend) notFound();
 
-  const [residences, interactions, places] = await Promise.all([
+  const [
+    residences,
+    interactions,
+    places,
+    friendTags,
+    allTags,
+    contacts,
+    events,
+  ] = await Promise.all([
     getResidencesForFriend(id, session.user.id),
     getInteractionsForFriend(id, session.user.id),
     getPlacesByUser(session.user.id),
+    getTagsForFriend(id, session.user.id),
+    getFriendTags(session.user.id),
+    getContactsForFriend(id, session.user.id),
+    getEventsForFriend(id, session.user.id),
   ]);
 
   const knownPlaces = places.map((p) => ({
@@ -36,6 +52,10 @@ export default async function FriendPage({
       residences={residences}
       interactions={interactions}
       knownPlaces={knownPlaces}
+      friendTags={friendTags}
+      allTags={allTags}
+      contacts={contacts}
+      events={events}
     />
   );
 }

@@ -35,14 +35,10 @@ import {
 } from "@/components/dashboard/dashboard-quest-tiles";
 import { DashboardTodaysQuestRow } from "@/components/dashboard/dashboard-todays-quest";
 import { QuestDueAlert } from "@/components/dashboard/quest-due-alert";
-import { DashboardFriendsDue } from "@/components/dashboard/dashboard-friends-due";
-import { DashboardBirthdays } from "@/components/dashboard/dashboard-birthdays";
+import { DashboardPeopleToThinkAbout } from "@/components/dashboard/dashboard-people-to-think-about";
 import { DashboardPlacesTile } from "@/components/dashboard/dashboard-places-tile";
 import { getPlacesStats } from "@/modules/places/queries";
-import {
-  getFriendsDueToReach,
-  getUpcomingBirthdays,
-} from "@/modules/friends/queries";
+import { getPeopleToThinkAbout } from "@/modules/friends/queries";
 
 const FOCUS_SLOTS = 3;
 
@@ -76,8 +72,7 @@ export default async function DashboardPage() {
     booksThisYear,
     dueQuests,
     placesStats,
-    friendsDue,
-    upcomingBirthdays,
+    peopleToThinkAbout,
   ] = await Promise.all([
     getCategoriesByUser(userId),
     getCategoryIdsWithHabits(userId),
@@ -91,8 +86,7 @@ export default async function DashboardPage() {
     getBooksReadThisYear(userId),
     getQuestsDueSoon(userId, 7),
     getPlacesStats(userId),
-    getFriendsDueToReach(userId),
-    getUpcomingBirthdays(userId, 30),
+    getPeopleToThinkAbout(userId),
   ]);
 
   const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
@@ -147,13 +141,10 @@ export default async function DashboardPage() {
       {/* Quest due / overdue alert */}
       <QuestDueAlert quests={dueQuests} />
 
-      {/* Friends due to reach out */}
+      {/* People to think about — overdue contacts + upcoming birthdays */}
       {isFeatureEnabled(settings.features, "dashboardFriendsDue") && (
-        <DashboardFriendsDue friends={friendsDue} />
+        <DashboardPeopleToThinkAbout items={peopleToThinkAbout} />
       )}
-
-      {/* Upcoming birthdays */}
-      <DashboardBirthdays birthdays={upcomingBirthdays} />
 
       {/* Current Focus */}
       <section>

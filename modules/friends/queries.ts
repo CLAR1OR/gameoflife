@@ -3,14 +3,21 @@ import {
   friend,
   friendInteraction,
   friendResidence,
+  friendTag,
+  friendTagAssignment,
+  friendContact,
+  friendEvent,
   place,
 } from "@/lib/db/schema";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { InferSelectModel } from "drizzle-orm";
 
 export type Friend = InferSelectModel<typeof friend>;
 export type FriendInteraction = InferSelectModel<typeof friendInteraction>;
 export type FriendResidence = InferSelectModel<typeof friendResidence>;
+export type FriendTag = InferSelectModel<typeof friendTag>;
+export type FriendContact = InferSelectModel<typeof friendContact>;
+export type FriendEvent = InferSelectModel<typeof friendEvent>;
 
 export type FriendCardData = Friend & {
   currentPlace: {
@@ -26,15 +33,24 @@ export type FriendCardData = Friend & {
   /** Negative = overdue (days past cadence), positive = days remaining. */
   daysUntilDue: number | null;
   interactionCount: number;
+  tags: FriendTag[];
+  /** Most recent interaction's notes (truncated by the UI), or null. */
+  lastInteractionNote: string | null;
+  /** Most recent interaction kind (message/call/meet/...), or null. */
+  lastInteractionKind: FriendInteraction["kind"] | null;
 };
 
 export async function getFriendsByUser(
-  userId: string
+  userId: string,
+  opts: { includeArchived?: boolean } = {}
 ): Promise<FriendCardData[]> {
+  const where = opts.includeArchived
+    ? eq(friend.userId, userId)
+    : and(eq(friend.userId, userId), eq(friend.archived, false));
   const friends = await db
     .select()
     .from(friend)
-    .where(and(eq(friend.userId, userId), eq(friend.archived, false)))
+    .where(where)
     .orderBy(asc(friend.name));
 
   if (friends.length === 0) return [];
@@ -62,6 +78,82 @@ export async function getFriendsByUser(
     .groupBy(friendInteraction.friendId);
   const countMap = new Map(counts.map((c) => [c.friendId, Number(c.c)]));
 
+  // Most-recent interaction (notes + kind) per friend in one query.
+  const friendIds = friends.map((f) => f.id);
+  const allInts =
+    friendIds.length > 0
+      ? await db
+          .select({
+            friendId: friendInteraction.friendId,
+            occurredOn: friendInteraction.occurredOn,
+            createdAt: friendInteraction.createdAt,
+            notes: friendInteraction.notes,
+            kind: friendInteraction.kind,
+          })
+          .from(friendInteraction)
+          .where(
+            and(
+              eq(friendInteraction.userId, userId),
+              inArray(friendInteraction.friendId, friendIds)
+            )
+          )
+      : [];
+  const latestByFriend = new Map<
+    string,
+    { notes: string | null; kind: FriendInteraction["kind"] }
+  >();
+  for (const i of allInts) {
+    const existing = latestByFriend.get(i.friendId);
+    const cur = `${i.occurredOn}|${
+      typeof i.createdAt === "number"
+        ? i.createdAt
+        : (i.createdAt as Date).getTime()
+    }`;
+    const existingKey = existing
+      ? `${(existing as unknown as { _key: string })._key ?? ""}`
+      : "";
+    if (!existing || cur > existingKey) {
+      // Stash a synthetic _key for the comparison on next iteration.
+      const v = {
+        notes: i.notes,
+        kind: i.kind,
+        _key: cur,
+      } as unknown as {
+        notes: string | null;
+        kind: FriendInteraction["kind"];
+      };
+      latestByFriend.set(i.friendId, v);
+    }
+  }
+
+  // Tags per friend in two queries.
+  const assignments =
+    friendIds.length > 0
+      ? await db
+          .select()
+          .from(friendTagAssignment)
+          .where(
+            and(
+              eq(friendTagAssignment.userId, userId),
+              inArray(friendTagAssignment.friendId, friendIds)
+            )
+          )
+      : [];
+  const allTags = await db
+    .select()
+    .from(friendTag)
+    .where(eq(friendTag.userId, userId))
+    .orderBy(asc(friendTag.sortOrder), asc(friendTag.name));
+  const tagById = new Map(allTags.map((t) => [t.id, t]));
+  const tagsByFriend = new Map<string, FriendTag[]>();
+  for (const a of assignments) {
+    const t = tagById.get(a.tagId);
+    if (!t) continue;
+    const list = tagsByFriend.get(a.friendId) ?? [];
+    list.push(t);
+    tagsByFriend.set(a.friendId, list);
+  }
+
   const now = Date.now();
   const dayMs = 1000 * 60 * 60 * 24;
 
@@ -80,6 +172,7 @@ export async function getFriendsByUser(
         : f.contactCadenceDays && daysSinceContact === null
           ? -f.contactCadenceDays // never contacted → very overdue
           : null;
+    const latest = latestByFriend.get(f.id);
     return {
       ...f,
       currentPlace: p
@@ -95,8 +188,70 @@ export async function getFriendsByUser(
       daysSinceContact,
       daysUntilDue,
       interactionCount: countMap.get(f.id) ?? 0,
+      tags: tagsByFriend.get(f.id) ?? [],
+      lastInteractionNote: latest?.notes ?? null,
+      lastInteractionKind: latest?.kind ?? null,
     };
   });
+}
+
+// =====================
+// TAGS / CONTACTS / EVENTS
+// =====================
+
+export async function getFriendTags(userId: string): Promise<FriendTag[]> {
+  return db
+    .select()
+    .from(friendTag)
+    .where(eq(friendTag.userId, userId))
+    .orderBy(asc(friendTag.sortOrder), asc(friendTag.name));
+}
+
+export async function getTagsForFriend(
+  friendId: string,
+  userId: string
+): Promise<FriendTag[]> {
+  const rows = await db
+    .select({ tag: friendTag })
+    .from(friendTagAssignment)
+    .innerJoin(friendTag, eq(friendTagAssignment.tagId, friendTag.id))
+    .where(
+      and(
+        eq(friendTagAssignment.userId, userId),
+        eq(friendTagAssignment.friendId, friendId)
+      )
+    )
+    .orderBy(asc(friendTag.sortOrder), asc(friendTag.name));
+  return rows.map((r) => r.tag);
+}
+
+export async function getContactsForFriend(
+  friendId: string,
+  userId: string
+): Promise<FriendContact[]> {
+  return db
+    .select()
+    .from(friendContact)
+    .where(
+      and(
+        eq(friendContact.userId, userId),
+        eq(friendContact.friendId, friendId)
+      )
+    )
+    .orderBy(asc(friendContact.sortOrder), asc(friendContact.createdAt));
+}
+
+export async function getEventsForFriend(
+  friendId: string,
+  userId: string
+): Promise<FriendEvent[]> {
+  return db
+    .select()
+    .from(friendEvent)
+    .where(
+      and(eq(friendEvent.userId, userId), eq(friendEvent.friendId, friendId))
+    )
+    .orderBy(desc(friendEvent.occurredOn), desc(friendEvent.createdAt));
 }
 
 export async function getFriendById(
@@ -186,6 +341,78 @@ export async function getFriendsDueToReach(
   return all
     .filter((f) => f.daysUntilDue !== null && f.daysUntilDue <= 0)
     .sort((a, b) => (a.daysUntilDue ?? 0) - (b.daysUntilDue ?? 0));
+}
+
+/** A unified "people to think about" feed combining overdue contacts and
+ * upcoming birthdays, prioritised by urgency. Used by the dashboard. */
+export type PersonAttentionItem =
+  | {
+      kind: "overdue";
+      friendId: string;
+      name: string;
+      nickname: string | null;
+      photoUrl: string | null;
+      currentPlace: FriendCardData["currentPlace"];
+      daysOverdue: number;
+      sortKey: number;
+    }
+  | {
+      kind: "birthday";
+      friendId: string;
+      name: string;
+      nickname: string | null;
+      photoUrl: string | null;
+      label: string;
+      daysUntil: number;
+      turningAge: number | null;
+      sortKey: number;
+    };
+
+export async function getPeopleToThinkAbout(
+  userId: string
+): Promise<PersonAttentionItem[]> {
+  const [due, birthdays] = await Promise.all([
+    getFriendsDueToReach(userId),
+    getUpcomingBirthdays(userId, 30),
+  ]);
+
+  const items: PersonAttentionItem[] = [];
+
+  // Birthdays first if they're imminent (≤2 days), otherwise overdues
+  // first. We rank with a numeric sortKey: lower = more urgent.
+  for (const f of due) {
+    const days = f.daysUntilDue ?? 0;
+    items.push({
+      kind: "overdue",
+      friendId: f.id,
+      name: f.name,
+      nickname: f.nickname,
+      photoUrl: f.photoUrl,
+      currentPlace: f.currentPlace,
+      daysOverdue: -days, // positive integer, 0 = today
+      // Overdue starts at 0, gets more urgent the longer it's been.
+      // Map "today" to 1; "1 day overdue" to 0.5; "10 days overdue" to 0.05.
+      sortKey: 10 / (10 + Math.max(0, -days)),
+    });
+  }
+
+  for (const b of birthdays) {
+    items.push({
+      kind: "birthday",
+      friendId: b.friendId,
+      name: b.name,
+      nickname: b.nickname,
+      photoUrl: b.photoUrl,
+      label: b.label,
+      daysUntil: b.daysUntil,
+      turningAge: b.turningAge,
+      // Birthdays today are extremely urgent. Sort so today=0 is at top.
+      sortKey: b.daysUntil === 0 ? -10 : b.daysUntil,
+    });
+  }
+
+  items.sort((a, b) => a.sortKey - b.sortKey);
+  return items;
 }
 
 export type UpcomingBirthday = {

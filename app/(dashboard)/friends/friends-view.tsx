@@ -1,16 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { AddFriendDialog } from "@/components/friends/add-friend-dialog";
 import { CheckInButton } from "@/components/friends/check-in-button";
 import { FriendsGallery } from "@/components/friends/friends-gallery";
-import type { FriendCardData, FriendsStats } from "@/modules/friends/queries";
+import { TagChip } from "@/components/friends/tag-chip";
+import { TagManagerDialog } from "@/components/friends/friend-tags-section";
+import { archiveFriend } from "@/modules/friends/actions";
+import { toast } from "sonner";
+import type {
+  FriendCardData,
+  FriendsStats,
+  FriendTag,
+} from "@/modules/friends/queries";
 import type { Place } from "@/modules/places/queries";
 
 type ViewMode = "cards" | "gallery";
+type SortMode = "due" | "recent" | "name" | "added";
 
 function dueLabel(daysUntilDue: number | null, daysSince: number | null) {
   if (daysUntilDue === null) {
@@ -43,25 +54,97 @@ function dueLabel(daysUntilDue: number | null, daysSince: number | null) {
   };
 }
 
+const KIND_PREVIEW_ICON: Record<string, string> = {
+  message: "💬",
+  call: "📞",
+  meet: "🤝",
+  letter: "💌",
+  event: "🎉",
+  trip: "✈️",
+  other: "·",
+};
+
 export function FriendsView({
   friends,
+  archived,
   stats,
   knownPlaces,
+  allTags,
 }: {
   friends: FriendCardData[];
+  archived: FriendCardData[];
   stats: FriendsStats;
   knownPlaces: Pick<Place, "id" | "name" | "countryName">[];
+  allTags: FriendTag[];
 }) {
+  const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
   const [view, setView] = useState<ViewMode>("cards");
+  const [sort, setSort] = useState<SortMode>("due");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [search, setSearch] = useState("");
+  const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
 
-  // Order: overdue first, then due-soon, then everyone else by name.
-  const ordered = [...friends].sort((a, b) => {
-    const aDue = a.daysUntilDue ?? Infinity;
-    const bDue = b.daysUntilDue ?? Infinity;
-    if (aDue !== bDue) return aDue - bDue;
-    return a.name.localeCompare(b.name);
-  });
+  const source = showArchived ? archived : friends;
+
+  const filtered = useMemo(() => {
+    let list = source;
+    if (tagFilter) {
+      list = list.filter((f) => f.tags.some((t) => t.id === tagFilter));
+    }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (f) =>
+          f.name.toLowerCase().includes(q) ||
+          (f.nickname?.toLowerCase().includes(q) ?? false) ||
+          (f.currentPlace?.name.toLowerCase().includes(q) ?? false)
+      );
+    }
+    const sorted = [...list];
+    if (sort === "due") {
+      sorted.sort((a, b) => {
+        const aDue = a.daysUntilDue ?? Infinity;
+        const bDue = b.daysUntilDue ?? Infinity;
+        if (aDue !== bDue) return aDue - bDue;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (sort === "recent") {
+      sorted.sort((a, b) => {
+        const aDays = a.daysSinceContact ?? Infinity;
+        const bDays = b.daysSinceContact ?? Infinity;
+        if (aDays !== bDays) return aDays - bDays;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (sort === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sort === "added") {
+      sorted.sort((a, b) => {
+        const at =
+          typeof a.createdAt === "number"
+            ? a.createdAt * 1000
+            : (a.createdAt as Date).getTime();
+        const bt =
+          typeof b.createdAt === "number"
+            ? b.createdAt * 1000
+            : (b.createdAt as Date).getTime();
+        return bt - at;
+      });
+    }
+    return sorted;
+  }, [source, tagFilter, search, sort]);
+
+  async function handleUnarchive(friendId: string) {
+    // Reuse archiveFriend by un-archiving via updateFriend would be better,
+    // but we don't have that action exposed. For simplicity, handle via a
+    // small inline call to updateFriend through the existing API isn't
+    // available — provide a basic restore via an action wrapper.
+    void friendId;
+    toast.info("To restore an archived friend, edit them and save.");
+  }
+  void handleUnarchive;
+  void archiveFriend;
 
   return (
     <div className="space-y-6">
@@ -94,56 +177,133 @@ export function FriendsView({
           >
             ⚡ {stats.thisYearInteractions} this year
           </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setTagsManagerOpen(true)}
+          >
+            🏷️ Tags
+          </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
             + Add friend
           </Button>
         </div>
       </div>
 
-      {ordered.length > 0 && (
-        <div className="flex items-center gap-1 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setView("cards")}
-            className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
-              view === "cards"
-                ? "border-glow-purple text-glow-purple bg-glow-purple/10"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            ☰ Cards
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("gallery")}
-            className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
-              view === "gallery"
-                ? "border-glow-purple text-glow-purple bg-glow-purple/10"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            🖼️ Gallery
-          </button>
+      {(friends.length > 0 || archived.length > 0) && (
+        <div className="rounded-xl border bg-card p-3 space-y-3">
+          {/* Row 1 — view toggle, sort, search */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setView("cards")}
+                className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
+                  view === "cards"
+                    ? "border-glow-purple text-glow-purple bg-glow-purple/10"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                ☰ Cards
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("gallery")}
+                className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
+                  view === "gallery"
+                    ? "border-glow-purple text-glow-purple bg-glow-purple/10"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🖼️ Gallery
+              </button>
+            </div>
+            <div className="h-5 w-px bg-border/60 mx-1" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortMode)}
+              className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              <option value="due">Sort: next due</option>
+              <option value="recent">Sort: most recent contact</option>
+              <option value="name">Sort: name (A→Z)</option>
+              <option value="added">Sort: recently added</option>
+            </select>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, nickname, or city…"
+              className="h-7 text-xs flex-1 min-w-[180px]"
+            />
+            {archived.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowArchived((s) => !s)}
+                className={`text-xs font-mono px-3 py-1 rounded-full border transition-colors ${
+                  showArchived
+                    ? "border-warning text-warning bg-warning/10"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {showArchived
+                  ? `← Active (${friends.length})`
+                  : `🗄️ Archived (${archived.length})`}
+              </button>
+            )}
+          </div>
+
+          {/* Row 2 — tag filter pills */}
+          {allTags.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setTagFilter(null)}
+                className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors ${
+                  tagFilter === null
+                    ? "border-glow-purple text-glow-purple bg-glow-purple/10"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                all
+              </button>
+              {allTags.map((t) => (
+                <TagChip
+                  key={t.id}
+                  tag={t}
+                  selected={tagFilter === t.id}
+                  onClick={() =>
+                    setTagFilter((cur) => (cur === t.id ? null : t.id))
+                  }
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {ordered.length === 0 ? (
+      {filtered.length === 0 && source.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-muted/20 p-8 text-center">
           <div className="text-5xl mb-2">🫂</div>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Add the first friend you want to keep in regular contact with. Set
-            a reach-out cadence, then log every message, call, or meet — each
-            check-in grants a little XP.
+            {showArchived
+              ? "No archived friends."
+              : "Add the first friend you want to keep in regular contact with. Set a reach-out cadence, then log every message, call, or meet — each check-in grants a little XP."}
           </p>
-          <div className="mt-4">
-            <Button onClick={() => setAddOpen(true)}>+ Add friend</Button>
-          </div>
+          {!showArchived && (
+            <div className="mt-4">
+              <Button onClick={() => setAddOpen(true)}>+ Add friend</Button>
+            </div>
+          )}
         </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          No friends match the current filter.
+        </p>
       ) : view === "gallery" ? (
-        <FriendsGallery friends={ordered} />
+        <FriendsGallery friends={filtered} />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
-          {ordered.map((f) => {
+          {filtered.map((f) => {
             const due = dueLabel(f.daysUntilDue, f.daysSinceContact);
             const initials = f.name
               .split(/\s+/)
@@ -158,7 +318,7 @@ export function FriendsView({
               >
                 <Link
                   href={`/friends/${f.id}`}
-                  className="block p-3 space-y-3"
+                  className="block p-3 space-y-2"
                 >
                   <div className="flex items-center gap-3">
                     {f.photoUrl ? (
@@ -174,7 +334,7 @@ export function FriendsView({
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium leading-tight">
+                      <div className="text-sm font-medium leading-tight line-clamp-1">
                         {f.name}
                         {f.nickname && (
                           <span className="text-muted-foreground/60 ml-1.5 text-xs">
@@ -194,6 +354,23 @@ export function FriendsView({
                       {due.label}
                     </span>
                   </div>
+
+                  {f.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {f.tags.map((t) => (
+                        <TagChip key={t.id} tag={t} size="xs" />
+                      ))}
+                    </div>
+                  )}
+
+                  {f.lastInteractionNote && (
+                    <p className="text-[11px] text-muted-foreground italic line-clamp-2 leading-snug">
+                      {f.lastInteractionKind &&
+                        `${KIND_PREVIEW_ICON[f.lastInteractionKind] ?? "·"} `}
+                      &ldquo;{f.lastInteractionNote}&rdquo;
+                    </p>
+                  )}
+
                   <div
                     onClick={(e) => e.preventDefault()}
                     className="flex items-start"
@@ -211,6 +388,15 @@ export function FriendsView({
         open={addOpen}
         onOpenChange={setAddOpen}
         knownPlaces={knownPlaces}
+      />
+
+      <TagManagerDialog
+        open={tagsManagerOpen}
+        onOpenChange={(o) => {
+          setTagsManagerOpen(o);
+          if (!o) router.refresh();
+        }}
+        tags={allTags}
       />
     </div>
   );
