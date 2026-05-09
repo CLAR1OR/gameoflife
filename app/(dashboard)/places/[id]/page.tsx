@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth-server";
 import {
   getPlaceById,
   getVisitsForPlace,
+  getTripsByUser,
 } from "@/modules/places/queries";
 import { PlaceDetailView } from "./place-detail-view";
 
@@ -15,6 +16,9 @@ export default async function PlacePage({
   const session = await requireSession();
   const place = await getPlaceById(id, session.user.id);
   if (!place) notFound();
-  const visits = await getVisitsForPlace(id, session.user.id);
-  return <PlaceDetailView place={place} visits={visits} />;
+  const [visits, trips] = await Promise.all([
+    getVisitsForPlace(id, session.user.id),
+    getTripsByUser(session.user.id),
+  ]);
+  return <PlaceDetailView place={place} visits={visits} trips={trips} />;
 }

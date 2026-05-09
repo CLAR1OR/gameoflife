@@ -1,10 +1,11 @@
 import { db } from "@/lib/db";
-import { place, placeVisit } from "@/lib/db/schema";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { place, placeVisit, trip } from "@/lib/db/schema";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { InferSelectModel } from "drizzle-orm";
 
 export type Place = InferSelectModel<typeof place>;
 export type PlaceVisit = InferSelectModel<typeof placeVisit>;
+export type Trip = InferSelectModel<typeof trip>;
 
 export type PlaceWithStats = Place & {
   visitCount: number;
@@ -108,4 +109,161 @@ export async function getRecentVisits(
     .orderBy(desc(placeVisit.startedOn), desc(placeVisit.createdAt))
     .limit(limit);
   return rows;
+}
+
+// =====================
+// COUNTRY DETAIL
+// =====================
+
+export type CountrySummary = {
+  countryCode: string;
+  countryName: string;
+  placesCount: number;
+  visitsCount: number;
+  firstVisitedOn: string | null;
+  lastVisitedOn: string | null;
+};
+
+export async function getCountrySummary(
+  userId: string,
+  countryCode: string
+): Promise<CountrySummary | null> {
+  const code = countryCode.toUpperCase();
+  const places = await db
+    .select()
+    .from(place)
+    .where(and(eq(place.userId, userId), eq(place.countryCode, code)));
+  if (places.length === 0) return null;
+
+  const placeIds = places.map((p) => p.id);
+  const visits = await db
+    .select()
+    .from(placeVisit)
+    .where(
+      and(
+        eq(placeVisit.userId, userId),
+        inArray(placeVisit.placeId, placeIds)
+      )
+    );
+  const dates = visits.map((v) => v.startedOn).sort();
+
+  return {
+    countryCode: code,
+    countryName: places[0].countryName ?? code,
+    placesCount: places.length,
+    visitsCount: visits.length,
+    firstVisitedOn: dates[0] ?? null,
+    lastVisitedOn: dates[dates.length - 1] ?? null,
+  };
+}
+
+export async function getPlacesInCountry(
+  userId: string,
+  countryCode: string
+): Promise<PlaceWithStats[]> {
+  const code = countryCode.toUpperCase();
+  const rows = await db
+    .select({
+      p: place,
+      visitCount: sql<number>`count(${placeVisit.id})`,
+      lastVisitedOn: sql<string | null>`max(${placeVisit.startedOn})`,
+    })
+    .from(place)
+    .leftJoin(placeVisit, eq(placeVisit.placeId, place.id))
+    .where(and(eq(place.userId, userId), eq(place.countryCode, code)))
+    .groupBy(place.id)
+    .orderBy(desc(sql`max(${placeVisit.startedOn})`), asc(place.name));
+  return rows.map((r) => ({
+    ...r.p,
+    visitCount: Number(r.visitCount),
+    lastVisitedOn: r.lastVisitedOn,
+  }));
+}
+
+// =====================
+// TRIPS
+// =====================
+
+export type TripWithStats = Trip & {
+  visitsCount: number;
+  placesCount: number;
+  countryCodes: string[];
+};
+
+export async function getTripsByUser(
+  userId: string
+): Promise<TripWithStats[]> {
+  const trips = await db
+    .select()
+    .from(trip)
+    .where(eq(trip.userId, userId))
+    .orderBy(desc(trip.startedOn), desc(trip.createdAt));
+  if (trips.length === 0) return [];
+
+  const ids = trips.map((t) => t.id);
+  const visits = await db
+    .select({
+      tripId: placeVisit.tripId,
+      placeId: placeVisit.placeId,
+      countryCode: place.countryCode,
+    })
+    .from(placeVisit)
+    .innerJoin(place, eq(placeVisit.placeId, place.id))
+    .where(
+      and(
+        eq(placeVisit.userId, userId),
+        inArray(placeVisit.tripId, ids)
+      )
+    );
+
+  const byTrip = new Map<
+    string,
+    { visits: number; places: Set<string>; countries: Set<string> }
+  >();
+  for (const v of visits) {
+    if (!v.tripId) continue;
+    const cur = byTrip.get(v.tripId) ?? {
+      visits: 0,
+      places: new Set<string>(),
+      countries: new Set<string>(),
+    };
+    cur.visits++;
+    cur.places.add(v.placeId);
+    if (v.countryCode) cur.countries.add(v.countryCode);
+    byTrip.set(v.tripId, cur);
+  }
+
+  return trips.map((t) => {
+    const stats = byTrip.get(t.id);
+    return {
+      ...t,
+      visitsCount: stats?.visits ?? 0,
+      placesCount: stats?.places.size ?? 0,
+      countryCodes: stats ? Array.from(stats.countries) : [],
+    };
+  });
+}
+
+export async function getTripById(
+  id: string,
+  userId: string
+): Promise<Trip | null> {
+  const row = await db.query.trip.findFirst({
+    where: (t, { and: a, eq: e }) => a(e(t.id, id), e(t.userId, userId)),
+  });
+  return row ?? null;
+}
+
+export async function getVisitsForTrip(
+  tripId: string,
+  userId: string
+): Promise<{ visit: PlaceVisit; place: Place }[]> {
+  return db
+    .select({ visit: placeVisit, place: place })
+    .from(placeVisit)
+    .innerJoin(place, eq(placeVisit.placeId, place.id))
+    .where(
+      and(eq(placeVisit.userId, userId), eq(placeVisit.tripId, tripId))
+    )
+    .orderBy(asc(placeVisit.startedOn), asc(placeVisit.createdAt));
 }

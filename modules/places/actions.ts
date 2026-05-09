@@ -1,11 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { place, placeVisit } from "@/lib/db/schema";
+import { place, placeVisit, trip } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { geocode, reverseGeocode, type GeocodeResult } from "@/lib/geocode";
+import { writeFile, mkdir, unlink } from "node:fs/promises";
+import path from "node:path";
 
 /** Forward-geocode helper exposed to client search dialogs. */
 export async function searchPlaces(query: string): Promise<GeocodeResult[]> {
@@ -110,19 +112,53 @@ export async function logVisit(data: {
   endedOn?: string | null;
   rating?: number | null;
   notes?: string | null;
+  tripId?: string | null;
 }) {
   const session = await requireSession();
-  await db.insert(placeVisit).values({
-    userId: session.user.id,
-    placeId: data.placeId,
-    startedOn: data.startedOn,
-    endedOn: data.endedOn ?? null,
-    rating: data.rating ?? null,
-    notes: data.notes?.trim() || null,
-  });
+  const [row] = await db
+    .insert(placeVisit)
+    .values({
+      userId: session.user.id,
+      placeId: data.placeId,
+      tripId: data.tripId ?? null,
+      startedOn: data.startedOn,
+      endedOn: data.endedOn ?? null,
+      rating: data.rating ?? null,
+      notes: data.notes?.trim() || null,
+    })
+    .returning();
   revalidatePath("/places");
   revalidatePath(`/places/${data.placeId}`);
   revalidatePath("/account");
+  return row;
+}
+
+export async function updateVisit(
+  id: string,
+  data: {
+    startedOn?: string;
+    endedOn?: string | null;
+    rating?: number | null;
+    notes?: string | null;
+    tripId?: string | null;
+  }
+) {
+  const session = await requireSession();
+  const row = await db.query.placeVisit.findFirst({
+    where: (v, { and: a, eq: e }) =>
+      a(e(v.id, id), e(v.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Visit not found");
+  const updates: Record<string, unknown> = {};
+  if (data.startedOn !== undefined) updates.startedOn = data.startedOn;
+  if (data.endedOn !== undefined) updates.endedOn = data.endedOn;
+  if (data.rating !== undefined) updates.rating = data.rating;
+  if (data.notes !== undefined)
+    updates.notes = data.notes?.trim() || null;
+  if (data.tripId !== undefined) updates.tripId = data.tripId;
+  await db.update(placeVisit).set(updates).where(eq(placeVisit.id, id));
+  revalidatePath("/places");
+  revalidatePath(`/places/${row.placeId}`);
 }
 
 export async function deleteVisit(id: string) {
@@ -132,6 +168,208 @@ export async function deleteVisit(id: string) {
   });
   if (!row) return;
   await db.delete(placeVisit).where(eq(placeVisit.id, id));
+  revalidatePath("/places");
+  revalidatePath(`/places/${row.placeId}`);
+}
+
+// =====================
+// PHOTO UPLOADS
+// =====================
+
+const PHOTO_DIR = path.join(process.cwd(), "public", "places");
+const ALLOWED_PHOTO_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_PHOTO_BYTES = 15 * 1024 * 1024; // 15 MB — slightly looser than friends
+
+async function writePhoto(
+  prefix: string,
+  formData: FormData
+): Promise<string> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("No file uploaded");
+  }
+  if (!ALLOWED_PHOTO_TYPES.has(file.type)) {
+    throw new Error("Unsupported image type — use JPG, PNG, WebP, or GIF");
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    throw new Error("Image too large (max 15 MB)");
+  }
+  await mkdir(PHOTO_DIR, { recursive: true });
+  const ext =
+    file.type === "image/png"
+      ? "png"
+      : file.type === "image/webp"
+        ? "webp"
+        : file.type === "image/gif"
+          ? "gif"
+          : "jpg";
+  const filename = `${prefix}-${Date.now()}.${ext}`;
+  const dest = path.join(PHOTO_DIR, filename);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await writeFile(dest, bytes);
+  return `/places/${filename}`;
+}
+
+async function deletePhotoFile(publicUrl: string | null | undefined) {
+  if (!publicUrl) return;
+  if (!publicUrl.startsWith("/places/")) return;
+  try {
+    await unlink(path.join(process.cwd(), "public", publicUrl));
+  } catch {
+    // already gone
+  }
+}
+
+export async function uploadPlacePhoto(
+  placeId: string,
+  formData: FormData
+) {
+  const session = await requireSession();
+  const row = await db.query.place.findFirst({
+    where: (p, { and: a, eq: e }) =>
+      a(e(p.id, placeId), e(p.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Place not found");
+  const url = await writePhoto(`p-${placeId}`, formData);
+  await deletePhotoFile(row.coverImage);
+  await db
+    .update(place)
+    .set({ coverImage: url, updatedAt: new Date() })
+    .where(eq(place.id, placeId));
+  revalidatePath("/places");
+  revalidatePath(`/places/${placeId}`);
+  return { coverImage: url };
+}
+
+export async function clearPlacePhoto(placeId: string) {
+  const session = await requireSession();
+  const row = await db.query.place.findFirst({
+    where: (p, { and: a, eq: e }) =>
+      a(e(p.id, placeId), e(p.userId, session.user.id)),
+  });
+  if (!row) return;
+  await deletePhotoFile(row.coverImage);
+  await db
+    .update(place)
+    .set({ coverImage: null, updatedAt: new Date() })
+    .where(eq(place.id, placeId));
+  revalidatePath("/places");
+  revalidatePath(`/places/${placeId}`);
+}
+
+export async function uploadVisitPhoto(
+  visitId: string,
+  formData: FormData
+) {
+  const session = await requireSession();
+  const row = await db.query.placeVisit.findFirst({
+    where: (v, { and: a, eq: e }) =>
+      a(e(v.id, visitId), e(v.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Visit not found");
+  const url = await writePhoto(`v-${visitId}`, formData);
+  await deletePhotoFile(row.photoUrl);
+  await db
+    .update(placeVisit)
+    .set({ photoUrl: url })
+    .where(eq(placeVisit.id, visitId));
+  revalidatePath("/places");
+  revalidatePath(`/places/${row.placeId}`);
+  return { photoUrl: url };
+}
+
+export async function clearVisitPhoto(visitId: string) {
+  const session = await requireSession();
+  const row = await db.query.placeVisit.findFirst({
+    where: (v, { and: a, eq: e }) =>
+      a(e(v.id, visitId), e(v.userId, session.user.id)),
+  });
+  if (!row) return;
+  await deletePhotoFile(row.photoUrl);
+  await db
+    .update(placeVisit)
+    .set({ photoUrl: null })
+    .where(eq(placeVisit.id, visitId));
+  revalidatePath("/places");
+  revalidatePath(`/places/${row.placeId}`);
+}
+
+// =====================
+// TRIPS
+// =====================
+
+export async function createTrip(data: {
+  name: string;
+  description?: string | null;
+  startedOn?: string | null;
+  endedOn?: string | null;
+}) {
+  const session = await requireSession();
+  const [row] = await db
+    .insert(trip)
+    .values({
+      userId: session.user.id,
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      startedOn: data.startedOn ?? null,
+      endedOn: data.endedOn ?? null,
+    })
+    .returning();
+  revalidatePath("/places");
+  revalidatePath("/places/trips");
+  return row;
+}
+
+export async function updateTrip(
+  id: string,
+  data: {
+    name?: string;
+    description?: string | null;
+    startedOn?: string | null;
+    endedOn?: string | null;
+  }
+) {
+  const session = await requireSession();
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (data.name !== undefined) updates.name = data.name.trim();
+  if (data.description !== undefined)
+    updates.description = data.description?.trim() || null;
+  if (data.startedOn !== undefined) updates.startedOn = data.startedOn;
+  if (data.endedOn !== undefined) updates.endedOn = data.endedOn;
+  await db
+    .update(trip)
+    .set(updates)
+    .where(and(eq(trip.id, id), eq(trip.userId, session.user.id)));
+  revalidatePath("/places");
+  revalidatePath(`/places/trips/${id}`);
+}
+
+export async function deleteTrip(id: string) {
+  const session = await requireSession();
+  // Visits already have ON DELETE SET NULL via the FK so they survive.
+  await db
+    .delete(trip)
+    .where(and(eq(trip.id, id), eq(trip.userId, session.user.id)));
+  revalidatePath("/places");
+  revalidatePath("/places/trips");
+}
+
+export async function setVisitTrip(visitId: string, tripId: string | null) {
+  const session = await requireSession();
+  const row = await db.query.placeVisit.findFirst({
+    where: (v, { and: a, eq: e }) =>
+      a(e(v.id, visitId), e(v.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Visit not found");
+  await db
+    .update(placeVisit)
+    .set({ tripId })
+    .where(eq(placeVisit.id, visitId));
   revalidatePath("/places");
   revalidatePath(`/places/${row.placeId}`);
 }

@@ -50,3 +50,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# user-uploaded place + visit photos
+/public/places/*
+!/public/places/.gitkeep

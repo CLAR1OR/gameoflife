@@ -12,17 +12,25 @@ import {
   deleteVisit,
   deletePlace,
   updatePlace,
+  setVisitTrip,
 } from "@/modules/places/actions";
-import type { Place, PlaceVisit } from "@/modules/places/queries";
+import type {
+  Place,
+  PlaceVisit,
+  TripWithStats,
+} from "@/modules/places/queries";
+import { PlacePhotoUpload } from "@/components/places/place-photo-upload";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export function PlaceDetailView({
   place,
   visits,
+  trips,
 }: {
   place: Place;
   visits: PlaceVisit[];
+  trips: TripWithStats[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -34,6 +42,8 @@ export function PlaceDetailView({
     new Date().toISOString().slice(0, 10)
   );
   const [visitNotes, setVisitNotes] = useState("");
+  const [visitRating, setVisitRating] = useState<number | null>(null);
+  const [visitTripId, setVisitTripIdState] = useState<string>("");
 
   const pins: MapPin[] =
     place.lat != null && place.lng != null
@@ -82,10 +92,14 @@ export function PlaceDetailView({
         placeId: place.id,
         startedOn: visitDate,
         notes: visitNotes,
+        rating: visitRating,
+        tripId: visitTripId || null,
       });
       toast.success("Visit logged");
       setLogOpen(false);
       setVisitNotes("");
+      setVisitRating(null);
+      setVisitTripIdState("");
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -104,6 +118,15 @@ export function PlaceDetailView({
     }
   }
 
+  async function handleVisitTripChange(visitId: string, tripId: string) {
+    try {
+      await setVisitTrip(visitId, tripId || null);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -116,41 +139,71 @@ export function PlaceDetailView({
       </div>
 
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <div className="flex-1 min-w-0">
-          {editing ? (
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="text-2xl font-bold"
-            />
-          ) : (
-            <h1 className="text-3xl font-bold leading-tight">{place.name}</h1>
-          )}
-          <div className="flex flex-wrap gap-2 mt-2">
-            <Badge variant="outline" className="text-[10px] font-mono">
-              {place.type}
-            </Badge>
-            {place.countryName && (
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          <PlacePhotoUpload
+            target="place"
+            id={place.id}
+            hasPhoto={!!place.coverImage}
+          >
+            {place.coverImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={place.coverImage}
+                alt=""
+                className="w-32 h-24 object-cover rounded-md border border-border shrink-0"
+              />
+            ) : (
+              <div className="w-32 h-24 flex items-center justify-center bg-muted/30 rounded-md border-2 border-dashed border-border text-2xl text-muted-foreground shrink-0">
+                🗺️
+              </div>
+            )}
+          </PlacePhotoUpload>
+
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="text-2xl font-bold"
+              />
+            ) : (
+              <h1 className="text-3xl font-bold leading-tight">{place.name}</h1>
+            )}
+            <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="outline" className="text-[10px] font-mono">
-                {place.countryCode} · {place.countryName}
+                {place.type}
               </Badge>
-            )}
-            {place.region && (
-              <Badge
-                variant="outline"
-                className="text-[10px] font-mono text-muted-foreground"
-              >
-                {place.region}
-              </Badge>
-            )}
-            {place.lat != null && place.lng != null && (
-              <Badge
-                variant="outline"
-                className="text-[10px] font-mono text-muted-foreground"
-              >
-                {place.lat.toFixed(2)}, {place.lng.toFixed(2)}
-              </Badge>
-            )}
+              {place.countryName && place.countryCode ? (
+                <Link href={`/places/country/${place.countryCode}`}>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-mono hover:border-glow/40 transition-colors cursor-pointer"
+                  >
+                    {place.countryCode} · {place.countryName}
+                  </Badge>
+                </Link>
+              ) : place.countryName ? (
+                <Badge variant="outline" className="text-[10px] font-mono">
+                  {place.countryName}
+                </Badge>
+              ) : null}
+              {place.region && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-mono text-muted-foreground"
+                >
+                  {place.region}
+                </Badge>
+              )}
+              {place.lat != null && place.lng != null && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-mono text-muted-foreground"
+                >
+                  {place.lat.toFixed(2)}, {place.lng.toFixed(2)}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex gap-1 shrink-0">
@@ -207,6 +260,42 @@ export function PlaceDetailView({
                 className="h-8 text-xs"
               />
             </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Trip (optional)</Label>
+              <select
+                value={visitTripId}
+                onChange={(e) => setVisitTripIdState(e.target.value)}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs"
+              >
+                <option value="">— none —</option>
+                {trips.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-[10px]">Rating</Label>
+            <div className="flex gap-0.5 mt-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() =>
+                    setVisitRating(visitRating === n ? null : n)
+                  }
+                  className={`h-7 w-7 text-base transition-colors ${
+                    visitRating != null && n <= visitRating
+                      ? "text-xp"
+                      : "text-muted-foreground/30 hover:text-muted-foreground"
+                  }`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
           </div>
           <textarea
             rows={2}
@@ -239,30 +328,73 @@ export function PlaceDetailView({
             {visits.map((v) => (
               <li
                 key={v.id}
-                className="rounded-md border border-border/60 bg-card/40 px-3 py-2 flex items-start gap-3 group"
+                className="rounded-md border border-border/60 bg-card/40 px-3 py-2 group"
               >
-                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
-                  {v.startedOn}
-                  {v.endedOn ? ` → ${v.endedOn}` : ""}
-                </span>
-                <div className="flex-1 min-w-0">
-                  {v.notes ? (
-                    <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                      {v.notes}
-                    </p>
-                  ) : (
-                    <span className="text-xs text-muted-foreground/60 italic">
-                      no notes
-                    </span>
-                  )}
+                <div className="flex items-start gap-3">
+                  <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
+                    {v.startedOn}
+                    {v.endedOn ? ` → ${v.endedOn}` : ""}
+                  </span>
+                  <PlacePhotoUpload
+                    target="visit"
+                    id={v.id}
+                    hasPhoto={!!v.photoUrl}
+                  >
+                    {v.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={v.photoUrl}
+                        alt=""
+                        className="w-20 h-14 rounded object-cover border border-border shrink-0"
+                      />
+                    ) : (
+                      <div className="w-20 h-14 flex items-center justify-center bg-muted/20 rounded border border-dashed border-border text-xs text-muted-foreground shrink-0">
+                        +
+                      </div>
+                    )}
+                  </PlacePhotoUpload>
+                  <div className="flex-1 min-w-0">
+                    {v.rating != null && (
+                      <div className="text-xp text-xs tracking-widest mb-0.5">
+                        {"★".repeat(v.rating)}
+                        <span className="text-muted-foreground/30">
+                          {"★".repeat(5 - v.rating)}
+                        </span>
+                      </div>
+                    )}
+                    {v.notes ? (
+                      <p className="text-sm text-foreground/90 whitespace-pre-wrap">
+                        {v.notes}
+                      </p>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60 italic">
+                        no notes
+                      </span>
+                    )}
+                  </div>
+                  <select
+                    value={v.tripId ?? ""}
+                    onChange={(e) =>
+                      handleVisitTripChange(v.id, e.target.value)
+                    }
+                    className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] shrink-0 max-w-[140px]"
+                    title="Trip"
+                  >
+                    <option value="">no trip</option>
+                    {trips.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteVisit(v.id)}
+                    className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity self-start"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteVisit(v.id)}
-                  className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  ✕
-                </button>
               </li>
             ))}
           </ul>

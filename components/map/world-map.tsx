@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
+import "leaflet.markercluster";
 // Leaflet CSS is imported globally via app/globals.css to ensure it loads
 // before any tile renders (Tailwind preflight + Turbopack interaction
 // would otherwise leave us with squashed tiles + invisible cursor).
@@ -46,7 +47,7 @@ export function WorldMap({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
+  const layerRef = useRef<L.MarkerClusterGroup | null>(null);
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
 
@@ -85,7 +86,25 @@ export function WorldMap({
       }
     ).addTo(map);
 
-    layerRef.current = L.layerGroup().addTo(map);
+    // Marker-cluster group: at world zoom-out, dozens of pins in Berlin
+    // become a single "30" badge that splits as you zoom in.
+    const cluster = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      disableClusteringAtZoom: 8,
+      maxClusterRadius: 50,
+      iconCreateFunction: (c) => {
+        const n = c.getChildCount();
+        const size = n < 10 ? 32 : n < 50 ? 40 : 48;
+        return L.divIcon({
+          html: `<div class="gol-cluster">${n}</div>`,
+          className: "gol-cluster-wrap",
+          iconSize: [size, size],
+        });
+      },
+    });
+    cluster.addTo(map);
+    layerRef.current = cluster;
     mapRef.current = map;
 
     map.on("click", (e: L.LeafletMouseEvent) => {

@@ -335,14 +335,28 @@ export const place = sqliteTable("place", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+export const trip = sqliteTable("trip", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  startedOn: text("started_on"),
+  endedOn: text("ended_on"),
+  coverImage: text("cover_image"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const placeVisit = sqliteTable("place_visit", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   placeId: text("place_id").notNull().references(() => place.id, { onDelete: "cascade" }),
+  tripId: text("trip_id").references(() => trip.id, { onDelete: "set null" }),
   startedOn: text("started_on").notNull(),
   endedOn: text("ended_on"),
   rating: integer("rating"),
   notes: text("notes"),
+  photoUrl: text("photo_url"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
