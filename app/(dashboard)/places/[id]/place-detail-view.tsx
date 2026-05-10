@@ -49,6 +49,11 @@ export function PlaceDetailView({
   const [visitNotes, setVisitNotes] = useState("");
   const [visitRating, setVisitRating] = useState<number | null>(null);
   const [visitTripId, setVisitTripIdState] = useState<string>("");
+  // Hike upgrade in the log-visit form: only relevant if the place isn't
+  // a hike yet — lets the user promote it inline + log the visit in one go.
+  const [promoteToHike, setPromoteToHike] = useState(false);
+  const [visitHikeKm, setVisitHikeKm] = useState("");
+  const [visitHikeElev, setVisitHikeElev] = useState("");
 
   const pins: MapPin[] =
     place.lat != null && place.lng != null
@@ -111,6 +116,20 @@ export function PlaceDetailView({
   async function handleLogVisit() {
     setBusy(true);
     try {
+      // If the user opted to promote this place to a hike on the visit
+      // form, update the place first so achievements + stats pick up the
+      // change atomically with the new visit.
+      if (promoteToHike && place.type !== "hike") {
+        const km = visitHikeKm.trim() ? Number(visitHikeKm) : null;
+        const elev = visitHikeElev.trim() ? Number(visitHikeElev) : null;
+        await updatePlace(place.id, {
+          type: "hike",
+          distanceKm: Number.isFinite(km) ? (km as number) : null,
+          elevationM: Number.isFinite(elev)
+            ? Math.round(elev as number)
+            : null,
+        });
+      }
       await logVisit({
         placeId: place.id,
         startedOn: visitDate,
@@ -118,11 +137,18 @@ export function PlaceDetailView({
         rating: visitRating,
         tripId: visitTripId || null,
       });
-      toast.success("Visit logged");
+      toast.success(
+        promoteToHike && place.type !== "hike"
+          ? "Hike logged"
+          : "Visit logged"
+      );
       setLogOpen(false);
       setVisitNotes("");
       setVisitRating(null);
       setVisitTripIdState("");
+      setPromoteToHike(false);
+      setVisitHikeKm("");
+      setVisitHikeElev("");
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -361,6 +387,60 @@ export function PlaceDetailView({
             placeholder="Notes (optional)…"
             className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs resize-y"
           />
+
+          {place.type === "hike" ? (
+            <div className="text-[11px] font-mono text-muted-foreground rounded border border-glow/20 bg-glow/5 px-2 py-1.5">
+              🥾 This place is a hike
+              {place.distanceKm != null && ` · ${place.distanceKm} km`}
+              {place.elevationM != null &&
+                ` · ${place.elevationM.toLocaleString()} m`}
+              {" — counts toward your hike stats automatically."}
+            </div>
+          ) : (
+            <div className="rounded-md border border-border/60 bg-muted/20 p-2 space-y-2">
+              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={promoteToHike}
+                  onChange={(e) => setPromoteToHike(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                <span>🥾 Mark as hike</span>
+                <span className="text-[10px] text-muted-foreground/60">
+                  promotes the place to a hike + counts km / elevation
+                </span>
+              </label>
+              {promoteToHike && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Distance (km)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={visitHikeKm}
+                      onChange={(e) => setVisitHikeKm(e.target.value)}
+                      placeholder="e.g. 12.5"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Elevation (m)</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={visitHikeElev}
+                      onChange={(e) => setVisitHikeElev(e.target.value)}
+                      placeholder="e.g. 850"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end gap-1">
             <Button size="sm" variant="ghost" onClick={() => setLogOpen(false)}>
               Cancel
