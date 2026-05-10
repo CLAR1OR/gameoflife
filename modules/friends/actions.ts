@@ -15,6 +15,7 @@ import { and, count, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
+import { checkFriendAchievements } from "@/lib/friends-achievements";
 import { FRIEND_INTERACTION_XP } from "./constants";
 import { writeFile, mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
@@ -64,6 +65,7 @@ export async function createFriend(data: {
 
   revalidatePath("/friends");
   revalidatePath("/places");
+  await checkFriendAchievements(session.user.id);
   return row;
 }
 
@@ -102,6 +104,7 @@ export async function archiveFriend(id: string) {
     .set({ archived: true, updatedAt: new Date() })
     .where(and(eq(friend.id, id), eq(friend.userId, session.user.id)));
   revalidatePath("/friends");
+  await checkFriendAchievements(session.user.id);
 }
 
 export async function deleteFriend(id: string) {
@@ -110,6 +113,7 @@ export async function deleteFriend(id: string) {
     .delete(friend)
     .where(and(eq(friend.id, id), eq(friend.userId, session.user.id)));
   revalidatePath("/friends");
+  await checkFriendAchievements(session.user.id);
 }
 
 const PHOTO_DIR = path.join(process.cwd(), "public", "friends");
@@ -307,7 +311,10 @@ export async function logInteraction(data: {
     });
   }
 
-  const newAchievements = await checkAccountLevelAchievements(session.user.id);
+  const [accountLevelAchievements, friendAchievements] = await Promise.all([
+    checkAccountLevelAchievements(session.user.id),
+    checkFriendAchievements(session.user.id),
+  ]);
 
   revalidatePath("/friends");
   revalidatePath(`/friends/${data.friendId}`);
@@ -315,7 +322,7 @@ export async function logInteraction(data: {
   revalidatePath("/");
   return {
     xpAwarded: FRIEND_INTERACTION_XP,
-    newAchievements,
+    newAchievements: [...accountLevelAchievements, ...friendAchievements],
   };
 }
 
@@ -366,6 +373,7 @@ export async function deleteInteraction(id: string) {
     })
     .where(eq(friend.id, row.friendId));
 
+  await checkFriendAchievements(session.user.id);
   revalidatePath("/friends");
   revalidatePath(`/friends/${row.friendId}`);
 }
@@ -619,6 +627,7 @@ export async function addEvent(data: {
     title: data.title.trim(),
     notes: data.notes?.trim() || null,
   });
+  await checkFriendAchievements(session.user.id);
   revalidatePath(`/friends/${data.friendId}`);
 }
 

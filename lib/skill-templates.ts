@@ -2685,7 +2685,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Music Theory",
     description: "From notes on a staff to writing a fugue and analyzing Coltrane",
     icon: "🎼",
-    coverImage: "linear-gradient(135deg, #0a0a0a 0%, #292524 35%, #78716c 70%, #d6d3d1 100%)",
+    coverImage: "url('/musictheory.png') center/cover",
     subskills: [
       {
         name: "Notation & Pitch",
@@ -3015,7 +3015,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Philosophy",
     description: "From Plato's cave to writing your own — the great conversation, joined",
     icon: "🤔",
-    coverImage: "linear-gradient(135deg, #0a0a0f 0%, #1e1b4b 35%, #4338ca 70%, #fde68a 100%)",
+    coverImage: "url('/philosophy.png') center/cover",
     subskills: [
       {
         name: "Logic & Argumentation",
@@ -3223,7 +3223,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Electronics & Soldering",
     description: "From Ohm's Law to designing your own PCBs",
     icon: "🔧",
-    coverImage: "linear-gradient(135deg, #0a0a0a 0%, #14532d 35%, #16a34a 70%, #fde047 100%)",
+    coverImage: "url('/electronics.png') center/cover",
     subskills: [
       {
         name: "Theory Foundations",
@@ -3394,7 +3394,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Woodworking",
     description: "From workshop setup to a chair you'd hand down to a grandchild",
     icon: "🪚",
-    coverImage: "linear-gradient(135deg, #1a0a0a 0%, #422006 35%, #92400e 70%, #fde68a 100%)",
+    coverImage: "url('/woodworking.png') center/cover",
     subskills: [
       {
         name: "Workshop Setup & Safety",
@@ -3588,7 +3588,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Reading",
     description: "From sluggish reader to a real reading life — speed, depth, breadth, retention",
     icon: "📚",
-    coverImage: "linear-gradient(135deg, #1a1408 0%, #422006 35%, #92400e 70%, #fde68a 100%)",
+    coverImage: "url('/reading.png') center/cover",
     subskills: [
       {
         name: "Reading Habit",

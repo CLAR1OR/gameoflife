@@ -268,6 +268,17 @@ export const achievement = sqliteTable("achievement", {
       "book_burst",
       "book_rating_streak",
       "book_monthly_streak",
+      "places_count",
+      "countries_visited",
+      "hikes_count",
+      "hike_total_km",
+      "hike_total_elevation",
+      "hike_single_max_km",
+      "hike_single_max_elevation",
+      "friends_count",
+      "friend_interactions_count",
+      "friend_countries",
+      "friend_events_count",
     ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),
@@ -323,7 +334,9 @@ export const place = sqliteTable("place", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  type: text("type", { enum: ["spot", "city", "region", "country"] }).notNull().default("spot"),
+  type: text("type", {
+    enum: ["spot", "city", "region", "country", "hike"],
+  }).notNull().default("spot"),
   countryCode: text("country_code"), // ISO-3166-1 alpha-2
   countryName: text("country_name"),
   region: text("region"),
@@ -331,6 +344,10 @@ export const place = sqliteTable("place", {
   lng: real("lng"),
   notes: text("notes"),
   coverImage: text("cover_image"),
+  /** Hike-specific: trail length in km. */
+  distanceKm: real("distance_km"),
+  /** Hike-specific: total elevation gain in meters. */
+  elevationM: integer("elevation_m"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });

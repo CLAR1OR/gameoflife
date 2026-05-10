@@ -12,7 +12,11 @@ import {
 import { AddPlaceDialog } from "@/components/places/add-place-dialog";
 import { ConfirmAddAtPointDialog } from "@/components/places/confirm-add-at-point-dialog";
 import { countryFlag } from "@/lib/country-flag";
-import type { PlaceWithStats, PlacesStats } from "@/modules/places/queries";
+import type {
+  PlaceWithStats,
+  PlacesStats,
+  HikeStats,
+} from "@/modules/places/queries";
 import type { FriendCardData } from "@/modules/friends/queries";
 
 type LayerFilter = "all" | "places" | "friends";
@@ -21,10 +25,12 @@ export function PlacesView({
   places,
   stats,
   friends,
+  hikeStats,
 }: {
   places: PlaceWithStats[];
   stats: PlacesStats;
   friends: FriendCardData[];
+  hikeStats: HikeStats;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [layer, setLayer] = useState<LayerFilter>("all");
@@ -180,6 +186,47 @@ export function PlacesView({
           </Button>
         </div>
       </div>
+
+      {hikeStats.hikePlacesCount > 0 && (
+        <div className="rounded-xl border border-glow/20 bg-glow/5 p-3 flex items-center gap-3 flex-wrap">
+          <span className="text-base">🥾</span>
+          <span className="text-xs font-mono uppercase tracking-wider text-glow/80">
+            Hikes
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-mono text-glow tabular-nums">
+              {hikeStats.hikesCount}
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              outings
+            </span>
+          </div>
+          <div className="text-muted-foreground/40">·</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-mono text-foreground tabular-nums">
+              {hikeStats.totalKm.toFixed(1)}
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              km total
+            </span>
+          </div>
+          <div className="text-muted-foreground/40">·</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-mono text-xp tabular-nums">
+              {hikeStats.totalElevation.toLocaleString()}
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              m climbed
+            </span>
+          </div>
+          {hikeStats.longestKm > 0 && (
+            <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+              longest {hikeStats.longestKm} km · highest{" "}
+              {hikeStats.highestElevation.toLocaleString()} m
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 flex-wrap">
         <FilterPill active={layer === "all"} onClick={() => setLayer("all")}>

@@ -15,6 +15,8 @@ import { MAX_SIDE_QUESTS } from "@/modules/quests/types";
 import { todayISO } from "@/lib/date";
 import { ensureLevelAchievementsSeeded } from "@/lib/account-achievements";
 import { ensureFinanceAchievementsSeeded } from "@/lib/finance-achievements";
+import { ensurePlaceAchievementsSeeded } from "@/lib/places-achievements";
+import { ensureFriendAchievementsSeeded } from "@/lib/friends-achievements";
 import { getUserSettings } from "@/modules/settings/queries";
 import { isFeatureEnabled } from "@/modules/settings/features";
 import { getNetWorth, getAccountAttention } from "@/modules/finance/queries";
@@ -58,6 +60,8 @@ export default async function DashboardPage() {
 
   await ensureLevelAchievementsSeeded(userId);
   await ensureFinanceAchievementsSeeded(userId);
+  await ensurePlaceAchievementsSeeded(userId);
+  await ensureFriendAchievementsSeeded(userId);
 
   const [
     categories,

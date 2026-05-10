@@ -39,6 +39,9 @@ export function ConfirmAddAtPointDialog({
   const [visitDate, setVisitDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
+  const [isHike, setIsHike] = useState(false);
+  const [hikeKm, setHikeKm] = useState("");
+  const [hikeElev, setHikeElev] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Reverse-geocode the moment we get coords.
@@ -75,14 +78,22 @@ export function ConfirmAddAtPointDialog({
     if (!coords || !name.trim()) return;
     setBusy(true);
     try {
+      const km = hikeKm.trim() ? Number(hikeKm) : null;
+      const elev = hikeElev.trim() ? Number(hikeElev) : null;
       const place = await createPlace({
         name,
-        type: resolved?.kind ?? "spot",
+        type: isHike ? "hike" : (resolved?.kind ?? "spot"),
         countryCode: resolved?.countryCode ?? null,
         countryName: resolved?.countryName ?? null,
         region: resolved?.region ?? null,
         lat: coords.lat,
         lng: coords.lng,
+        distanceKm:
+          isHike && km !== null && Number.isFinite(km) ? (km as number) : null,
+        elevationM:
+          isHike && elev !== null && Number.isFinite(elev)
+            ? Math.round(elev as number)
+            : null,
       });
       if (logVisitToo && visitDate) {
         await logVisit({ placeId: place.id, startedOn: visitDate });
@@ -150,6 +161,44 @@ export function ConfirmAddAtPointDialog({
                 onChange={(e) => setVisitDate(e.target.value)}
                 className="h-8 text-xs"
               />
+            )}
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-2">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isHike}
+                onChange={(e) => setIsHike(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              <span>🥾 This is a hike</span>
+            </label>
+            {isHike && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Distance (km)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={hikeKm}
+                    onChange={(e) => setHikeKm(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Elevation (m)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={hikeElev}
+                    onChange={(e) => setHikeElev(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>

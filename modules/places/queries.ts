@@ -63,6 +63,62 @@ export type PlacesStats = {
   visitsThisYear: number;
 };
 
+export type HikeStats = {
+  hikesCount: number;
+  hikePlacesCount: number;
+  totalKm: number;
+  totalElevation: number;
+  longestKm: number;
+  highestElevation: number;
+};
+
+export async function getHikeStats(userId: string): Promise<HikeStats> {
+  const hikes = await db
+    .select()
+    .from(place)
+    .where(and(eq(place.userId, userId), eq(place.type, "hike")));
+  if (hikes.length === 0) {
+    return {
+      hikesCount: 0,
+      hikePlacesCount: 0,
+      totalKm: 0,
+      totalElevation: 0,
+      longestKm: 0,
+      highestElevation: 0,
+    };
+  }
+  const ids = hikes.map((h) => h.id);
+  const visits = await db
+    .select()
+    .from(placeVisit)
+    .where(
+      and(
+        eq(placeVisit.userId, userId),
+        inArray(placeVisit.placeId, ids)
+      )
+    );
+  const distById = new Map<string, number>();
+  const elevById = new Map<string, number>();
+  for (const h of hikes) {
+    if (h.distanceKm != null) distById.set(h.id, h.distanceKm);
+    if (h.elevationM != null) elevById.set(h.id, h.elevationM);
+  }
+  let totalKm = 0;
+  let totalElevation = 0;
+  for (const v of visits) {
+    totalKm += distById.get(v.placeId) ?? 0;
+    totalElevation += elevById.get(v.placeId) ?? 0;
+  }
+  return {
+    hikesCount: visits.length,
+    hikePlacesCount: hikes.length,
+    totalKm,
+    totalElevation,
+    longestKm: Math.max(0, ...hikes.map((h) => h.distanceKm ?? 0)),
+    highestElevation: Math.max(0, ...hikes.map((h) => h.elevationM ?? 0)),
+  };
+}
+
 export async function getPlacesStats(userId: string): Promise<PlacesStats> {
   const rows = await db
     .select({

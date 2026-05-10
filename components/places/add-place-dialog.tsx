@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import {
   searchPlaces,
   addPlaceFromGeocode,
+  createPlace,
+  updatePlace,
   logVisit,
 } from "@/modules/places/actions";
 import type { GeocodeResult } from "@/lib/geocode";
@@ -43,6 +45,9 @@ export function AddPlaceDialog({
   const [visitDate, setVisitDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
+  const [isHike, setIsHike] = useState(false);
+  const [hikeKm, setHikeKm] = useState("");
+  const [hikeElev, setHikeElev] = useState("");
 
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +67,28 @@ export function AddPlaceDialog({
     const key = `${g.lat},${g.lng}`;
     setAdding(key);
     try {
-      const place = await addPlaceFromGeocode(g);
+      const km = hikeKm.trim() ? Number(hikeKm) : null;
+      const elev = hikeElev.trim() ? Number(hikeElev) : null;
+      let place;
+      if (isHike) {
+        // Skip addPlaceFromGeocode (which forces type from g.kind) and
+        // call createPlace with the hike type directly.
+        place = await createPlace({
+          name: g.name,
+          type: "hike",
+          countryCode: g.countryCode,
+          countryName: g.countryName,
+          region: g.region,
+          lat: g.lat,
+          lng: g.lng,
+          distanceKm: Number.isFinite(km) ? (km as number) : null,
+          elevationM: Number.isFinite(elev)
+            ? Math.round(elev as number)
+            : null,
+        });
+      } else {
+        place = await addPlaceFromGeocode(g);
+      }
       if (logVisitToo && visitDate) {
         await logVisit({ placeId: place.id, startedOn: visitDate });
       }
@@ -70,12 +96,16 @@ export function AddPlaceDialog({
       onOpenChange(false);
       setQuery("");
       setResults([]);
+      setIsHike(false);
+      setHikeKm("");
+      setHikeElev("");
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
     setAdding(null);
   }
+  void updatePlace; // silence import while keeping it in scope for editing flows
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -152,6 +182,46 @@ export function AddPlaceDialog({
                 onChange={(e) => setVisitDate(e.target.value)}
                 className="h-8 text-xs"
               />
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-2">
+          <label className="flex items-center gap-2 text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isHike}
+              onChange={(e) => setIsHike(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            <span>🥾 This is a hike</span>
+          </label>
+          {isHike && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px]">Distance (km)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={hikeKm}
+                  onChange={(e) => setHikeKm(e.target.value)}
+                  placeholder="e.g. 12.5"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Elevation gain (m)</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={hikeElev}
+                  onChange={(e) => setHikeElev(e.target.value)}
+                  placeholder="e.g. 850"
+                  className="h-8 text-xs"
+                />
+              </div>
             </div>
           )}
         </div>

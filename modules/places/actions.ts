@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { geocode, reverseGeocode, type GeocodeResult } from "@/lib/geocode";
 import { writeFile, mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
+import { checkPlaceAchievements } from "@/lib/places-achievements";
 
 /** Forward-geocode helper exposed to client search dialogs. */
 export async function searchPlaces(query: string): Promise<GeocodeResult[]> {
@@ -27,13 +28,15 @@ export async function lookupCoords(
 
 export async function createPlace(data: {
   name: string;
-  type?: "spot" | "city" | "region" | "country";
+  type?: "spot" | "city" | "region" | "country" | "hike";
   countryCode?: string | null;
   countryName?: string | null;
   region?: string | null;
   lat?: number | null;
   lng?: number | null;
   notes?: string | null;
+  distanceKm?: number | null;
+  elevationM?: number | null;
 }) {
   const session = await requireSession();
   const [row] = await db
@@ -48,9 +51,12 @@ export async function createPlace(data: {
       lat: data.lat ?? null,
       lng: data.lng ?? null,
       notes: data.notes?.trim() || null,
+      distanceKm: data.distanceKm ?? null,
+      elevationM: data.elevationM ?? null,
     })
     .returning();
   revalidatePath("/places");
+  await checkPlaceAchievements(session.user.id);
   return row;
 }
 
@@ -74,7 +80,7 @@ export async function updatePlace(
   id: string,
   data: {
     name?: string;
-    type?: "spot" | "city" | "region" | "country";
+    type?: "spot" | "city" | "region" | "country" | "hike";
     notes?: string | null;
     coverImage?: string | null;
     lat?: number | null;
@@ -82,6 +88,8 @@ export async function updatePlace(
     countryCode?: string | null;
     countryName?: string | null;
     region?: string | null;
+    distanceKm?: number | null;
+    elevationM?: number | null;
   }
 ) {
   const session = await requireSession();
@@ -96,6 +104,7 @@ export async function updatePlace(
     .where(and(eq(place.id, id), eq(place.userId, session.user.id)));
   revalidatePath("/places");
   revalidatePath(`/places/${id}`);
+  await checkPlaceAchievements(session.user.id);
 }
 
 export async function deletePlace(id: string) {
@@ -104,6 +113,7 @@ export async function deletePlace(id: string) {
     .delete(place)
     .where(and(eq(place.id, id), eq(place.userId, session.user.id)));
   revalidatePath("/places");
+  await checkPlaceAchievements(session.user.id);
 }
 
 export async function logVisit(data: {
@@ -130,6 +140,7 @@ export async function logVisit(data: {
   revalidatePath("/places");
   revalidatePath(`/places/${data.placeId}`);
   revalidatePath("/account");
+  await checkPlaceAchievements(session.user.id);
   return row;
 }
 
@@ -170,6 +181,7 @@ export async function deleteVisit(id: string) {
   await db.delete(placeVisit).where(eq(placeVisit.id, id));
   revalidatePath("/places");
   revalidatePath(`/places/${row.placeId}`);
+  await checkPlaceAchievements(session.user.id);
 }
 
 // =====================
