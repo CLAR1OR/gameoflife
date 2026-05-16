@@ -19,6 +19,7 @@ import {
 } from "@/modules/skills/actions";
 import { toast } from "sonner";
 import { celebrate } from "@/lib/celebrate";
+import { formatProgressNumber, unitForTrigger } from "./modules";
 import type { Achievement } from "@/modules/skills/types";
 
 const ICON_CHOICES = [
@@ -45,10 +46,12 @@ function describeTrigger(a: Achievement): string {
 
 export function AchievementDialog({
   achievement,
+  progress,
   open,
   onOpenChange,
 }: {
   achievement: Achievement;
+  progress?: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -177,6 +180,36 @@ export function AchievementDialog({
             <span className="text-muted-foreground">Source</span>
             <span className="text-xs capitalize">{achievement.source}</span>
           </div>
+          {!achievement.isUnlocked &&
+            progress != null &&
+            achievement.triggerCount != null &&
+            achievement.triggerCount > 0 && (
+              <div className="space-y-1 pt-1">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-mono text-xs tabular-nums">
+                    {formatProgressNumber(progress)}/
+                    {formatProgressNumber(achievement.triggerCount)}
+                    {unitForTrigger(achievement.triggerType)} ·{" "}
+                    <span className="text-glow">
+                      {Math.min(
+                        100,
+                        (progress / achievement.triggerCount) * 100
+                      ).toFixed(0)}
+                      %
+                    </span>
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-glow/70 transition-all"
+                    style={{
+                      width: `${Math.min(100, (progress / achievement.triggerCount) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
         </div>
 
         <DialogFooter className="!justify-between gap-2">
