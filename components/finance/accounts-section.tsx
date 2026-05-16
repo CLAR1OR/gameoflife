@@ -17,7 +17,7 @@ import {
   isAccountStale,
   CHECKIN_STALE_DAYS,
 } from "@/modules/finance/shared";
-import type { AccountType, FinanceAccount } from "@/modules/finance/queries";
+import type { AccountType, FinanceAccount } from "@/modules/finance/types";
 import { formatMoney, parseMoneyInput, centsToInputString } from "@/lib/money";
 import { CsvImportButton } from "./csv-import-dialog";
 

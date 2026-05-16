@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CheckInButton } from "@/components/friends/check-in-button";
-import type { PersonAttentionItem } from "@/modules/friends/queries";
+import type { PersonAttentionItem } from "@/modules/friends/types";
 
 function initialsOf(name: string): string {
   return name

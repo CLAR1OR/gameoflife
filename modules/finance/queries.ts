@@ -7,24 +7,25 @@ import {
 } from "@/lib/db/schema";
 import { and, asc, desc, eq, gte, isNull, lte, sum } from "drizzle-orm";
 import { isAccountStale } from "./shared";
-
-export type AccountType =
-  | "cash"
-  | "bank"
-  | "investment"
-  | "crypto"
-  | "debt"
-  | "other";
-
-export type FinanceAccount = {
-  id: string;
-  name: string;
-  type: AccountType;
-  balance: number;
-  icon: string | null;
-  sortOrder: number;
-  archivedAt: Date | null;
-  lastCheckedAt: Date | null;
+import type {
+  AccountType,
+  FinanceAccount,
+  TransactionType,
+  FinanceTransaction,
+  MonthSummary,
+  CategoryTotal,
+  FinanceRecurring,
+  NetWorthSnapshot,
+} from "./types";
+export type {
+  AccountType,
+  FinanceAccount,
+  TransactionType,
+  FinanceTransaction,
+  MonthSummary,
+  CategoryTotal,
+  FinanceRecurring,
+  NetWorthSnapshot,
 };
 
 // Re-export client-safe helpers so server callers can keep a single import.
@@ -88,20 +89,6 @@ export async function getNetWorth(userId: string): Promise<number> {
   return accountSum;
 }
 
-export type TransactionType = "income" | "expense" | "transfer";
-
-export type FinanceTransaction = {
-  id: string;
-  type: TransactionType;
-  amount: number;
-  category: string;
-  note: string | null;
-  occurredOn: string;
-  accountId: string | null;
-  transferToAccountId: string | null;
-  createdAt: Date;
-};
-
 export async function getRecentTransactions(
   userId: string,
   limit = 50
@@ -124,14 +111,6 @@ export async function getRecentTransactions(
     createdAt: r.createdAt,
   }));
 }
-
-export type MonthSummary = {
-  yearMonth: string;
-  income: number;
-  expense: number;
-  net: number;
-  count: number;
-};
 
 export async function getMonthSummary(
   userId: string,
@@ -185,12 +164,6 @@ export async function getCategorySuggestions(
   return rows.map((r) => r.category).filter(Boolean);
 }
 
-export type CategoryTotal = {
-  category: string;
-  total: number;
-  count: number;
-};
-
 export async function getCategoryBreakdown(
   userId: string,
   yearMonth: string,
@@ -229,18 +202,6 @@ export async function getCategoryBreakdown(
     .sort((a, b) => b.total - a.total);
 }
 
-export type FinanceRecurring = {
-  id: string;
-  accountId: string | null;
-  type: "income" | "expense";
-  amount: number;
-  category: string;
-  note: string | null;
-  cadence: "monthly" | "yearly";
-  nextDueOn: string;
-  active: boolean;
-};
-
 export async function getRecurrings(
   userId: string
 ): Promise<FinanceRecurring[]> {
@@ -261,11 +222,6 @@ export async function getRecurrings(
     active: r.active,
   }));
 }
-
-export type NetWorthSnapshot = {
-  takenOn: string;
-  netWorth: number;
-};
 
 export async function getNetWorthSnapshots(
   userId: string,

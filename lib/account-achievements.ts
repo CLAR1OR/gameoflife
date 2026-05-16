@@ -12,6 +12,11 @@ import { XP_PER_BOOK } from "@/modules/books/types";
 import { and, count, eq, gte, isNull, sum } from "drizzle-orm";
 import { levelFromXp } from "./level";
 import { formatLocalDate } from "./date";
+import {
+  seedAchievements,
+  evaluateAchievements,
+  type AchievementSpec,
+} from "./achievement-engine";
 
 /**
  * Compute total account XP across skills + unlinked habits + completed quests.
@@ -61,39 +66,20 @@ export async function computeTotalAccountXp(userId: string): Promise<number> {
   return skillXp + generalXp + questXp + booksXp;
 }
 
-const LEVEL_ACHIEVEMENTS: {
-  name: string;
-  description: string;
-  icon: string;
-  level: number;
-}[] = [
-  { name: "First Steps", description: "Reach level 5", icon: "🌱", level: 5 },
-  { name: "Committed", description: "Reach level 10", icon: "🔥", level: 10 },
-  { name: "Seasoned", description: "Reach level 25", icon: "⚔️", level: 25 },
-  { name: "Veteran", description: "Reach level 50", icon: "🏆", level: 50 },
-  { name: "Grandmaster", description: "Reach level 75", icon: "💎", level: 75 },
-  { name: "Legendary", description: "Reach level 100", icon: "👑", level: 100 },
+const LEVEL_TRIGGERS = ["account_level"] as const;
+type LevelTrigger = (typeof LEVEL_TRIGGERS)[number];
+
+const LEVEL_ACHIEVEMENTS: AchievementSpec<LevelTrigger>[] = [
+  { name: "First Steps", description: "Reach level 5", icon: "🌱", triggerType: "account_level", triggerCount: 5 },
+  { name: "Committed", description: "Reach level 10", icon: "🔥", triggerType: "account_level", triggerCount: 10 },
+  { name: "Seasoned", description: "Reach level 25", icon: "⚔️", triggerType: "account_level", triggerCount: 25 },
+  { name: "Veteran", description: "Reach level 50", icon: "🏆", triggerType: "account_level", triggerCount: 50 },
+  { name: "Grandmaster", description: "Reach level 75", icon: "💎", triggerType: "account_level", triggerCount: 75 },
+  { name: "Legendary", description: "Reach level 100", icon: "👑", triggerType: "account_level", triggerCount: 100 },
 ];
 
 export async function ensureLevelAchievementsSeeded(userId: string) {
-  const existing = await db.query.achievement.findMany({
-    where: (a, { and: _and, eq: _eq }) =>
-      _and(_eq(a.userId, userId), _eq(a.triggerType, "account_level")),
-  });
-  if (existing.length > 0) return;
-
-  await db.insert(achievement).values(
-    LEVEL_ACHIEVEMENTS.map((a) => ({
-      userId,
-      categoryId: null,
-      source: "custom" as const,
-      name: a.name,
-      description: a.description,
-      icon: a.icon,
-      triggerType: "account_level" as const,
-      triggerCount: a.level,
-    }))
-  );
+  await seedAchievements(userId, LEVEL_TRIGGERS, LEVEL_ACHIEVEMENTS);
 }
 
 /**
@@ -106,30 +92,9 @@ export async function checkAccountLevelAchievements(
   await ensureLevelAchievementsSeeded(userId);
   const totalXp = await computeTotalAccountXp(userId);
   const currentLevel = levelFromXp(totalXp);
-
-  const achievements = await db.query.achievement.findMany({
-    where: (a, { and: _and, eq: _eq }) =>
-      _and(_eq(a.userId, userId), _eq(a.triggerType, "account_level")),
+  return evaluateAchievements(userId, LEVEL_TRIGGERS, {
+    account_level: currentLevel,
   });
-
-  const newlyUnlocked: string[] = [];
-  for (const a of achievements) {
-    if (a.triggerCount == null) continue;
-    const shouldBeUnlocked = currentLevel >= a.triggerCount;
-    if (shouldBeUnlocked && !a.isUnlocked) {
-      await db
-        .update(achievement)
-        .set({ isUnlocked: true, unlockedAt: new Date() })
-        .where(eq(achievement.id, a.id));
-      newlyUnlocked.push(a.name);
-    } else if (!shouldBeUnlocked && a.isUnlocked) {
-      await db
-        .update(achievement)
-        .set({ isUnlocked: false, unlockedAt: null })
-        .where(eq(achievement.id, a.id));
-    }
-  }
-  return newlyUnlocked;
 }
 
 /** XP earned in the last rolling 7 days (skill + unlinked habits + quests). */

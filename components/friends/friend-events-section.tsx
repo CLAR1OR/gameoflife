@@ -11,7 +11,7 @@ import {
   deleteEvent,
 } from "@/modules/friends/actions";
 import { toast } from "sonner";
-import type { FriendEvent } from "@/modules/friends/queries";
+import type { FriendEvent } from "@/modules/friends/types";
 
 const EVENT_KINDS: { value: FriendEvent["kind"]; label: string; icon: string }[] = [
   { value: "milestone", label: "Milestone", icon: "✨" },
@@ -135,7 +135,7 @@ export function FriendEventsSection({
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
                   <button
                     type="button"
                     onClick={() => setEditingId(ev.id)}

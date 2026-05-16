@@ -10,7 +10,7 @@ import { createTransaction } from "@/modules/finance/actions";
 import type {
   FinanceAccount,
   TransactionType,
-} from "@/modules/finance/queries";
+} from "@/modules/finance/types";
 import { formatMoney, parseMoneyInput } from "@/lib/money";
 
 type Props = {

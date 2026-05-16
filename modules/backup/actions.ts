@@ -190,6 +190,44 @@ function hydrateTimestamps(name: TableName, row: Row): Row {
 }
 
 /**
+ * In earlier versions of the app, hike data lived on the `place` row
+ * (place.type === "hike" + place.distanceKm/elevationM). The current schema
+ * keeps hike data on each `placeVisit` so multiple distinct routes can start
+ * from the same place. When restoring an older backup we translate:
+ *  - any place with type="hike" → type="spot"
+ *  - for each such place's visits, flip isHike to true and copy the
+ *    place-level km/elev down to the visit if the visit didn't already
+ *    have its own.
+ * Mutates the snapshot in place.
+ */
+function migrateLegacyHikeData(data: Snapshot): void {
+  const places = data.place;
+  const visits = data.placeVisit;
+  if (!places || !visits) return;
+  const legacy = new Map<
+    string,
+    { distanceKm: number | null; elevationM: number | null }
+  >();
+  for (const p of places) {
+    if (p.type === "hike") {
+      legacy.set(p.id as string, {
+        distanceKm: (p.distanceKm as number | null) ?? null,
+        elevationM: (p.elevationM as number | null) ?? null,
+      });
+      p.type = "spot";
+    }
+  }
+  if (legacy.size === 0) return;
+  for (const v of visits) {
+    const src = legacy.get(v.placeId as string);
+    if (!src) continue;
+    if (!v.isHike) v.isHike = true;
+    if (v.distanceKm == null) v.distanceKm = src.distanceKm;
+    if (v.elevationM == null) v.elevationM = src.elevationM;
+  }
+}
+
+/**
  * Import a backup into the CURRENT user's account. Every row's `userId` is
  * rewritten to the current session user, so migrating between accounts
  * works cleanly. Existing user data is wiped first — the caller must confirm.
@@ -211,6 +249,7 @@ export async function importBackup(raw: unknown) {
   }
 
   const data = file.data as Snapshot;
+  migrateLegacyHikeData(data);
 
   // Wipe current data — reverse insertion order respects FK constraints.
   // skillPrerequisite has no userId column; delete by matching the user's

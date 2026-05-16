@@ -9,35 +9,30 @@ import {
   friendEvent,
   place,
 } from "@/lib/db/schema";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { InferSelectModel } from "drizzle-orm";
-
-export type Friend = InferSelectModel<typeof friend>;
-export type FriendInteraction = InferSelectModel<typeof friendInteraction>;
-export type FriendResidence = InferSelectModel<typeof friendResidence>;
-export type FriendTag = InferSelectModel<typeof friendTag>;
-export type FriendContact = InferSelectModel<typeof friendContact>;
-export type FriendEvent = InferSelectModel<typeof friendEvent>;
-
-export type FriendCardData = Friend & {
-  currentPlace: {
-    id: string;
-    name: string;
-    countryName: string | null;
-    countryCode: string | null;
-    lat: number | null;
-    lng: number | null;
-  } | null;
-  /** Days since last contact, or null if never contacted. */
-  daysSinceContact: number | null;
-  /** Negative = overdue (days past cadence), positive = days remaining. */
-  daysUntilDue: number | null;
-  interactionCount: number;
-  tags: FriendTag[];
-  /** Most recent interaction's notes (truncated by the UI), or null. */
-  lastInteractionNote: string | null;
-  /** Most recent interaction kind (message/call/meet/...), or null. */
-  lastInteractionKind: FriendInteraction["kind"] | null;
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import type {
+  Friend,
+  FriendInteraction,
+  FriendResidence,
+  FriendTag,
+  FriendContact,
+  FriendEvent,
+  FriendCardData,
+  FriendsStats,
+  PersonAttentionItem,
+  UpcomingBirthday,
+} from "./types";
+export type {
+  Friend,
+  FriendInteraction,
+  FriendResidence,
+  FriendTag,
+  FriendContact,
+  FriendEvent,
+  FriendCardData,
+  FriendsStats,
+  PersonAttentionItem,
+  UpcomingBirthday,
 };
 
 export async function getFriendsByUser(
@@ -303,12 +298,40 @@ export async function getInteractionsForFriend(
     .limit(limit);
 }
 
-export type FriendsStats = {
-  total: number;
-  countries: number;
-  overdueCount: number;
-  thisYearInteractions: number;
-};
+/** Per-day count of friend interactions over the past `days` days. Map keys
+ *  are YYYY-MM-DD; missing days = 0. Used by the heatmap on the friends
+ *  page. */
+export async function getInteractionDayMap(
+  userId: string,
+  days = 371
+): Promise<Map<string, number>> {
+  // Find the cutoff in local time. We're using ISO date strings on the
+  // friendInteraction.occurredOn column so plain string comparison works.
+  const now = new Date();
+  const cutoff = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - (days - 1)
+  );
+  const yyyy = cutoff.getFullYear();
+  const mm = String(cutoff.getMonth() + 1).padStart(2, "0");
+  const dd = String(cutoff.getDate()).padStart(2, "0");
+  const cutoffIso = `${yyyy}-${mm}-${dd}`;
+  const rows = await db
+    .select({ date: friendInteraction.occurredOn })
+    .from(friendInteraction)
+    .where(
+      and(
+        eq(friendInteraction.userId, userId),
+        gte(friendInteraction.occurredOn, cutoffIso)
+      )
+    );
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    map.set(r.date, (map.get(r.date) ?? 0) + 1);
+  }
+  return map;
+}
 
 export async function getFriendsStats(userId: string): Promise<FriendsStats> {
   const friends = await getFriendsByUser(userId);
@@ -345,29 +368,6 @@ export async function getFriendsDueToReach(
 
 /** A unified "people to think about" feed combining overdue contacts and
  * upcoming birthdays, prioritised by urgency. Used by the dashboard. */
-export type PersonAttentionItem =
-  | {
-      kind: "overdue";
-      friendId: string;
-      name: string;
-      nickname: string | null;
-      photoUrl: string | null;
-      currentPlace: FriendCardData["currentPlace"];
-      daysOverdue: number;
-      sortKey: number;
-    }
-  | {
-      kind: "birthday";
-      friendId: string;
-      name: string;
-      nickname: string | null;
-      photoUrl: string | null;
-      label: string;
-      daysUntil: number;
-      turningAge: number | null;
-      sortKey: number;
-    };
-
 export async function getPeopleToThinkAbout(
   userId: string
 ): Promise<PersonAttentionItem[]> {
@@ -414,19 +414,6 @@ export async function getPeopleToThinkAbout(
   items.sort((a, b) => a.sortKey - b.sortKey);
   return items;
 }
-
-export type UpcomingBirthday = {
-  friendId: string;
-  name: string;
-  nickname: string | null;
-  photoUrl: string | null;
-  /** Friendly month/day label, e.g. "May 12". */
-  label: string;
-  /** Days until the next occurrence (0 = today). */
-  daysUntil: number;
-  /** Will they be N years old? null if year unknown. */
-  turningAge: number | null;
-};
 
 /** Friends with a birthday in the next `withinDays` days (or today). */
 export async function getUpcomingBirthdays(

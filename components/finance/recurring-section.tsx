@@ -14,7 +14,7 @@ import {
 import type {
   FinanceRecurring,
   FinanceAccount,
-} from "@/modules/finance/queries";
+} from "@/modules/finance/types";
 import { RecurringEditDialog } from "./recurring-edit-dialog";
 import { formatMoney, parseMoneyInput } from "@/lib/money";
 

@@ -16,7 +16,7 @@ import { updateRecurring } from "@/modules/finance/actions";
 import type {
   FinanceAccount,
   FinanceRecurring,
-} from "@/modules/finance/queries";
+} from "@/modules/finance/types";
 import { formatMoney, parseMoneyInput, centsToInputString } from "@/lib/money";
 
 type Props = {

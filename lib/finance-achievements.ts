@@ -1,15 +1,18 @@
 import { db } from "@/lib/db";
 import {
-  achievement,
   financeAccount,
   financeTransaction,
   financeRecurring,
 } from "@/lib/db/schema";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { getNetWorth } from "@/modules/finance/queries";
+import {
+  seedAchievements,
+  evaluateAchievements,
+  type AchievementSpec,
+} from "./achievement-engine";
 
-// Finance-specific trigger types (also declared in the schema enum)
-const FINANCE_TRIGGER_TYPES = [
+const FINANCE_TRIGGERS = [
   "finance_accounts",
   "finance_transactions",
   "finance_net_worth",
@@ -17,21 +20,12 @@ const FINANCE_TRIGGER_TYPES = [
   "finance_checkins",
 ] as const;
 
-type FinanceTriggerType = (typeof FINANCE_TRIGGER_TYPES)[number];
-
-type FinanceAchievementSpec = {
-  name: string;
-  description: string;
-  icon: string;
-  triggerType: FinanceTriggerType;
-  triggerCount: number;
-  sortOrder: number;
-};
+type FinanceTrigger = (typeof FINANCE_TRIGGERS)[number];
 
 // Net-worth thresholds are stored as signed integer CENTS to match the rest
 // of the money pipeline. Comparisons use `getNetWorth(userId)` which also
 // returns cents.
-export const FINANCE_ACHIEVEMENTS: FinanceAchievementSpec[] = [
+export const FINANCE_ACHIEVEMENTS: AchievementSpec<FinanceTrigger>[] = [
   // Accounts
   { name: "First Account", description: "Opened your first account", icon: "🏦", triggerType: "finance_accounts", triggerCount: 1, sortOrder: 10 },
   { name: "Diversified", description: "Track 3 separate accounts", icon: "🗂️", triggerType: "finance_accounts", triggerCount: 3, sortOrder: 11 },
@@ -58,36 +52,10 @@ export const FINANCE_ACHIEVEMENTS: FinanceAchievementSpec[] = [
   { name: "Disciplined", description: "Complete 50 account check-ins", icon: "🎯", triggerType: "finance_checkins", triggerCount: 50, sortOrder: 51 },
 ];
 
-export async function ensureFinanceAchievementsSeeded(userId: string): Promise<void> {
-  const existing = await db.query.achievement.findMany({
-    where: (a, { and: an, eq: e, inArray: i }) =>
-      an(
-        e(a.userId, userId),
-        i(a.triggerType, [...FINANCE_TRIGGER_TYPES])
-      ),
-    columns: { triggerType: true, triggerCount: true },
-  });
-  const existingKeys = new Set(
-    existing.map((e) => `${e.triggerType}:${e.triggerCount}`)
-  );
-  const toInsert = FINANCE_ACHIEVEMENTS.filter(
-    (a) => !existingKeys.has(`${a.triggerType}:${a.triggerCount}`)
-  );
-  if (toInsert.length === 0) return;
-
-  await db.insert(achievement).values(
-    toInsert.map((a) => ({
-      userId,
-      categoryId: null,
-      source: "custom" as const,
-      name: a.name,
-      description: a.description,
-      icon: a.icon,
-      triggerType: a.triggerType,
-      triggerCount: a.triggerCount,
-      sortOrder: a.sortOrder,
-    }))
-  );
+export async function ensureFinanceAchievementsSeeded(
+  userId: string
+): Promise<void> {
+  await seedAchievements(userId, FINANCE_TRIGGERS, FINANCE_ACHIEVEMENTS);
 }
 
 /**
@@ -105,7 +73,10 @@ export async function checkFinanceAchievements(
       .select({ c: count() })
       .from(financeAccount)
       .where(
-        and(eq(financeAccount.userId, userId), isNull(financeAccount.archivedAt))
+        and(
+          eq(financeAccount.userId, userId),
+          isNull(financeAccount.archivedAt)
+        )
       ),
     db
       .select({ c: count() })
@@ -115,7 +86,10 @@ export async function checkFinanceAchievements(
       .select({ c: count() })
       .from(financeRecurring)
       .where(
-        and(eq(financeRecurring.userId, userId), eq(financeRecurring.active, true))
+        and(
+          eq(financeRecurring.userId, userId),
+          eq(financeRecurring.active, true)
+        )
       ),
     getNetWorth(userId),
     db.query.userSettings.findFirst({
@@ -123,39 +97,11 @@ export async function checkFinanceAchievements(
     }),
   ]);
 
-  const values: Record<FinanceTriggerType, number> = {
+  return evaluateAchievements(userId, FINANCE_TRIGGERS, {
     finance_accounts: Number(accountRows[0]?.c ?? 0),
     finance_transactions: Number(txRows[0]?.c ?? 0),
     finance_recurrings: Number(recRows[0]?.c ?? 0),
     finance_net_worth: netWorth,
     finance_checkins: settings?.generalXp ?? 0,
-  };
-
-  const rows = await db.query.achievement.findMany({
-    where: (a, { and: an, eq: e, inArray: i }) =>
-      an(
-        e(a.userId, userId),
-        i(a.triggerType, [...FINANCE_TRIGGER_TYPES])
-      ),
   });
-
-  const newlyUnlocked: string[] = [];
-  for (const a of rows) {
-    if (a.triggerCount == null) continue;
-    const value = values[a.triggerType as FinanceTriggerType] ?? 0;
-    const shouldBeUnlocked = value >= a.triggerCount;
-    if (shouldBeUnlocked && !a.isUnlocked) {
-      await db
-        .update(achievement)
-        .set({ isUnlocked: true, unlockedAt: new Date() })
-        .where(eq(achievement.id, a.id));
-      newlyUnlocked.push(a.name);
-    } else if (!shouldBeUnlocked && a.isUnlocked) {
-      await db
-        .update(achievement)
-        .set({ isUnlocked: false, unlockedAt: null })
-        .where(eq(achievement.id, a.id));
-    }
-  }
-  return newlyUnlocked;
 }

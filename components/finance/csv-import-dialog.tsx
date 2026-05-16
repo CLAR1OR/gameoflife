@@ -19,7 +19,7 @@ import {
 } from "@/modules/finance/actions";
 import type { CsvPreview } from "@/modules/finance/actions";
 import { formatMoney } from "@/lib/money";
-import type { FinanceAccount } from "@/modules/finance/queries";
+import type { FinanceAccount } from "@/modules/finance/types";
 import { listBankOptions } from "@/lib/finance-banks";
 
 const BANK_OPTIONS = listBankOptions();

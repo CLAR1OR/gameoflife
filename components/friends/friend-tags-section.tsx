@@ -25,7 +25,7 @@ import {
   TAG_COLOR_OPTIONS,
   classesForColor,
 } from "./tag-chip";
-import type { FriendTag } from "@/modules/friends/queries";
+import type { FriendTag } from "@/modules/friends/types";
 
 export function FriendTagsSection({
   friendId,

@@ -11,7 +11,7 @@ import {
 } from "@/modules/friends/actions";
 import { toast } from "sonner";
 import { ContactPill, contactKindMeta } from "./contact-icons";
-import type { FriendContact } from "@/modules/friends/queries";
+import type { FriendContact } from "@/modules/friends/types";
 
 const KINDS: { value: FriendContact["kind"]; label: string }[] = [
   { value: "phone", label: "📞 Phone" },
@@ -32,15 +32,9 @@ const KINDS: { value: FriendContact["kind"]; label: string }[] = [
 export function FriendContactsSection({
   friendId,
   contacts,
-  /** Legacy phone/email on the friend row — show as deprecated suggestions
-   * to migrate. */
-  legacyPhone,
-  legacyEmail,
 }: {
   friendId: string;
   contacts: FriendContact[];
-  legacyPhone: string | null;
-  legacyEmail: string | null;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -89,7 +83,7 @@ export function FriendContactsSection({
         </button>
       </div>
 
-      {contacts.length === 0 && !legacyPhone && !legacyEmail && !adding && (
+      {contacts.length === 0 && !adding && (
         <p className="text-xs text-muted-foreground/70 italic">
           No contacts yet. Add a phone, WhatsApp, email, social handle…
         </p>
@@ -116,7 +110,7 @@ export function FriendContactsSection({
                 <span className="text-[10px] font-mono text-muted-foreground/60">
                   {contactKindMeta(c.kind).label}
                 </span>
-                <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
                   <button
                     type="button"
                     onClick={() => setEditingId(c.id)}
@@ -136,24 +130,6 @@ export function FriendContactsSection({
             )
           )}
         </ul>
-      )}
-
-      {(legacyPhone || legacyEmail) && (
-        <div className="rounded-md border border-warning/30 bg-warning/5 p-2 text-[11px] text-muted-foreground space-y-1">
-          <div>
-            Legacy contact fields on the friend record:
-            {legacyPhone && (
-              <span className="ml-2 font-mono">📞 {legacyPhone}</span>
-            )}
-            {legacyEmail && (
-              <span className="ml-2 font-mono">✉️ {legacyEmail}</span>
-            )}
-          </div>
-          <div className="text-[10px]">
-            Add them as proper contacts above to unlock click-to-call /
-            link-out and to keep things tidy.
-          </div>
-        </div>
       )}
 
       {adding && (

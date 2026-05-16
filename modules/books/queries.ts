@@ -32,34 +32,43 @@ export async function getReadingLists(
 
   if (lists.length === 0) return [];
 
-  const result: ReadingListWithProgress[] = [];
-  for (const l of lists) {
-    const items = await db
-      .select({
-        bookId: readingListItem.bookId,
-        coverUrl: book.coverUrl,
-        status: book.status,
-      })
-      .from(readingListItem)
-      .innerJoin(book, eq(readingListItem.bookId, book.id))
-      .where(eq(readingListItem.listId, l.id))
-      .orderBy(asc(readingListItem.sortOrder));
+  // Single join across all of this user's list items — far cheaper than
+  // a per-list fan-out, and the result set is tiny in practice.
+  const items = await db
+    .select({
+      listId: readingListItem.listId,
+      sortOrder: readingListItem.sortOrder,
+      coverUrl: book.coverUrl,
+      status: book.status,
+    })
+    .from(readingListItem)
+    .innerJoin(book, eq(readingListItem.bookId, book.id))
+    .innerJoin(readingList, eq(readingListItem.listId, readingList.id))
+    .where(eq(readingList.userId, userId))
+    .orderBy(asc(readingListItem.sortOrder));
 
-    const total = items.length;
-    const read = items.filter((i) => i.status === "read").length;
-    const sampleCovers = items
-      .slice(0, 5)
-      .map((i) => i.coverUrl);
-
-    result.push({
-      ...l,
-      total,
-      read,
-      pct: total === 0 ? 0 : (read / total) * 100,
-      sampleCovers,
-    });
+  const grouped = new Map<
+    string,
+    { total: number; read: number; covers: (string | null)[] }
+  >();
+  for (const i of items) {
+    const g = grouped.get(i.listId) ?? { total: 0, read: 0, covers: [] };
+    g.total += 1;
+    if (i.status === "read") g.read += 1;
+    if (g.covers.length < 5) g.covers.push(i.coverUrl);
+    grouped.set(i.listId, g);
   }
-  return result;
+
+  return lists.map((l) => {
+    const g = grouped.get(l.id) ?? { total: 0, read: 0, covers: [] };
+    return {
+      ...l,
+      total: g.total,
+      read: g.read,
+      pct: g.total === 0 ? 0 : (g.read / g.total) * 100,
+      sampleCovers: g.covers,
+    };
+  });
 }
 
 export async function getReadingListWithBooks(

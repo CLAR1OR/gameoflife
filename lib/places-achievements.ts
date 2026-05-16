@@ -1,24 +1,25 @@
 import { db } from "@/lib/db";
-import { achievement, place, placeVisit } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { place, placeVisit } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import {
+  seedAchievements,
+  evaluateAchievements,
+  type AchievementSpec,
+} from "./achievement-engine";
 
-type PlaceAchievementSpec = {
-  name: string;
-  description: string;
-  icon: string;
-  triggerType:
-    | "places_count"
-    | "countries_visited"
-    | "hikes_count"
-    | "hike_total_km"
-    | "hike_total_elevation"
-    | "hike_single_max_km"
-    | "hike_single_max_elevation";
-  triggerCount: number;
-};
+const PLACE_TRIGGERS = [
+  "places_count",
+  "countries_visited",
+  "hikes_count",
+  "hike_total_km",
+  "hike_total_elevation",
+  "hike_single_max_km",
+  "hike_single_max_elevation",
+] as const;
 
-const PLACE_ACHIEVEMENTS: PlaceAchievementSpec[] = [
+type PlaceTrigger = (typeof PLACE_TRIGGERS)[number];
+
+const PLACE_ACHIEVEMENTS: AchievementSpec<PlaceTrigger>[] = [
   // Place + country counts
   { name: "First Pin", description: "Add your first place to the map", icon: "📍", triggerType: "places_count", triggerCount: 1 },
   { name: "Wanderer", description: "Add 10 places", icon: "🗺️", triggerType: "places_count", triggerCount: 10 },
@@ -63,40 +64,7 @@ const PLACE_ACHIEVEMENTS: PlaceAchievementSpec[] = [
 ];
 
 export async function ensurePlaceAchievementsSeeded(userId: string) {
-  const existing = await db.query.achievement.findMany({
-    where: (a, { and: _and, eq: _eq, or: _or }) =>
-      _and(
-        _eq(a.userId, userId),
-        _or(
-          _eq(a.triggerType, "places_count"),
-          _eq(a.triggerType, "countries_visited"),
-          _eq(a.triggerType, "hikes_count"),
-          _eq(a.triggerType, "hike_total_km"),
-          _eq(a.triggerType, "hike_total_elevation"),
-          _eq(a.triggerType, "hike_single_max_km"),
-          _eq(a.triggerType, "hike_single_max_elevation")
-        )
-      ),
-  });
-  const existingKeys = new Set(
-    existing.map((a) => `${a.triggerType}:${a.triggerCount}`)
-  );
-  const toInsert = PLACE_ACHIEVEMENTS.filter(
-    (a) => !existingKeys.has(`${a.triggerType}:${a.triggerCount}`)
-  );
-  if (toInsert.length === 0) return;
-  await db.insert(achievement).values(
-    toInsert.map((a) => ({
-      userId,
-      categoryId: null,
-      source: "custom" as const,
-      name: a.name,
-      description: a.description,
-      icon: a.icon,
-      triggerType: a.triggerType,
-      triggerCount: a.triggerCount,
-    }))
-  );
+  await seedAchievements(userId, PLACE_TRIGGERS, PLACE_ACHIEVEMENTS);
 }
 
 /** Re-evaluate every place / hike achievement against the user's current
@@ -104,103 +72,42 @@ export async function ensurePlaceAchievementsSeeded(userId: string) {
 export async function checkPlaceAchievements(userId: string): Promise<string[]> {
   await ensurePlaceAchievementsSeeded(userId);
 
-  // Pull the full state we need in two queries.
-  const places = await db
-    .select()
-    .from(place)
-    .where(eq(place.userId, userId));
-  const visits = await db
-    .select()
-    .from(placeVisit)
-    .where(eq(placeVisit.userId, userId));
+  const [places, visits] = await Promise.all([
+    db.select().from(place).where(eq(place.userId, userId)),
+    db.select().from(placeVisit).where(eq(placeVisit.userId, userId)),
+  ]);
 
-  const hikes = places.filter((p) => p.type === "hike");
-  const hikeIdSet = new Set(hikes.map((h) => h.id));
-  const hikeVisits = visits.filter((v) => hikeIdSet.has(v.placeId));
-
-  const placesCount = places.length;
+  const hikeVisits = visits.filter((v) => v.isHike);
   const countrySet = new Set<string>();
   for (const p of places) {
     if (p.countryCode) countrySet.add(p.countryCode);
   }
-  const countriesVisited = countrySet.size;
 
-  const hikesCount = hikeVisits.length;
-
-  // Aggregate km / elevation by re-using the place's distance/elevation
-  // for every visit. (One row per visit = one outing along that route.)
-  const distByPlaceId = new Map<string, number>();
-  const elevByPlaceId = new Map<string, number>();
-  for (const h of hikes) {
-    if (h.distanceKm != null) distByPlaceId.set(h.id, h.distanceKm);
-    if (h.elevationM != null) elevByPlaceId.set(h.id, h.elevationM);
-  }
+  // Hike km / elevation are stored per-visit now: each row is its own
+  // outing, possibly with a different route from the same place.
   let hikeTotalKm = 0;
   let hikeTotalElevation = 0;
+  let hikeSingleMaxKm = 0;
+  let hikeSingleMaxElevation = 0;
   for (const v of hikeVisits) {
-    hikeTotalKm += distByPlaceId.get(v.placeId) ?? 0;
-    hikeTotalElevation += elevByPlaceId.get(v.placeId) ?? 0;
+    if (v.distanceKm != null) {
+      hikeTotalKm += v.distanceKm;
+      if (v.distanceKm > hikeSingleMaxKm) hikeSingleMaxKm = v.distanceKm;
+    }
+    if (v.elevationM != null) {
+      hikeTotalElevation += v.elevationM;
+      if (v.elevationM > hikeSingleMaxElevation)
+        hikeSingleMaxElevation = v.elevationM;
+    }
   }
 
-  const hikeSingleMaxKm = Math.max(
-    0,
-    ...hikes.map((h) => h.distanceKm ?? 0)
-  );
-  const hikeSingleMaxElevation = Math.max(
-    0,
-    ...hikes.map((h) => h.elevationM ?? 0)
-  );
-
-  const stats: Record<
-    PlaceAchievementSpec["triggerType"],
-    number
-  > = {
-    places_count: placesCount,
-    countries_visited: countriesVisited,
-    hikes_count: hikesCount,
+  return evaluateAchievements(userId, PLACE_TRIGGERS, {
+    places_count: places.length,
+    countries_visited: countrySet.size,
+    hikes_count: hikeVisits.length,
     hike_total_km: hikeTotalKm,
     hike_total_elevation: hikeTotalElevation,
     hike_single_max_km: hikeSingleMaxKm,
     hike_single_max_elevation: hikeSingleMaxElevation,
-  };
-
-  const rows = await db.query.achievement.findMany({
-    where: (a, { and: _and, eq: _eq, or: _or }) =>
-      _and(
-        _eq(a.userId, userId),
-        _or(
-          _eq(a.triggerType, "places_count"),
-          _eq(a.triggerType, "countries_visited"),
-          _eq(a.triggerType, "hikes_count"),
-          _eq(a.triggerType, "hike_total_km"),
-          _eq(a.triggerType, "hike_total_elevation"),
-          _eq(a.triggerType, "hike_single_max_km"),
-          _eq(a.triggerType, "hike_single_max_elevation")
-        )
-      ),
   });
-
-  const newlyUnlocked: string[] = [];
-  for (const a of rows) {
-    if (a.triggerCount == null) continue;
-    const value = stats[a.triggerType as keyof typeof stats] ?? 0;
-    const should = value >= a.triggerCount;
-    if (should && !a.isUnlocked) {
-      await db
-        .update(achievement)
-        .set({ isUnlocked: true, unlockedAt: new Date() })
-        .where(eq(achievement.id, a.id));
-      newlyUnlocked.push(a.name);
-    } else if (!should && a.isUnlocked) {
-      await db
-        .update(achievement)
-        .set({ isUnlocked: false, unlockedAt: null })
-        .where(eq(achievement.id, a.id));
-    }
-  }
-  if (newlyUnlocked.length > 0) {
-    revalidatePath("/achievements");
-    void and; // keep import alive
-  }
-  return newlyUnlocked;
 }

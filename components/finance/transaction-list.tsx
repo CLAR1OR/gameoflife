@@ -8,7 +8,7 @@ import { TransactionEditDialog } from "./transaction-edit-dialog";
 import type {
   FinanceTransaction,
   FinanceAccount,
-} from "@/modules/finance/queries";
+} from "@/modules/finance/types";
 import { formatMoney } from "@/lib/money";
 
 function formatShortDate(iso: string): string {
