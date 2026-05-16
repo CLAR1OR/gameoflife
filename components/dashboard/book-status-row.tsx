@@ -39,7 +39,7 @@ export function BookStatusRow({
         {text}
       </span>
       {hasGoal && !goalMet && (
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
           {Math.round(pct * 100)}%
         </span>
       )}

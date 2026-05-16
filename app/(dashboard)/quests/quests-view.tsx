@@ -51,7 +51,7 @@ export function QuestsView({
       {/* Header */}
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Quests</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Quests</h1>
           <p className="text-sm text-muted-foreground mt-1">
             One-shot goals — main quest for your primary focus, side quests for
             everything else, backlog for ideas you&apos;ll get to.

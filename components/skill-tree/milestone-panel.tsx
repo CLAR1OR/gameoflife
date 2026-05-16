@@ -183,7 +183,7 @@ export function MilestonePanel({ skill }: { skill: SkillWithPrerequisites }) {
                   </div>
                   <button
                     onClick={() => handleDelete(m.id)}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 touch:opacity-100 text-muted-foreground hover:text-destructive text-xs transition-opacity"
                   >
                     &times;
                   </button>

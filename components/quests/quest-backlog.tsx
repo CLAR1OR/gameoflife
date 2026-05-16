@@ -106,7 +106,7 @@ function BacklogRow({ quest: q }: { quest: QuestWithTasks }) {
           >
             ↑ Activate
           </Button>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="sm"

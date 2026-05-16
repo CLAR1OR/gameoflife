@@ -68,7 +68,7 @@ export function BookCard({ book }: { book: Book }) {
 
         {/* Status overlay on hover for want-to-read */}
         {status === "want" && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity flex items-end p-1.5">
             <span className="text-[9px] font-mono uppercase tracking-wider text-white/70">
               Want to read
             </span>

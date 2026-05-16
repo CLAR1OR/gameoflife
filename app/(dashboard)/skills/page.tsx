@@ -30,7 +30,7 @@ export default async function SkillsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold tracking-tight">Skills</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Skills</h1>
       <SkillsView
         active={active}
         background={background}

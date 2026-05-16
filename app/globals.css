@@ -7,6 +7,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Touch-only variant — applies on devices without a fine pointer (i.e.
+ * phones/tablets). Use as `touch:opacity-100` to make hover-only actions
+ * visible by default on touch devices. */
+@custom-variant touch (@media (hover: none));
+/* Hover-capable variant — desktops/laptops with mouse or trackpad. */
+@custom-variant hover-able (@media (hover: hover));
+
+/* Hide the scrollbar (still scrollable). Used on horizontally-overflowing
+ * nav strips so they stay flush with the rounded container. */
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  scrollbar-width: none;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

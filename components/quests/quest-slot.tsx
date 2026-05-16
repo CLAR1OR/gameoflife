@@ -258,7 +258,7 @@ export function QuestSlot({
                 >
                   ✓ Complete
                 </Button>
-                <div className="flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -422,7 +422,7 @@ export function QuestSlot({
           </Button>
         </div>
         {/* Hover actions */}
-        <div className="absolute top-2 right-2 flex flex-wrap gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity max-w-[calc(100%-1rem)] justify-end">
+        <div className="absolute top-2 right-2 flex flex-wrap gap-0.5 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity max-w-[calc(100%-1rem)] justify-end">
           <Button
             variant="ghost"
             size="sm"

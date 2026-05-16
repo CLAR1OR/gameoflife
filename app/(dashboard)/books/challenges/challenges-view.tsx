@@ -129,7 +129,7 @@ export function ChallengesView({
     <div className="space-y-8">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Reading Challenges
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -178,7 +178,7 @@ export function ChallengesView({
                   <button
                     type="button"
                     onClick={() => handleDelete(l.id, l.name)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-destructive"
+                    className="opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-destructive"
                   >
                     remove
                   </button>

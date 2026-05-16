@@ -13,7 +13,7 @@ export default function DashboardLayout({
     <div className="min-h-screen">
       <TopNav />
       <main>
-        <div className="mx-auto w-full max-w-5xl px-6 pb-12 pt-2">
+        <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 pb-12 pt-2">
           {children}
         </div>
       </main>

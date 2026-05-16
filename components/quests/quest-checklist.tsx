@@ -196,7 +196,7 @@ export function QuestChecklist({
               type="button"
               onClick={() => handleDelete(t.id)}
               disabled={busyId === t.id}
-              className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
               aria-label="Remove task"
             >
               ✕

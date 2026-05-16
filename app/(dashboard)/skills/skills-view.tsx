@@ -147,7 +147,7 @@ function FocusBanner({
         </div>
 
         {/* Hover actions */}
-        <div className="absolute top-3 left-3 right-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-3 left-3 right-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
           <StatusButtons
             status={skill.status}
             onStatusChange={onStatusChange}
@@ -278,7 +278,7 @@ function SkillTile({
         </div>
 
         {/* Hover actions */}
-        <div className="absolute top-2 left-2 right-2 flex flex-wrap justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 left-2 right-2 flex flex-wrap justify-end gap-1 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
           <StatusButtons
             status={skill.status}
             onStatusChange={onStatusChange}
@@ -358,7 +358,7 @@ function TemplateTile({
       </div>
 
       {/* Add button (centered on hover) */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity bg-black/40">
         <Button size="sm" className="h-8 text-xs" onClick={onActivate}>
           + Add Skill
         </Button>
