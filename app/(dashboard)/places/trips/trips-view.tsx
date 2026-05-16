@@ -16,7 +16,7 @@ import {
 import { createTrip } from "@/modules/places/actions";
 import { toast } from "sonner";
 import { countryFlag } from "@/lib/country-flag";
-import type { TripWithStats } from "@/modules/places/queries";
+import type { TripWithStats } from "@/modules/places/types";
 
 export function TripsView({ trips }: { trips: TripWithStats[] }) {
   const router = useRouter();
@@ -55,7 +55,7 @@ export function TripsView({ trips }: { trips: TripWithStats[] }) {
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Trips</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Trips</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Group visits into trips — &ldquo;Italy 2024&rdquo;,
             &ldquo;Honeymoon&rdquo;, &ldquo;Pacific Coast Highway&rdquo; — to

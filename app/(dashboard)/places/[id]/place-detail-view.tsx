@@ -18,8 +18,9 @@ import type {
   Place,
   PlaceVisit,
   TripWithStats,
-} from "@/modules/places/queries";
+} from "@/modules/places/types";
 import { PlacePhotoUpload } from "@/components/places/place-photo-upload";
+import { EditVisitDialog } from "@/components/places/edit-visit-dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -36,11 +37,6 @@ export function PlaceDetailView({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(place.name);
   const [notes, setNotes] = useState(place.notes ?? "");
-  const [isHike, setIsHike] = useState(place.type === "hike");
-  const [hikeKm, setHikeKm] = useState(place.distanceKm?.toString() ?? "");
-  const [hikeElev, setHikeElev] = useState(
-    place.elevationM?.toString() ?? ""
-  );
   const [busy, setBusy] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [visitDate, setVisitDate] = useState(
@@ -49,11 +45,23 @@ export function PlaceDetailView({
   const [visitNotes, setVisitNotes] = useState("");
   const [visitRating, setVisitRating] = useState<number | null>(null);
   const [visitTripId, setVisitTripIdState] = useState<string>("");
-  // Hike upgrade in the log-visit form: only relevant if the place isn't
-  // a hike yet — lets the user promote it inline + log the visit in one go.
-  const [promoteToHike, setPromoteToHike] = useState(false);
+  const [visitIsHike, setVisitIsHike] = useState(false);
   const [visitHikeKm, setVisitHikeKm] = useState("");
   const [visitHikeElev, setVisitHikeElev] = useState("");
+
+  const [editingVisit, setEditingVisit] = useState<PlaceVisit | null>(null);
+
+  // Aggregate hike stats from visits (the source of truth now).
+  const hikeVisits = visits.filter((v) => v.isHike);
+  const hikeCount = hikeVisits.length;
+  const hikeKmTotal = hikeVisits.reduce(
+    (s, v) => s + (v.distanceKm ?? 0),
+    0
+  );
+  const hikeElevTotal = hikeVisits.reduce(
+    (s, v) => s + (v.elevationM ?? 0),
+    0
+  );
 
   const pins: MapPin[] =
     place.lat != null && place.lng != null
@@ -74,25 +82,7 @@ export function PlaceDetailView({
   async function handleSave() {
     setBusy(true);
     try {
-      const km = hikeKm.trim() ? Number(hikeKm) : null;
-      const elev = hikeElev.trim() ? Number(hikeElev) : null;
-      await updatePlace(place.id, {
-        name,
-        notes,
-        // Toggle "hike" type if the user opted in/out, otherwise leave the
-        // type alone (don't clobber e.g. a "city" classification).
-        type: isHike ? "hike" : place.type === "hike" ? "spot" : place.type,
-        distanceKm: isHike
-          ? Number.isFinite(km)
-            ? (km as number)
-            : null
-          : null,
-        elevationM: isHike
-          ? Number.isFinite(elev)
-            ? Math.round(elev as number)
-            : null
-          : null,
-      });
+      await updatePlace(place.id, { name, notes });
       toast.success("Updated");
       setEditing(false);
       router.refresh();
@@ -116,37 +106,30 @@ export function PlaceDetailView({
   async function handleLogVisit() {
     setBusy(true);
     try {
-      // If the user opted to promote this place to a hike on the visit
-      // form, update the place first so achievements + stats pick up the
-      // change atomically with the new visit.
-      if (promoteToHike && place.type !== "hike") {
-        const km = visitHikeKm.trim() ? Number(visitHikeKm) : null;
-        const elev = visitHikeElev.trim() ? Number(visitHikeElev) : null;
-        await updatePlace(place.id, {
-          type: "hike",
-          distanceKm: Number.isFinite(km) ? (km as number) : null,
-          elevationM: Number.isFinite(elev)
-            ? Math.round(elev as number)
-            : null,
-        });
-      }
+      const km = visitHikeKm.trim() ? Number(visitHikeKm) : null;
+      const elev = visitHikeElev.trim() ? Number(visitHikeElev) : null;
       await logVisit({
         placeId: place.id,
         startedOn: visitDate,
         notes: visitNotes,
         rating: visitRating,
         tripId: visitTripId || null,
+        isHike: visitIsHike,
+        distanceKm:
+          visitIsHike && km !== null && Number.isFinite(km)
+            ? (km as number)
+            : null,
+        elevationM:
+          visitIsHike && elev !== null && Number.isFinite(elev)
+            ? Math.round(elev as number)
+            : null,
       });
-      toast.success(
-        promoteToHike && place.type !== "hike"
-          ? "Hike logged"
-          : "Visit logged"
-      );
+      toast.success(visitIsHike ? "Hike logged" : "Visit logged");
       setLogOpen(false);
       setVisitNotes("");
       setVisitRating(null);
       setVisitTripIdState("");
-      setPromoteToHike(false);
+      setVisitIsHike(false);
       setVisitHikeKm("");
       setVisitHikeElev("");
       router.refresh();
@@ -219,41 +202,18 @@ export function PlaceDetailView({
               <h1 className="text-3xl font-bold leading-tight">{place.name}</h1>
             )}
             <div className="flex flex-wrap gap-2 mt-2">
-              <Badge
-                variant="outline"
-                className={`text-[10px] font-mono ${
-                  place.type === "hike"
-                    ? "border-glow/40 text-glow bg-glow/10"
-                    : ""
-                }`}
-              >
-                {place.type === "hike" ? "🥾 hike" : place.type}
+              <Badge variant="outline" className="text-[10px] font-mono">
+                {place.type}
               </Badge>
-              {place.type === "hike" && place.distanceKm != null && (
+              {hikeCount > 0 && (
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono border-glow/30 text-glow"
+                  className="text-[10px] font-mono border-glow/40 text-glow bg-glow/10"
                 >
-                  📏 {place.distanceKm} km
-                </Badge>
-              )}
-              {place.type === "hike" && place.elevationM != null && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-mono border-glow/30 text-glow"
-                >
-                  ⛰️ {place.elevationM.toLocaleString()} m
-                </Badge>
-              )}
-              {place.type === "hike" && visits.length > 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-mono border-xp/30 text-xp"
-                >
-                  🥇 hiked {visits.length}× ·{" "}
-                  {place.distanceKm != null
-                    ? `${(place.distanceKm * visits.length).toFixed(1)} km total`
-                    : ""}
+                  🥾 hiked {hikeCount}×
+                  {hikeKmTotal > 0 && ` · ${hikeKmTotal.toFixed(1)} km`}
+                  {hikeElevTotal > 0 &&
+                    ` · ${hikeElevTotal.toLocaleString()} m`}
                 </Badge>
               )}
               {place.countryName && place.countryCode ? (
@@ -388,58 +348,48 @@ export function PlaceDetailView({
             className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs resize-y"
           />
 
-          {place.type === "hike" ? (
-            <div className="text-[11px] font-mono text-muted-foreground rounded border border-glow/20 bg-glow/5 px-2 py-1.5">
-              🥾 This place is a hike
-              {place.distanceKm != null && ` · ${place.distanceKm} km`}
-              {place.elevationM != null &&
-                ` · ${place.elevationM.toLocaleString()} m`}
-              {" — counts toward your hike stats automatically."}
-            </div>
-          ) : (
-            <div className="rounded-md border border-border/60 bg-muted/20 p-2 space-y-2">
-              <label className="flex items-center gap-2 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={promoteToHike}
-                  onChange={(e) => setPromoteToHike(e.target.checked)}
-                  className="h-3.5 w-3.5"
-                />
-                <span>🥾 Mark as hike</span>
-                <span className="text-[10px] text-muted-foreground/60">
-                  promotes the place to a hike + counts km / elevation
-                </span>
-              </label>
-              {promoteToHike && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Distance (km)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={visitHikeKm}
-                      onChange={(e) => setVisitHikeKm(e.target.value)}
-                      placeholder="e.g. 12.5"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Elevation (m)</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={visitHikeElev}
-                      onChange={(e) => setVisitHikeElev(e.target.value)}
-                      placeholder="e.g. 850"
-                      className="h-8 text-xs"
-                    />
-                  </div>
+          <div className="rounded-md border border-border/60 bg-muted/20 p-2 space-y-2">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={visitIsHike}
+                onChange={(e) => setVisitIsHike(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              <span>🥾 This visit is a hike</span>
+              <span className="text-[10px] text-muted-foreground/60">
+                different routes from the same place each get their own visit
+              </span>
+            </label>
+            {visitIsHike && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Distance (km)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={visitHikeKm}
+                    onChange={(e) => setVisitHikeKm(e.target.value)}
+                    placeholder="e.g. 12.5"
+                    className="h-8 text-xs"
+                  />
                 </div>
-              )}
-            </div>
-          )}
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Elevation (m)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={visitHikeElev}
+                    onChange={(e) => setVisitHikeElev(e.target.value)}
+                    placeholder="e.g. 850"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end gap-1">
             <Button size="sm" variant="ghost" onClick={() => setLogOpen(false)}>
@@ -499,6 +449,32 @@ export function PlaceDetailView({
                         </span>
                       </div>
                     )}
+                    {v.isHike && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-mono border-glow/40 text-glow bg-glow/10"
+                        >
+                          🥾 hike
+                        </Badge>
+                        {v.distanceKm != null && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-mono border-glow/30 text-glow"
+                          >
+                            📏 {v.distanceKm} km
+                          </Badge>
+                        )}
+                        {v.elevationM != null && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-mono border-glow/30 text-glow"
+                          >
+                            ⛰️ {v.elevationM.toLocaleString()} m
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                     {v.notes ? (
                       <p className="text-sm text-foreground/90 whitespace-pre-wrap">
                         {v.notes}
@@ -526,8 +502,16 @@ export function PlaceDetailView({
                   </select>
                   <button
                     type="button"
+                    onClick={() => setEditingVisit(v)}
+                    className="text-[10px] text-muted-foreground/60 hover:text-glow opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity self-start"
+                    title="Edit visit"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleDeleteVisit(v.id)}
-                    className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity self-start"
+                    className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity self-start"
                   >
                     ✕
                   </button>
@@ -537,51 +521,6 @@ export function PlaceDetailView({
           </ul>
         )}
       </section>
-
-      {editing && (
-        <section className="space-y-2">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
-            🥾 Hike
-          </h2>
-          <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-2">
-            <label className="flex items-center gap-2 text-xs cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isHike}
-                onChange={(e) => setIsHike(e.target.checked)}
-                className="h-3.5 w-3.5"
-              />
-              <span>This place is a hike</span>
-            </label>
-            {isHike && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Distance (km)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={hikeKm}
-                    onChange={(e) => setHikeKm(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Elevation gain (m)</Label>
-                  <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={hikeElev}
-                    onChange={(e) => setHikeElev(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
 
       {(editing || place.notes) && (
         <section className="space-y-2">
@@ -602,6 +541,12 @@ export function PlaceDetailView({
           )}
         </section>
       )}
+
+      <EditVisitDialog
+        visit={editingVisit}
+        trips={trips}
+        onClose={() => setEditingVisit(null)}
+      />
     </div>
   );
 }

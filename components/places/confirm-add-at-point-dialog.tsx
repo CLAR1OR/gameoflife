@@ -78,25 +78,31 @@ export function ConfirmAddAtPointDialog({
     if (!coords || !name.trim()) return;
     setBusy(true);
     try {
-      const km = hikeKm.trim() ? Number(hikeKm) : null;
-      const elev = hikeElev.trim() ? Number(hikeElev) : null;
       const place = await createPlace({
         name,
-        type: isHike ? "hike" : (resolved?.kind ?? "spot"),
+        type: resolved?.kind ?? "spot",
         countryCode: resolved?.countryCode ?? null,
         countryName: resolved?.countryName ?? null,
         region: resolved?.region ?? null,
         lat: coords.lat,
         lng: coords.lng,
-        distanceKm:
-          isHike && km !== null && Number.isFinite(km) ? (km as number) : null,
-        elevationM:
-          isHike && elev !== null && Number.isFinite(elev)
-            ? Math.round(elev as number)
-            : null,
       });
       if (logVisitToo && visitDate) {
-        await logVisit({ placeId: place.id, startedOn: visitDate });
+        const km = hikeKm.trim() ? Number(hikeKm) : null;
+        const elev = hikeElev.trim() ? Number(hikeElev) : null;
+        await logVisit({
+          placeId: place.id,
+          startedOn: visitDate,
+          isHike,
+          distanceKm:
+            isHike && km !== null && Number.isFinite(km)
+              ? (km as number)
+              : null,
+          elevationM:
+            isHike && elev !== null && Number.isFinite(elev)
+              ? Math.round(elev as number)
+              : null,
+        });
       }
       toast.success(`Added "${place.name}"`);
       onClose();

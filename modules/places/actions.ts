@@ -28,15 +28,13 @@ export async function lookupCoords(
 
 export async function createPlace(data: {
   name: string;
-  type?: "spot" | "city" | "region" | "country" | "hike";
+  type?: "spot" | "city" | "region" | "country";
   countryCode?: string | null;
   countryName?: string | null;
   region?: string | null;
   lat?: number | null;
   lng?: number | null;
   notes?: string | null;
-  distanceKm?: number | null;
-  elevationM?: number | null;
 }) {
   const session = await requireSession();
   const [row] = await db
@@ -51,8 +49,6 @@ export async function createPlace(data: {
       lat: data.lat ?? null,
       lng: data.lng ?? null,
       notes: data.notes?.trim() || null,
-      distanceKm: data.distanceKm ?? null,
-      elevationM: data.elevationM ?? null,
     })
     .returning();
   revalidatePath("/places");
@@ -80,7 +76,7 @@ export async function updatePlace(
   id: string,
   data: {
     name?: string;
-    type?: "spot" | "city" | "region" | "country" | "hike";
+    type?: "spot" | "city" | "region" | "country";
     notes?: string | null;
     coverImage?: string | null;
     lat?: number | null;
@@ -88,8 +84,6 @@ export async function updatePlace(
     countryCode?: string | null;
     countryName?: string | null;
     region?: string | null;
-    distanceKm?: number | null;
-    elevationM?: number | null;
   }
 ) {
   const session = await requireSession();
@@ -123,6 +117,9 @@ export async function logVisit(data: {
   rating?: number | null;
   notes?: string | null;
   tripId?: string | null;
+  isHike?: boolean;
+  distanceKm?: number | null;
+  elevationM?: number | null;
 }) {
   const session = await requireSession();
   const [row] = await db
@@ -135,6 +132,9 @@ export async function logVisit(data: {
       endedOn: data.endedOn ?? null,
       rating: data.rating ?? null,
       notes: data.notes?.trim() || null,
+      isHike: data.isHike ?? false,
+      distanceKm: data.isHike ? (data.distanceKm ?? null) : null,
+      elevationM: data.isHike ? (data.elevationM ?? null) : null,
     })
     .returning();
   revalidatePath("/places");
@@ -152,6 +152,9 @@ export async function updateVisit(
     rating?: number | null;
     notes?: string | null;
     tripId?: string | null;
+    isHike?: boolean;
+    distanceKm?: number | null;
+    elevationM?: number | null;
   }
 ) {
   const session = await requireSession();
@@ -167,9 +170,21 @@ export async function updateVisit(
   if (data.notes !== undefined)
     updates.notes = data.notes?.trim() || null;
   if (data.tripId !== undefined) updates.tripId = data.tripId;
+  if (data.isHike !== undefined) {
+    updates.isHike = data.isHike;
+    if (!data.isHike) {
+      // Clear km/elev when un-marking as a hike unless caller explicitly
+      // sets them. Keeps stats clean.
+      if (data.distanceKm === undefined) updates.distanceKm = null;
+      if (data.elevationM === undefined) updates.elevationM = null;
+    }
+  }
+  if (data.distanceKm !== undefined) updates.distanceKm = data.distanceKm;
+  if (data.elevationM !== undefined) updates.elevationM = data.elevationM;
   await db.update(placeVisit).set(updates).where(eq(placeVisit.id, id));
   revalidatePath("/places");
   revalidatePath(`/places/${row.placeId}`);
+  await checkPlaceAchievements(session.user.id);
 }
 
 export async function deleteVisit(id: string) {

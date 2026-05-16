@@ -335,7 +335,7 @@ export const place = sqliteTable("place", {
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: text("type", {
-    enum: ["spot", "city", "region", "country", "hike"],
+    enum: ["spot", "city", "region", "country"],
   }).notNull().default("spot"),
   countryCode: text("country_code"), // ISO-3166-1 alpha-2
   countryName: text("country_name"),
@@ -344,9 +344,11 @@ export const place = sqliteTable("place", {
   lng: real("lng"),
   notes: text("notes"),
   coverImage: text("cover_image"),
-  /** Hike-specific: trail length in km. */
+  /** @deprecated kept for backup-restore compatibility — hike data lives
+   *  on placeVisit now so a single place can have multiple distinct hike
+   *  routes. New writes go to the visit. */
   distanceKm: real("distance_km"),
-  /** Hike-specific: total elevation gain in meters. */
+  /** @deprecated see distanceKm */
   elevationM: integer("elevation_m"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -374,6 +376,11 @@ export const placeVisit = sqliteTable("place_visit", {
   rating: integer("rating"),
   notes: text("notes"),
   photoUrl: text("photo_url"),
+  /** Per-visit hike flag. Multiple hike routes can start from the same
+   * place — each gets its own visit row with its own km / elevation. */
+  isHike: integer("is_hike", { mode: "boolean" }).notNull().default(false),
+  distanceKm: real("distance_km"),
+  elevationM: integer("elevation_m"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 

@@ -10,6 +10,7 @@ import {
   type MapPin,
 } from "@/components/map/world-map-client";
 import { countryFlag } from "@/lib/country-flag";
+import { CountryPlacesList } from "./country-places-list";
 
 export default async function CountryDetailPage({
   params,
@@ -28,12 +29,18 @@ export default async function CountryDetailPage({
     .filter((p) => p.lat != null && p.lng != null)
     .map((p) => ({
       id: p.id,
-      kind: "place",
+      kind: p.hikeCount > 0 ? "hike" : "place",
       name: p.name,
-      subtitle:
+      subtitle: [
         p.visitCount > 0
           ? `${p.visitCount} visit${p.visitCount === 1 ? "" : "s"}`
           : "Place",
+        p.hikeCount > 0
+          ? `${p.hikeCount} hike${p.hikeCount === 1 ? "" : "s"}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
       lat: p.lat as number,
       lng: p.lng as number,
       href: `/places/${p.id}`,
@@ -56,7 +63,7 @@ export default async function CountryDetailPage({
             {countryFlag(summary.countryCode)}
           </span>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               {summary.countryName}
             </h1>
             <p className="text-sm text-muted-foreground mt-1 font-mono">
@@ -88,43 +95,10 @@ export default async function CountryDetailPage({
 
       {pins.length > 0 && <WorldMapClient pins={pins} height={360} />}
 
-      <section className="space-y-2">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
-          📍 Places in {summary.countryName}
-        </h2>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {places.map((p) => (
-            <li key={p.id}>
-              <Link
-                href={`/places/${p.id}`}
-                className="block rounded-md border border-border/60 bg-card/40 p-3 hover:border-glow/40 transition-colors"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium line-clamp-1">
-                      {p.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground line-clamp-1">
-                      {p.region ?? p.type}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-[10px] font-mono text-glow">
-                      {p.visitCount} visit
-                      {p.visitCount === 1 ? "" : "s"}
-                    </div>
-                    {p.lastVisitedOn && (
-                      <div className="text-[10px] font-mono text-muted-foreground/60">
-                        {p.lastVisitedOn}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <CountryPlacesList
+        places={places}
+        countryName={summary.countryName}
+      />
     </div>
   );
 }

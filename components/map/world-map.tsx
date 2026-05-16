@@ -9,7 +9,9 @@ import "leaflet.markercluster";
 
 export type MapPin = {
   id: string;
-  kind: "place" | "friend";
+  /** "hike" is a visual variant of "place" — shown in warm orange so
+   * places where the user has logged a hike pop out at a glance. */
+  kind: "place" | "friend" | "hike";
   name: string;
   subtitle?: string;
   lat: number;
@@ -196,9 +198,18 @@ function pinHtml(p: MapPin): string {
   const bg =
     p.kind === "friend"
       ? "color-mix(in srgb, var(--glow-purple) 80%, black)"
-      : "color-mix(in srgb, var(--glow) 80%, black)";
-  const ring = p.kind === "friend" ? "var(--glow-purple)" : "var(--glow)";
-  const label = p.marker ?? (p.kind === "friend" ? "👤" : "📍");
+      : p.kind === "hike"
+        ? "color-mix(in srgb, #f97316 70%, black)"
+        : "color-mix(in srgb, var(--glow) 80%, black)";
+  const ring =
+    p.kind === "friend"
+      ? "var(--glow-purple)"
+      : p.kind === "hike"
+        ? "#fb923c"
+        : "var(--glow)";
+  const label =
+    p.marker ??
+    (p.kind === "friend" ? "👤" : p.kind === "hike" ? "🥾" : "📍");
   return `
     <div style="
       width: 28px; height: 28px;

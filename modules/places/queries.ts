@@ -1,15 +1,27 @@
 import { db } from "@/lib/db";
 import { place, placeVisit, trip } from "@/lib/db/schema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { InferSelectModel } from "drizzle-orm";
-
-export type Place = InferSelectModel<typeof place>;
-export type PlaceVisit = InferSelectModel<typeof placeVisit>;
-export type Trip = InferSelectModel<typeof trip>;
-
-export type PlaceWithStats = Place & {
-  visitCount: number;
-  lastVisitedOn: string | null;
+import type {
+  Place,
+  PlaceVisit,
+  Trip,
+  PlaceWithStats,
+  PlacesStats,
+  HikeStats,
+  HikeOuting,
+  CountrySummary,
+  TripWithStats,
+} from "./types";
+export type {
+  Place,
+  PlaceVisit,
+  Trip,
+  PlaceWithStats,
+  PlacesStats,
+  HikeStats,
+  HikeOuting,
+  CountrySummary,
+  TripWithStats,
 };
 
 export async function getPlacesByUser(
@@ -19,6 +31,7 @@ export async function getPlacesByUser(
     .select({
       p: place,
       visitCount: sql<number>`count(${placeVisit.id})`,
+      hikeCount: sql<number>`coalesce(sum(case when ${placeVisit.isHike} then 1 else 0 end), 0)`,
       lastVisitedOn: sql<string | null>`max(${placeVisit.startedOn})`,
     })
     .from(place)
@@ -30,6 +43,7 @@ export async function getPlacesByUser(
   return rows.map((r) => ({
     ...r.p,
     visitCount: Number(r.visitCount),
+    hikeCount: Number(r.hikeCount),
     lastVisitedOn: r.lastVisitedOn,
   }));
 }
@@ -55,29 +69,29 @@ export async function getVisitsForPlace(
     .orderBy(desc(placeVisit.startedOn), desc(placeVisit.createdAt));
 }
 
-export type PlacesStats = {
-  placesTotal: number;
-  countriesVisited: number;
-  countryCodes: string[];
-  visitsTotal: number;
-  visitsThisYear: number;
-};
-
-export type HikeStats = {
-  hikesCount: number;
-  hikePlacesCount: number;
-  totalKm: number;
-  totalElevation: number;
-  longestKm: number;
-  highestElevation: number;
-};
+export async function getHikesByUser(
+  userId: string
+): Promise<HikeOuting[]> {
+  return db
+    .select({ visit: placeVisit, place })
+    .from(placeVisit)
+    .innerJoin(place, eq(placeVisit.placeId, place.id))
+    .where(
+      and(eq(placeVisit.userId, userId), eq(placeVisit.isHike, true))
+    )
+    .orderBy(desc(placeVisit.startedOn), desc(placeVisit.createdAt));
+}
 
 export async function getHikeStats(userId: string): Promise<HikeStats> {
-  const hikes = await db
+  // Hike data lives on the visit now — every visit with isHike=true is a
+  // distinct outing, possibly along a different route from the same place.
+  const hikeVisits = await db
     .select()
-    .from(place)
-    .where(and(eq(place.userId, userId), eq(place.type, "hike")));
-  if (hikes.length === 0) {
+    .from(placeVisit)
+    .where(
+      and(eq(placeVisit.userId, userId), eq(placeVisit.isHike, true))
+    );
+  if (hikeVisits.length === 0) {
     return {
       hikesCount: 0,
       hikePlacesCount: 0,
@@ -87,35 +101,29 @@ export async function getHikeStats(userId: string): Promise<HikeStats> {
       highestElevation: 0,
     };
   }
-  const ids = hikes.map((h) => h.id);
-  const visits = await db
-    .select()
-    .from(placeVisit)
-    .where(
-      and(
-        eq(placeVisit.userId, userId),
-        inArray(placeVisit.placeId, ids)
-      )
-    );
-  const distById = new Map<string, number>();
-  const elevById = new Map<string, number>();
-  for (const h of hikes) {
-    if (h.distanceKm != null) distById.set(h.id, h.distanceKm);
-    if (h.elevationM != null) elevById.set(h.id, h.elevationM);
-  }
+  const placeIds = new Set<string>();
   let totalKm = 0;
   let totalElevation = 0;
-  for (const v of visits) {
-    totalKm += distById.get(v.placeId) ?? 0;
-    totalElevation += elevById.get(v.placeId) ?? 0;
+  let longestKm = 0;
+  let highestElevation = 0;
+  for (const v of hikeVisits) {
+    placeIds.add(v.placeId);
+    if (v.distanceKm != null) {
+      totalKm += v.distanceKm;
+      if (v.distanceKm > longestKm) longestKm = v.distanceKm;
+    }
+    if (v.elevationM != null) {
+      totalElevation += v.elevationM;
+      if (v.elevationM > highestElevation) highestElevation = v.elevationM;
+    }
   }
   return {
-    hikesCount: visits.length,
-    hikePlacesCount: hikes.length,
+    hikesCount: hikeVisits.length,
+    hikePlacesCount: placeIds.size,
     totalKm,
     totalElevation,
-    longestKm: Math.max(0, ...hikes.map((h) => h.distanceKm ?? 0)),
-    highestElevation: Math.max(0, ...hikes.map((h) => h.elevationM ?? 0)),
+    longestKm,
+    highestElevation,
   };
 }
 
@@ -171,15 +179,6 @@ export async function getRecentVisits(
 // COUNTRY DETAIL
 // =====================
 
-export type CountrySummary = {
-  countryCode: string;
-  countryName: string;
-  placesCount: number;
-  visitsCount: number;
-  firstVisitedOn: string | null;
-  lastVisitedOn: string | null;
-};
-
 export async function getCountrySummary(
   userId: string,
   countryCode: string
@@ -222,6 +221,7 @@ export async function getPlacesInCountry(
     .select({
       p: place,
       visitCount: sql<number>`count(${placeVisit.id})`,
+      hikeCount: sql<number>`coalesce(sum(case when ${placeVisit.isHike} then 1 else 0 end), 0)`,
       lastVisitedOn: sql<string | null>`max(${placeVisit.startedOn})`,
     })
     .from(place)
@@ -232,6 +232,7 @@ export async function getPlacesInCountry(
   return rows.map((r) => ({
     ...r.p,
     visitCount: Number(r.visitCount),
+    hikeCount: Number(r.hikeCount),
     lastVisitedOn: r.lastVisitedOn,
   }));
 }
@@ -239,12 +240,6 @@ export async function getPlacesInCountry(
 // =====================
 // TRIPS
 // =====================
-
-export type TripWithStats = Trip & {
-  visitsCount: number;
-  placesCount: number;
-  countryCodes: string[];
-};
 
 export async function getTripsByUser(
   userId: string

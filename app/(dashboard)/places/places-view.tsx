@@ -16,8 +16,8 @@ import type {
   PlaceWithStats,
   PlacesStats,
   HikeStats,
-} from "@/modules/places/queries";
-import type { FriendCardData } from "@/modules/friends/queries";
+} from "@/modules/places/types";
+import type { FriendCardData } from "@/modules/friends/types";
 
 type LayerFilter = "all" | "places" | "friends";
 
@@ -70,6 +70,7 @@ export function PlacesView({
   const [country, setCountry] = useState<string>("all");
   const [type, setType] = useState<string>("all");
   const [year, setYear] = useState<string>("all");
+  const [hikesOnly, setHikesOnly] = useState(false);
   const [search, setSearch] = useState("");
 
   const filteredPlaces = useMemo(() => {
@@ -79,6 +80,7 @@ export function PlacesView({
     if (type !== "all") list = list.filter((p) => p.type === type);
     if (year !== "all")
       list = list.filter((p) => p.lastVisitedOn?.startsWith(year));
+    if (hikesOnly) list = list.filter((p) => p.hikeCount > 0);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -89,7 +91,7 @@ export function PlacesView({
       );
     }
     return list;
-  }, [places, country, type, year, search]);
+  }, [places, country, type, year, hikesOnly, search]);
 
   const pins = useMemo<MapPin[]>(() => {
     const out: MapPin[] = [];
@@ -98,12 +100,15 @@ export function PlacesView({
         if (p.lat == null || p.lng == null) continue;
         out.push({
           id: `place:${p.id}`,
-          kind: "place",
+          kind: p.hikeCount > 0 ? "hike" : "place",
           name: p.name,
           subtitle: [
             p.countryName,
             p.visitCount > 0
               ? `${p.visitCount} visit${p.visitCount === 1 ? "" : "s"}`
+              : null,
+            p.hikeCount > 0
+              ? `${p.hikeCount} hike${p.hikeCount === 1 ? "" : "s"}`
               : null,
           ]
             .filter(Boolean)
@@ -139,13 +144,18 @@ export function PlacesView({
     return out;
   }, [filteredPlaces, friends, layer]);
 
-  const filtersActive = country !== "all" || type !== "all" || year !== "all" || search.trim().length > 0;
+  const filtersActive =
+    country !== "all" ||
+    type !== "all" ||
+    year !== "all" ||
+    hikesOnly ||
+    search.trim().length > 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Places</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Places</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Where you&apos;ve been + where your people are.
           </p>
@@ -166,6 +176,11 @@ export function PlacesView({
           <Link href="/places/trips">
             <Button size="sm" variant="outline">
               🧳 Trips
+            </Button>
+          </Link>
+          <Link href="/places/hikes">
+            <Button size="sm" variant="outline">
+              🥾 Hikes
             </Button>
           </Link>
           <Button
@@ -286,6 +301,7 @@ export function PlacesView({
                 setCountry("all");
                 setType("all");
                 setYear("all");
+                setHikesOnly(false);
                 setSearch("");
               }}
               className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
@@ -336,6 +352,18 @@ export function PlacesView({
                 ))}
               </select>
             )}
+            <button
+              type="button"
+              onClick={() => setHikesOnly((s) => !s)}
+              className={`h-7 px-2.5 rounded-md border text-xs font-mono transition-colors ${
+                hikesOnly
+                  ? "border-glow text-glow bg-glow/10"
+                  : "border-input text-muted-foreground hover:text-foreground"
+              }`}
+              title="Show only places where you logged a hike"
+            >
+              🥾 Hikes only
+            </button>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -389,9 +417,20 @@ export function PlacesView({
                       {[p.countryName, p.region].filter(Boolean).join(" · ") ||
                         "—"}
                     </div>
-                    <div className="text-[10px] font-mono text-glow mt-0.5">
-                      {p.visitCount} visit{p.visitCount === 1 ? "" : "s"} ·{" "}
+                    <div className="text-[10px] font-mono text-glow mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span>
+                        {p.visitCount} visit{p.visitCount === 1 ? "" : "s"}
+                      </span>
+                      <span className="text-muted-foreground/60">·</span>
                       <span className="text-muted-foreground/60">{p.type}</span>
+                      {p.hikeCount > 0 && (
+                        <>
+                          <span className="text-muted-foreground/60">·</span>
+                          <span className="text-glow">
+                            🥾 {p.hikeCount}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </Link>

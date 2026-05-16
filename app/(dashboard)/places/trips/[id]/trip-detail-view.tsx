@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { updateTrip, deleteTrip } from "@/modules/places/actions";
 import { toast } from "sonner";
-import type { Place, PlaceVisit, Trip } from "@/modules/places/queries";
+import type { Place, PlaceVisit, Trip } from "@/modules/places/types";
 
 export function TripDetailView({
   trip,
