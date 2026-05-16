@@ -1,14 +1,18 @@
 import { db } from "@/lib/db";
 import { habit, habitCompletion, skill, skillCategory, quest, bookRead } from "@/lib/db/schema";
 import { and, asc, count, eq, gte, isNotNull, inArray, isNull, sum } from "drizzle-orm";
-import { calcStreak, lastNDates, todayISO } from "@/lib/date";
+import { calcStreak, calcWeeklyStreak, lastNDates, startOfIsoWeek, todayISO } from "@/lib/date";
 import { XP_PER_BOOK } from "@/modules/books/types";
 import type { HabitWithLink } from "./types";
 
 export async function getHabitsWithStatus(
   userId: string,
-  rangeDays = 30
+  rangeDays = 30,
+  opts: { includeArchived?: boolean } = {}
 ): Promise<HabitWithLink[]> {
+  const where = opts.includeArchived
+    ? eq(habit.userId, userId)
+    : and(eq(habit.userId, userId), eq(habit.archived, false));
   const rows = await db
     .select({
       habit: habit,
@@ -20,7 +24,7 @@ export async function getHabitsWithStatus(
     .from(habit)
     .leftJoin(skill, eq(habit.skillId, skill.id))
     .leftJoin(skillCategory, eq(skill.categoryId, skillCategory.id))
-    .where(and(eq(habit.userId, userId), eq(habit.archived, false)))
+    .where(where)
     .orderBy(asc(habit.sortOrder), asc(habit.createdAt));
 
   if (rows.length === 0) return [];
@@ -62,8 +66,8 @@ export async function getHabitsWithStatus(
     allByHabit.set(c.habitId, list);
   }
 
-  // Best streak computed from all-time dates
-  const calcBest = (allDates: string[]): number => {
+  // Best daily streak computed from all-time dates
+  const calcBestDaily = (allDates: string[]): number => {
     if (allDates.length === 0) return 0;
     const sorted = [...allDates].sort();
     let best = 1;
@@ -84,26 +88,104 @@ export async function getHabitsWithStatus(
     return best;
   };
 
+  // Best weekly streak: longest run of consecutive ISO weeks where the
+  // habit hit `target` completions or more.
+  const calcBestWeekly = (allDates: string[], target: number): number => {
+    if (allDates.length === 0 || target <= 0) return 0;
+    const byWeek = new Map<string, number>();
+    for (const date of allDates) {
+      const d = new Date(date + "T00:00:00");
+      const key = startOfIsoWeek(d);
+      byWeek.set(key, (byWeek.get(key) ?? 0) + 1);
+    }
+    const sortedWeeks = Array.from(byWeek.keys()).sort();
+    let best = 0;
+    let current = 0;
+    let prevKey: string | null = null;
+    for (const week of sortedWeeks) {
+      if ((byWeek.get(week) ?? 0) < target) {
+        current = 0;
+        prevKey = week;
+        continue;
+      }
+      if (prevKey === null) {
+        current = 1;
+      } else {
+        const prev = new Date(prevKey + "T00:00:00");
+        const curr = new Date(week + "T00:00:00");
+        const diffDays = Math.round(
+          (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        current = diffDays === 7 ? current + 1 : 1;
+      }
+      if (current > best) best = current;
+      prevKey = week;
+    }
+    return best;
+  };
+
   const today = todayISO();
+  const thisWeekKey = startOfIsoWeek(new Date());
 
   return rows.map((r) => {
     const inRange = inRangeByHabit.get(r.habit.id) ?? [];
     const all = allByHabit.get(r.habit.id) ?? [];
     const isIrregular = r.habit.kind === "irregular";
     const todayCount = all.filter((d) => d === today).length;
+    const target = r.habit.targetPerWeek ?? 7;
+    const useWeekly = !isIrregular && target < 7;
+    const currentStreak = isIrregular
+      ? 0
+      : useWeekly
+        ? calcWeeklyStreak(all, target)
+        : calcStreak(all);
+    const bestStreak = isIrregular
+      ? 0
+      : useWeekly
+        ? calcBestWeekly(all, target)
+        : calcBestDaily(all);
+    const thisWeekCount = all.filter((d) => {
+      const dt = new Date(d + "T00:00:00");
+      return startOfIsoWeek(dt) === thisWeekKey;
+    }).length;
     return {
       ...r.habit,
       completedDates: inRange,
-      currentStreak: isIrregular ? 0 : calcStreak(all),
-      bestStreak: isIrregular ? 0 : calcBest(all),
+      currentStreak,
+      streakUnit: useWeekly ? ("week" as const) : ("day" as const),
+      bestStreak,
       totalCompletions: all.length,
       todayCount,
+      thisWeekCount,
       skillName: r.skillName,
       categoryId: r.categoryId,
       categoryName: r.categoryName,
       categoryIcon: r.categoryIcon,
     };
   });
+}
+
+/** Per-day aggregated completion counts for the past year. Used by the
+ *  year heatmap. Map keys are YYYY-MM-DD; missing days are zero. */
+export async function getYearCompletionMap(
+  userId: string,
+  days = 371
+): Promise<Map<string, number>> {
+  const start = lastNDates(days)[0];
+  const rows = await db
+    .select({ date: habitCompletion.date })
+    .from(habitCompletion)
+    .where(
+      and(
+        eq(habitCompletion.userId, userId),
+        gte(habitCompletion.date, start)
+      )
+    );
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    map.set(r.date, (map.get(r.date) ?? 0) + 1);
+  }
+  return map;
 }
 
 /** Which skill categories have at least one habit linked (via their subskills)? */

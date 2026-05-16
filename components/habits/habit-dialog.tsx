@@ -59,6 +59,7 @@ export function HabitDialog({
   const [kind, setKind] = useState<"daily" | "irregular">("daily");
   const [skillId, setSkillId] = useState<string | null>(null);
   const [xpPerCompletion, setXpPerCompletion] = useState("1");
+  const [targetPerWeek, setTargetPerWeek] = useState(7);
   const [selectedAchievements, setSelectedAchievements] = useState<Set<string>>(
     new Set(
       AUTO_ACHIEVEMENT_OPTIONS.filter((o) => o.defaultOn).map((o) => o.id)
@@ -74,6 +75,7 @@ export function HabitDialog({
       setKind(habit.kind);
       setSkillId(habit.skillId);
       setXpPerCompletion(String(habit.xpPerCompletion));
+      setTargetPerWeek(habit.targetPerWeek ?? 7);
     } else {
       setName("");
       setDescription("");
@@ -81,6 +83,7 @@ export function HabitDialog({
       setKind("daily");
       setSkillId(null);
       setXpPerCompletion("1");
+      setTargetPerWeek(7);
       setSelectedAchievements(
         new Set(
           AUTO_ACHIEVEMENT_OPTIONS.filter((o) => o.defaultOn).map((o) => o.id)
@@ -110,6 +113,7 @@ export function HabitDialog({
         kind,
         skillId,
         xpPerCompletion: parseInt(xpPerCompletion) || 1,
+        targetPerWeek: kind === "daily" ? targetPerWeek : 7,
       };
       if (isEditing) {
         await updateHabit(habit.id, base);
@@ -193,6 +197,37 @@ export function HabitDialog({
                 </button>
               </div>
             </div>
+            {kind === "daily" && (
+              <div className="space-y-2">
+                <Label>Target per week</Label>
+                <div className="flex gap-1 flex-wrap">
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setTargetPerWeek(n)}
+                      className={`h-8 min-w-9 px-2 rounded-md border text-sm font-mono transition-colors ${
+                        targetPerWeek === n
+                          ? "border-glow bg-glow/10 text-glow"
+                          : "border-border bg-muted/40 hover:bg-accent text-muted-foreground"
+                      }`}
+                      title={
+                        n === 7
+                          ? "Every day — streak breaks on any miss"
+                          : `${n}× per week — streak counts consecutive weeks meeting the target`
+                      }
+                    >
+                      {n === 7 ? "7 (every day)" : `${n}×`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {targetPerWeek === 7
+                    ? "Strict daily — your streak breaks on any missed day."
+                    : `Flexible cadence — your streak counts consecutive weeks where you hit at least ${targetPerWeek} completion${targetPerWeek === 1 ? "" : "s"}.`}
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="habit-desc">Description (optional)</Label>
               <textarea

@@ -7,6 +7,8 @@ import {
   toggleHabitCompletion,
   deleteHabit,
   setHabitPaused,
+  setHabitArchived,
+  reorderHabits,
 } from "@/modules/habits/actions";
 import { todayISO } from "@/lib/date";
 import { toast } from "sonner";
@@ -18,10 +20,16 @@ export function HabitRow({
   habit,
   dateRange,
   subskillGroups,
+  onMoveUp,
+  onMoveDown,
 }: {
   habit: HabitWithLink;
   dateRange: string[];
   subskillGroups: SubskillGroup[];
+  /** Called when the user clicks ▲ on this row. */
+  onMoveUp?: () => void;
+  /** Called when the user clicks ▼ on this row. */
+  onMoveDown?: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -63,6 +71,19 @@ export function HabitRow({
     }
   }
 
+  async function handleArchive() {
+    try {
+      await setHabitArchived(habit.id, !habit.archived);
+      toast.success(
+        habit.archived
+          ? `Restored "${habit.name}"`
+          : `Archived "${habit.name}" — history kept`
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  }
+
   async function handleTogglePause() {
     try {
       await setHabitPaused(habit.id, !isPaused);
@@ -71,6 +92,14 @@ export function HabitRow({
       toast.error(e instanceof Error ? e.message : "Failed");
     }
   }
+
+  const target = habit.targetPerWeek ?? 7;
+  const flexible = target < 7;
+  const weekProgressPct = flexible
+    ? Math.min(100, (habit.thisWeekCount / target) * 100)
+    : 0;
+  // Keep `reorderHabits` import alive — used at parent level via callbacks.
+  void reorderHabits;
 
   const completedSet = new Set(habit.completedDates);
 
@@ -142,12 +171,26 @@ export function HabitRow({
                 </span>
               )}
             </div>
-            {habit.currentStreak > 0 && !isPaused && (
-              <span className="text-xs text-xp font-mono mt-0.5 block">
-                🔥 {habit.currentStreak} day
-                {habit.currentStreak === 1 ? "" : "s"}
-              </span>
-            )}
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {habit.currentStreak > 0 && !isPaused && (
+                <span className="text-xs text-xp font-mono">
+                  🔥 {habit.currentStreak} {habit.streakUnit}
+                  {habit.currentStreak === 1 ? "" : "s"}
+                </span>
+              )}
+              {flexible && !isPaused && (
+                <span
+                  className={`text-xs font-mono ${
+                    habit.thisWeekCount >= target
+                      ? "text-glow"
+                      : "text-muted-foreground"
+                  }`}
+                  title={`${habit.thisWeekCount}/${target} completions this week`}
+                >
+                  📅 {habit.thisWeekCount}/{target} this week
+                </span>
+              )}
+            </div>
           </button>
 
           {/* Last 7 days dots */}
@@ -179,8 +222,31 @@ export function HabitRow({
             </div>
           )}
 
-          {/* Actions on hover */}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Actions on hover. Fixed width on sm+ so the row layout (and
+              the date-header strip above) stays aligned regardless of which
+              optional buttons render. `justify-end` keeps the rightmost
+              button anchored to the right edge. */}
+          <div className="flex sm:w-[15rem] gap-0.5 items-center justify-end opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
+            {onMoveUp && (
+              <button
+                type="button"
+                onClick={onMoveUp}
+                className="h-6 w-6 text-xs text-muted-foreground hover:text-foreground"
+                title="Move up"
+              >
+                ▲
+              </button>
+            )}
+            {onMoveDown && (
+              <button
+                type="button"
+                onClick={onMoveDown}
+                className="h-6 w-6 text-xs text-muted-foreground hover:text-foreground"
+                title="Move down"
+              >
+                ▼
+              </button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -201,6 +267,17 @@ export function HabitRow({
             <Button
               variant="ghost"
               size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleArchive}
+              title={
+                habit.archived ? "Restore from archive" : "Archive (keeps history)"
+              }
+            >
+              {habit.archived ? "Restore" : "Archive"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-7 px-2 text-xs text-destructive"
               onClick={handleDelete}
             >
@@ -208,6 +285,17 @@ export function HabitRow({
             </Button>
           </div>
         </div>
+
+        {flexible && !isPaused && (
+          <div className="px-3 pb-2 -mt-1">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-muted/40">
+              <div
+                className="h-full rounded-full bg-glow/70 transition-all"
+                style={{ width: `${weekProgressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Expanded: description + stats */}
         {expanded && (

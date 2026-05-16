@@ -219,6 +219,11 @@ export const habit = sqliteTable("habit", {
   description: text("description"),
   icon: text("icon").notNull().default("✅"),
   kind: text("kind", { enum: ["daily", "irregular"] }).notNull().default("daily"),
+  /** For "daily" habits: how many days per week the user expects to do this.
+   *  7 = strictly every day (legacy behaviour); <7 = flexible cadence
+   *  (current streak counted in *weeks meeting the target* rather than
+   *  consecutive days). Ignored for "irregular". */
+  targetPerWeek: integer("target_per_week").notNull().default(7),
   xpPerCompletion: integer("xp_per_completion").notNull().default(1),
   sortOrder: integer("sort_order").notNull().default(0),
   paused: integer("paused", { mode: "boolean" }).notNull().default(false),

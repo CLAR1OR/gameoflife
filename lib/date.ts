@@ -47,6 +47,53 @@ export function calcStreak(completedDates: string[]): number {
   return streak;
 }
 
+/** Local ISO date (YYYY-MM-DD) of the Monday that starts the week
+ * containing `d`. ISO weeks (Mon → Sun) — keeps consistency regardless of
+ * locale defaults. */
+export function startOfIsoWeek(d: Date): string {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // Sunday=0 in JS; we want Monday=0 so shift by 1.
+  const dow = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - dow);
+  return formatLocalDate(x);
+}
+
+/**
+ * Streak of consecutive weeks (ending this week, or last week if this week
+ * hasn't met its target yet) in which the habit hit `targetPerWeek` or more
+ * completions. Used for flexible-cadence habits (e.g. "3x/week").
+ */
+export function calcWeeklyStreak(
+  completedDates: string[],
+  targetPerWeek: number
+): number {
+  if (completedDates.length === 0 || targetPerWeek <= 0) return 0;
+  const byWeek = new Map<string, number>();
+  for (const date of completedDates) {
+    const d = new Date(date + "T00:00:00");
+    const key = startOfIsoWeek(d);
+    byWeek.set(key, (byWeek.get(key) ?? 0) + 1);
+  }
+  const today = new Date();
+  const thisWeek = startOfIsoWeek(today);
+  // Walk weeks backward. Start from this week — if it hasn't met the
+  // target yet, start from last week instead (so the streak isn't broken
+  // until the week actually ends).
+  let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if ((byWeek.get(thisWeek) ?? 0) < targetPerWeek) {
+    cursor.setDate(cursor.getDate() - 7);
+  }
+  let streak = 0;
+  for (let i = 0; i < 520; i++) {
+    const key = startOfIsoWeek(cursor);
+    if ((byWeek.get(key) ?? 0) >= targetPerWeek) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 7);
+    } else break;
+  }
+  return streak;
+}
+
 /**
  * Consecutive days ending today (or yesterday) where at least one of the
  * provided habit completion-date-lists has that date.

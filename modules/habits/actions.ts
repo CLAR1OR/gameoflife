@@ -33,6 +33,8 @@ export async function createHabit(data: {
   kind?: "daily" | "irregular";
   skillId?: string | null;
   xpPerCompletion?: number;
+  /** 1–7. <7 = flexible cadence (weekly streak). Defaults to 7. */
+  targetPerWeek?: number;
   autoAchievements?: AutoAchievementSpec[];
 }) {
   const session = await requireSession();
@@ -40,6 +42,10 @@ export async function createHabit(data: {
     where: (h, { and: a, eq: e }) =>
       a(e(h.userId, session.user.id), e(h.archived, false)),
   });
+  const clampedTarget = Math.min(
+    7,
+    Math.max(1, Math.round(data.targetPerWeek ?? 7))
+  );
   const [row] = await db
     .insert(habit)
     .values({
@@ -50,6 +56,7 @@ export async function createHabit(data: {
       kind: data.kind ?? "daily",
       skillId: data.skillId ?? null,
       xpPerCompletion: data.xpPerCompletion ?? 1,
+      targetPerWeek: clampedTarget,
       sortOrder: existing.length,
     })
     .returning();
@@ -102,12 +109,20 @@ export async function updateHabit(
     kind?: "daily" | "irregular";
     skillId?: string | null;
     xpPerCompletion?: number;
+    targetPerWeek?: number;
   }
 ) {
   const session = await requireSession();
+  const updates: Record<string, unknown> = { ...data };
+  if (data.targetPerWeek !== undefined) {
+    updates.targetPerWeek = Math.min(
+      7,
+      Math.max(1, Math.round(data.targetPerWeek))
+    );
+  }
   await db
     .update(habit)
-    .set(data)
+    .set(updates)
     .where(and(eq(habit.id, id), eq(habit.userId, session.user.id)));
 
   revalidatePath("/habits");
@@ -119,6 +134,17 @@ export async function setHabitPaused(id: string, paused: boolean) {
   await db
     .update(habit)
     .set({ paused })
+    .where(and(eq(habit.id, id), eq(habit.userId, session.user.id)));
+
+  revalidatePath("/habits");
+  revalidatePath("/skills");
+}
+
+export async function setHabitArchived(id: string, archived: boolean) {
+  const session = await requireSession();
+  await db
+    .update(habit)
+    .set({ archived })
     .where(and(eq(habit.id, id), eq(habit.userId, session.user.id)));
 
   revalidatePath("/habits");

@@ -8,6 +8,7 @@ import {
   undoLastIrregularLog,
   deleteHabit,
   setHabitPaused,
+  setHabitArchived,
 } from "@/modules/habits/actions";
 import { toast } from "sonner";
 import { celebrate } from "@/lib/celebrate";
@@ -18,9 +19,13 @@ import type { SubskillGroup } from "./types";
 export function IrregularHabitRow({
   habit,
   subskillGroups,
+  onMoveUp,
+  onMoveDown,
 }: {
   habit: HabitWithLink;
   subskillGroups: SubskillGroup[];
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -167,7 +172,27 @@ export function IrregularHabitRow({
                 Undo
               </Button>
             )}
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity">
+              {onMoveUp && (
+                <button
+                  type="button"
+                  onClick={onMoveUp}
+                  className="h-6 w-6 text-xs text-muted-foreground hover:text-foreground"
+                  title="Move up"
+                >
+                  ▲
+                </button>
+              )}
+              {onMoveDown && (
+                <button
+                  type="button"
+                  onClick={onMoveDown}
+                  className="h-6 w-6 text-xs text-muted-foreground hover:text-foreground"
+                  title="Move down"
+                >
+                  ▼
+                </button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -184,6 +209,25 @@ export function IrregularHabitRow({
                 onClick={() => setEditOpen(true)}
               >
                 Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={async () => {
+                  try {
+                    await setHabitArchived(habit.id, !habit.archived);
+                    toast.success(
+                      habit.archived
+                        ? `Restored "${habit.name}"`
+                        : `Archived "${habit.name}"`
+                    );
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Failed");
+                  }
+                }}
+              >
+                {habit.archived ? "Restore" : "Archive"}
               </Button>
               <Button
                 variant="ghost"
