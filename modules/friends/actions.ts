@@ -26,8 +26,6 @@ export async function createFriend(data: {
   photoUrl?: string | null;
   currentResidenceId?: string | null;
   birthday?: string | null;
-  phone?: string | null;
-  email?: string | null;
   metAt?: string | null;
   howWeMet?: string | null;
   notes?: string | null;
@@ -43,8 +41,6 @@ export async function createFriend(data: {
       photoUrl: data.photoUrl?.trim() || null,
       currentResidenceId: data.currentResidenceId ?? null,
       birthday: data.birthday?.trim() || null,
-      phone: data.phone?.trim() || null,
-      email: data.email?.trim() || null,
       metAt: data.metAt?.trim() || null,
       howWeMet: data.howWeMet?.trim() || null,
       notes: data.notes?.trim() || null,
@@ -76,8 +72,6 @@ export async function updateFriend(
     nickname?: string | null;
     photoUrl?: string | null;
     birthday?: string | null;
-    phone?: string | null;
-    email?: string | null;
     metAt?: string | null;
     howWeMet?: string | null;
     notes?: string | null;

@@ -3,19 +3,24 @@ import {
   getFriendsByUser,
   getFriendsStats,
   getFriendTags,
+  getInteractionDayMap,
+  getUpcomingBirthdays,
 } from "@/modules/friends/queries";
 import { getPlacesByUser } from "@/modules/places/queries";
 import { FriendsView } from "./friends-view";
 
 export default async function FriendsPage() {
   const session = await requireSession();
-  const [friends, allFriends, stats, places, allTags] = await Promise.all([
-    getFriendsByUser(session.user.id),
-    getFriendsByUser(session.user.id, { includeArchived: true }),
-    getFriendsStats(session.user.id),
-    getPlacesByUser(session.user.id),
-    getFriendTags(session.user.id),
-  ]);
+  const [friends, allFriends, stats, places, allTags, interactionMap, birthdays] =
+    await Promise.all([
+      getFriendsByUser(session.user.id),
+      getFriendsByUser(session.user.id, { includeArchived: true }),
+      getFriendsStats(session.user.id),
+      getPlacesByUser(session.user.id),
+      getFriendTags(session.user.id),
+      getInteractionDayMap(session.user.id, 371),
+      getUpcomingBirthdays(session.user.id, 30),
+    ]);
 
   const archived = allFriends.filter((f) => f.archived);
 
@@ -25,6 +30,9 @@ export default async function FriendsPage() {
     countryName: p.countryName,
   }));
 
+  const interactionCounts: Record<string, number> = {};
+  for (const [date, n] of interactionMap.entries()) interactionCounts[date] = n;
+
   return (
     <FriendsView
       friends={friends}
@@ -32,6 +40,8 @@ export default async function FriendsPage() {
       stats={stats}
       knownPlaces={knownPlaces}
       allTags={allTags}
+      interactionCounts={interactionCounts}
+      birthdays={birthdays}
     />
   );
 }

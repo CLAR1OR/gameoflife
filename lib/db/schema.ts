@@ -401,7 +401,10 @@ export const friend = sqliteTable("friend", {
   photoUrl: text("photo_url"),
   currentResidenceId: text("current_residence_id").references(() => place.id, { onDelete: "set null" }),
   birthday: text("birthday"), // YYYY-MM-DD; or "--MM-DD" if year unknown
+  /** @deprecated kept for backup-restore compatibility — contact methods
+   *  live in the `friend_contact` table now (typed phone/email/whatsapp/…). */
   phone: text("phone"),
+  /** @deprecated see phone */
   email: text("email"),
   metAt: text("met_at"),
   howWeMet: text("how_we_met"),

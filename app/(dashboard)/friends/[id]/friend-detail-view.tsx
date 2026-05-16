@@ -28,13 +28,13 @@ import type {
   Friend,
   FriendInteraction,
   FriendResidence,
-} from "@/modules/friends/queries";
+} from "@/modules/friends/types";
 import type {
   FriendTag,
   FriendContact,
   FriendEvent,
-} from "@/modules/friends/queries";
-import type { Place } from "@/modules/places/queries";
+} from "@/modules/friends/types";
+import type { Place } from "@/modules/places/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -95,8 +95,6 @@ export function FriendDetailView({
     friend.contactCadenceDays?.toString() ?? ""
   );
   const [birthday, setBirthday] = useState(friend.birthday ?? "");
-  const [phone, setPhone] = useState(friend.phone ?? "");
-  const [email, setEmail] = useState(friend.email ?? "");
   const [busy, setBusy] = useState(false);
 
   const [residenceQuery, setResidenceQuery] = useState("");
@@ -121,8 +119,6 @@ export function FriendDetailView({
         howWeMet: howWeMet || null,
         notes: notes || null,
         birthday: birthday || null,
-        phone: phone || null,
-        email: email || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
       });
@@ -293,22 +289,6 @@ export function FriendDetailView({
                 {friendTags.map((t) => (
                   <TagChip key={t.id} tag={t} />
                 ))}
-                {friend.phone && (
-                  <a
-                    href={`tel:${friend.phone}`}
-                    className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[10px] font-mono hover:border-glow/40 transition-colors"
-                  >
-                    📞 {friend.phone}
-                  </a>
-                )}
-                {friend.email && (
-                  <a
-                    href={`mailto:${friend.email}`}
-                    className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[10px] font-mono hover:border-glow/40 transition-colors"
-                  >
-                    ✉️ {friend.email}
-                  </a>
-                )}
               </div>
             </>
           )}
@@ -366,8 +346,6 @@ export function FriendDetailView({
       <FriendContactsSection
         friendId={friend.id}
         contacts={contacts}
-        legacyPhone={friend.phone}
-        legacyEmail={friend.email}
       />
 
       {editing && (
@@ -390,26 +368,6 @@ export function FriendDetailView({
                 max={365}
                 value={cadence}
                 onChange={(e) => setCadence(e.target.value)}
-                className="h-8 text-xs"
-              />
-            </div>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[10px]">Phone</Label>
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px]">Email</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
@@ -568,7 +526,7 @@ export function FriendDetailView({
                 <button
                   type="button"
                   onClick={() => handleDeleteInteraction(i.id)}
-                  className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
                 >
                   ✕
                 </button>

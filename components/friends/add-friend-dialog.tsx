@@ -20,7 +20,7 @@ import {
   addPlaceFromGeocode,
 } from "@/modules/places/actions";
 import type { GeocodeResult } from "@/lib/geocode";
-import type { Place } from "@/modules/places/queries";
+import type { Place } from "@/modules/places/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -40,8 +40,6 @@ export function AddFriendDialog({
   const [howWeMet, setHowWeMet] = useState("");
   const [cadenceDays, setCadenceDays] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -93,8 +91,6 @@ export function AddFriendDialog({
         currentResidenceId: residenceId || null,
         howWeMet: howWeMet || null,
         birthday: birthday || null,
-        phone: phone || null,
-        email: email || null,
         notes: notes || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
@@ -119,8 +115,6 @@ export function AddFriendDialog({
       setHowWeMet("");
       setCadenceDays("");
       setBirthday("");
-      setPhone("");
-      setEmail("");
       setNotes("");
       setPhotoFile(null);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -278,27 +272,6 @@ export function AddFriendDialog({
                   value={cadenceDays}
                   onChange={(e) => setCadenceDays(e.target.value)}
                   placeholder="e.g. 30"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label>Phone</Label>
-                <Input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+49 …"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="anna@example.com"
                 />
               </div>
             </div>

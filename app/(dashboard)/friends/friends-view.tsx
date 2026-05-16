@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { AddFriendDialog } from "@/components/friends/add-friend-dialog";
 import { CheckInButton } from "@/components/friends/check-in-button";
 import { FriendsGallery } from "@/components/friends/friends-gallery";
+import { BirthdaysStrip } from "@/components/friends/birthdays-strip";
+import { YearHeatmap } from "@/components/habits/year-heatmap";
 import { TagChip } from "@/components/friends/tag-chip";
 import { TagManagerDialog } from "@/components/friends/friend-tags-section";
 import { archiveFriend } from "@/modules/friends/actions";
@@ -17,8 +19,9 @@ import type {
   FriendCardData,
   FriendsStats,
   FriendTag,
-} from "@/modules/friends/queries";
-import type { Place } from "@/modules/places/queries";
+  UpcomingBirthday,
+} from "@/modules/friends/types";
+import type { Place } from "@/modules/places/types";
 
 type ViewMode = "cards" | "gallery";
 type SortMode = "due" | "recent" | "name" | "added";
@@ -70,16 +73,20 @@ export function FriendsView({
   stats,
   knownPlaces,
   allTags,
+  interactionCounts,
+  birthdays,
 }: {
   friends: FriendCardData[];
   archived: FriendCardData[];
   stats: FriendsStats;
   knownPlaces: Pick<Place, "id" | "name" | "countryName">[];
   allTags: FriendTag[];
+  interactionCounts: Record<string, number>;
+  birthdays: UpcomingBirthday[];
 }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
-  const [view, setView] = useState<ViewMode>("cards");
+  const [view, setView] = useState<ViewMode>("gallery");
   const [sort, setSort] = useState<SortMode>("due");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -150,7 +157,7 @@ export function FriendsView({
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Friends</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Friends</h1>
           <p className="text-sm text-muted-foreground mt-1">
             People worth keeping track of. Check in regularly — it earns XP and
             keeps the relationship warm.
@@ -189,6 +196,17 @@ export function FriendsView({
           </Button>
         </div>
       </div>
+
+      {birthdays.length > 0 && <BirthdaysStrip birthdays={birthdays} />}
+
+      {stats.thisYearInteractions > 0 && (
+        <YearHeatmap
+          counts={interactionCounts}
+          accent="glow-purple"
+          title="🫂 Interactions"
+          unit="interactions"
+        />
+      )}
 
       {(friends.length > 0 || archived.length > 0) && (
         <div className="rounded-xl border bg-card p-3 space-y-3">
