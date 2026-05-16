@@ -1,0 +1,24 @@
+services:
+  gameoflife:
+    build:
+      context: .
+      args:
+        # Public URL the client-side code will hit. Bake at build time
+        # because Next.js inlines NEXT_PUBLIC_* into the JS bundle.
+        NEXT_PUBLIC_BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+    image: gameoflife:latest
+    container_name: gameoflife
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    environment:
+      # Server secrets — read from the .env file alongside compose.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+    volumes:
+      # SQLite DB (data/gameoflife.db). The schema is created on first
+      # boot via lib/db/index.ts.
+      - ./data:/app/data
+      # User-uploaded photos.
+      - ./uploads/places:/app/public/places
+      - ./uploads/friends:/app/public/friends

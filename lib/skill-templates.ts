@@ -563,7 +563,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Guitar",
     description: "From first chords to full songs, solos, and jamming",
     icon: "🎸",
-    coverImage: "linear-gradient(135deg, #0a0a0a 0%, #3a2418 45%, #92400e 100%)",
+    coverImage: "url('/guitar.png') center/cover",
     subskills: [
       // =====================
       // FOUNDATIONS
@@ -3760,7 +3760,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Memory & Mnemonics",
     description: "From a normal memory to memory-athlete tools — and a richer mind for it",
     icon: "🧠",
-    coverImage: "linear-gradient(135deg, #0f0a1a 0%, #312e81 35%, #7c3aed 70%, #fbbf24 100%)",
+    coverImage: "url('/memory.png') center/cover",
     subskills: [
       {
         name: "Foundations",
@@ -3911,7 +3911,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "World History",
     description: "From Sumer to last year — a coherent picture of the human story",
     icon: "📜",
-    coverImage: "linear-gradient(135deg, #1a1408 0%, #422006 35%, #b45309 70%, #fcd34d 100%)",
+    coverImage: "url('/worldhistory.png') center/cover",
     subskills: [
       {
         name: "Historical Thinking",
@@ -4075,7 +4075,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Biology",
     description: "From the cell to the biosphere — a living understanding of life",
     icon: "🧬",
-    coverImage: "linear-gradient(135deg, #052e16 0%, #14532d 35%, #16a34a 70%, #bbf7d0 100%)",
+    coverImage: "url('/biology.png') center/cover",
     subskills: [
       {
         name: "Foundations & Scientific Method",
@@ -4229,7 +4229,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Physics",
     description: "From dropped balls to general relativity and quantum field theory",
     icon: "⚛️",
-    coverImage: "linear-gradient(135deg, #020617 0%, #1e3a8a 35%, #2563eb 70%, #93c5fd 100%)",
+    coverImage: "url('/physics.png') center/cover",
     subskills: [
       {
         name: "Mathematical Foundations",
@@ -4413,7 +4413,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Chemistry",
     description: "From the periodic table to running real reactions",
     icon: "🧪",
-    coverImage: "linear-gradient(135deg, #0a0a1a 0%, #1e1b4b 35%, #7c3aed 70%, #f0abfc 100%)",
+    coverImage: "url('/chemistry.png') center/cover",
     subskills: [
       {
         name: "Foundations",
@@ -4581,7 +4581,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Astronomy",
     description: "From naked-eye stars to imaging galaxies in your backyard",
     icon: "🌌",
-    coverImage: "linear-gradient(135deg, #020617 0%, #1e1b4b 35%, #4338ca 70%, #fde047 100%)",
+    coverImage: "url('/astronomy.png') center/cover",
     subskills: [
       {
         name: "Naked-Eye Sky",
@@ -4741,7 +4741,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Home Repair",
     description: "Fix anything in a house — drywall to wiring, plumbing to roofing",
     icon: "🛠️",
-    coverImage: "linear-gradient(135deg, #1a0a0a 0%, #422006 35%, #b45309 70%, #d6d3d1 100%)",
+    coverImage: "url('/home-repair.png') center/cover",
     subskills: [
       {
         name: "Tools & Safety",
@@ -4937,7 +4937,7 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Conversation",
     description: "From small talk dread to making everyone you talk to feel seen",
     icon: "💬",
-    coverImage: "linear-gradient(135deg, #1a0a1a 0%, #581c87 35%, #db2777 70%, #fda4af 100%)",
+    coverImage: "url('/conversation.png') center/cover",
     subskills: [
       {
         name: "Foundations & Mindset",
