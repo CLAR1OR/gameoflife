@@ -20,6 +20,7 @@ import { ensurePlaceAchievementsSeeded } from "@/lib/places-achievements";
 import { ensureFriendAchievementsSeeded } from "@/lib/friends-achievements";
 import { getUserSettings } from "@/modules/settings/queries";
 import { isFeatureEnabled } from "@/modules/settings/features";
+import { getSkillCoverPack, resolveSkillCover } from "@/lib/skill-covers";
 import { getNetWorth, getAccountAttention } from "@/modules/finance/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,16 +99,19 @@ export default async function DashboardPage() {
     getPlacesStats(userId),
     getPeopleToThinkAbout(userId),
   ]);
+  const settings = settingsEarly;
 
   const todaysQuestsEnabled = isFeatureEnabled(settings.features, "todaysQuests");
   const todaysQuests = todaysQuestsEnabled ? await getTodaysQuests(userId) : [];
 
   const today = todayISO();
+  const coverPack = getSkillCoverPack(settings.skillCoverPack);
   const activeSkills = categories
     .filter((c) => c.status === "active")
     .map((c) => ({
       ...c,
       hasHabit: categoryIdsWithHabits.has(c.id),
+      resolvedCover: resolveSkillCover(c, coverPack),
     }));
 
   const activeHabits = habits.filter((h) => !h.paused);

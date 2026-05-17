@@ -18,7 +18,7 @@ import {
   activateTemplate,
 } from "@/modules/skills/actions";
 import { toast } from "sonner";
-import { resolveCoverImage, type SkillTemplate } from "@/lib/skill-templates";
+import type { SkillTemplate } from "@/lib/skill-templates";
 
 type SkillWithCount = {
   id: string;
@@ -31,6 +31,9 @@ type SkillWithCount = {
   status: string;
   skillCount: number;
   hasHabit: boolean;
+  /** Pre-resolved cover string (user upload → pack image → fallback
+   *  gradient). Computed by the server page. */
+  resolvedCover: string | null;
 };
 
 function StatusButtons({
@@ -85,12 +88,9 @@ function FocusBanner({
   onDelete: () => void;
   onStatusChange: (status: "active" | "background" | "inactive") => void;
 }) {
-  const cover = resolveCoverImage({
-    templateId: skill.templateId,
-    coverImage: skill.coverImage,
-  });
   const background =
-    cover || `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
+    skill.resolvedCover ||
+    `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
 
   return (
     <Link href={`/skills/${skill.id}`} className="block group">
@@ -206,12 +206,9 @@ function SkillTile({
   onDelete: () => void;
   onStatusChange: (status: "active" | "background" | "inactive") => void;
 }) {
-  const cover = resolveCoverImage({
-    templateId: skill.templateId,
-    coverImage: skill.coverImage,
-  });
   const background =
-    cover || `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
+    skill.resolvedCover ||
+    `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
   const isBackground = skill.status === "background";
   const accentColor = isBackground ? "glow-purple" : "muted-foreground";
 
@@ -318,19 +315,20 @@ function TemplateTile({
   template,
   onActivate,
 }: {
-  template: SkillTemplate;
+  template: SkillTemplate & { resolvedCover?: string | null };
   onActivate: () => void;
 }) {
   const totalMilestones = template.subskills.reduce(
     (sum, s) => sum + s.milestones.length,
     0
   );
+  const bg = template.resolvedCover ?? template.coverImage;
   return (
     <div className="group relative aspect-square w-full rounded-xl overflow-hidden border-2 border-dashed border-glow-purple/30 hover:border-glow-purple/60 transition-all">
       {/* Cover image with greyscale */}
       <div
         className="absolute inset-0 grayscale-[70%] brightness-60 group-hover:grayscale-[40%] group-hover:brightness-75 transition-all"
-        style={{ background: template.coverImage }}
+        style={{ background: bg }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
 
@@ -379,7 +377,9 @@ export function SkillsView({
   active: SkillWithCount[];
   background: SkillWithCount[];
   inactive: SkillWithCount[];
-  availableTemplates: SkillTemplate[];
+  availableTemplates: (SkillTemplate & {
+    resolvedCover: string | null;
+  })[];
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<SkillWithCount | null>(null);

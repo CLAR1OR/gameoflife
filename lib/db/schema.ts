@@ -64,7 +64,14 @@ export const skillCategory = sqliteTable("skill_category", {
   color: text("color"),
   status: text("status", { enum: ["active", "background", "inactive"] }).notNull().default("inactive"),
   templateId: text("template_id"),
+  /** Either a CSS background string (gradient) or a /skills/<file> URL
+   *  for a user-uploaded cover. Takes precedence over the pack image
+   *  when the path starts with `/skills/`. */
   coverImage: text("cover_image"),
+  /** Filename stem (no extension) used by the cover-pack system. When
+   *  set + no user upload + active pack contains a matching file, the
+   *  pack's image is shown instead of `coverImage`. */
+  coverKey: text("cover_key"),
   /** Set the first time we auto-seed deliberate-practice routines from the
    * template, so subsequent visits don't silently re-add deleted ones. */
   practiceRoutinesSeeded: integer("practice_routines_seeded", { mode: "boolean" }).notNull().default(false),

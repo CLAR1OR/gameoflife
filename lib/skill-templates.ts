@@ -20,12 +20,23 @@ export type TemplateAchievement = {
     | { type: "all_mastered" };
 };
 
+/** Generic fallback gradient used as `coverImage` when a template has a
+ *  cover-pack key but the active pack hasn't supplied an image for it. */
+export const DEFAULT_COVER_GRADIENT =
+  "linear-gradient(135deg, #0a0b14 0%, #1a1b35 50%, #2d2f5f 100%)";
+
 export type SkillTemplate = {
   id: string;
   name: string;
   description: string;
   icon: string;
+  /** CSS background string used when no pack image is available. */
   coverImage: string;
+  /** Filename stem (no extension) for the cover-pack lookup.
+   *  /public/skill-covers/<activePack>/<coverKey>.<ext> takes precedence
+   *  over `coverImage` at render time. Omit for templates that should
+   *  stay gradient-only. */
+  coverKey?: string;
   subskills: SubskillTemplate[];
   achievements?: TemplateAchievement[];
 };
@@ -35,7 +46,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     id: "cooking",
     name: "Cooking",
     description: "From kitchen basics to confident home cook",
-    coverImage: "url('/cooking.webp') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "cooking",
     icon: "🍳",
     subskills: [
       {
@@ -139,7 +151,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Russian Language",
     description: "From the first Cyrillic letter to reading Dostoevsky in the original",
     icon: "🇷🇺",
-    coverImage: "url('/russian.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "russian",
     subskills: [
       // =====================
       // ROOT
@@ -371,7 +384,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
   name: "Piano",
   description: "From first chords to advanced concert repertoire",
   icon: "🎹",
-  coverImage: "url('/piano.png') center/cover",
+  coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "piano",
   subskills: [
     // =====================
     // FOUNDATIONS
@@ -563,7 +577,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Guitar",
     description: "From first chords to full songs, solos, and jamming",
     icon: "🎸",
-    coverImage: "url('/guitar.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "guitar",
     subskills: [
       // =====================
       // FOUNDATIONS
@@ -760,7 +775,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Survival Skills",
     description: "Be the person who stays calm and capable when things go wrong",
     icon: "🏕️",
-    coverImage: "url('/survival.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "survival",
     subskills: [
       // =====================
       // ROOT: PRIORITIES & MINDSET
@@ -955,7 +971,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Writing",
     description: "From daily practice to publishing finished work that reaches readers",
     icon: "✍️",
-    coverImage: "url('/writing.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "writing",
     subskills: [
       // =====================
       // ROOT: HABIT
@@ -1149,7 +1166,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Brazilian Jiu-Jitsu",
     description: "From your first shrimp to receiving a black belt",
     icon: "🥋",
-    coverImage: "url('/bjj.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "bjj",
     subskills: [
       // =====================
       // FOUNDATIONS (ROOT)
@@ -1761,7 +1779,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Meditation",
     description: "From first mindful breath to steady presence in daily life",
     icon: "🧘",
-    coverImage: "url('/meditation.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "meditation",
     subskills: [
       // =====================
       // ROOT
@@ -1910,7 +1929,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Mathematics",
     description: "From arithmetic fluency to proving theorems that hold up",
     icon: "🧮",
-    coverImage: "url('/math.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "math",
     subskills: [
       // =====================
       // ROOT
@@ -2079,7 +2099,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Spanish Language",
     description: "From first hola to reading Cervantes and arguing politics in Madrid",
     icon: "🇪🇸",
-    coverImage: "url('/spanish.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "spanish",
     subskills: [
       // ROOT
       {
@@ -2284,7 +2305,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "French Language",
     description: "From bonjour to reading Camus and ordering wine in Paris like you live there",
     icon: "🇫🇷",
-    coverImage: "url('/french.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "french",
     subskills: [
       {
         name: "First Words & Sounds",
@@ -2484,7 +2506,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Singing",
     description: "From your first scale to performing repertoire that moves people",
     icon: "🎤",
-    coverImage: "url('/singing.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "singing",
     subskills: [
       {
         name: "Breath & Posture",
@@ -2685,7 +2708,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Music Theory",
     description: "From notes on a staff to writing a fugue and analyzing Coltrane",
     icon: "🎼",
-    coverImage: "url('/musictheory.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "musictheory",
     subskills: [
       {
         name: "Notation & Pitch",
@@ -2866,7 +2890,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Archery",
     description: "From your first arrow to Olympic-class accuracy",
     icon: "🏹",
-    coverImage: "url('/archery.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "archery",
     subskills: [
       {
         name: "Equipment & Safety",
@@ -3015,7 +3040,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Philosophy",
     description: "From Plato's cave to writing your own — the great conversation, joined",
     icon: "🤔",
-    coverImage: "url('/philosophy.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "philosophy",
     subskills: [
       {
         name: "Logic & Argumentation",
@@ -3223,7 +3249,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Electronics & Soldering",
     description: "From Ohm's Law to designing your own PCBs",
     icon: "🔧",
-    coverImage: "url('/electronics.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "electronics",
     subskills: [
       {
         name: "Theory Foundations",
@@ -3394,7 +3421,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Woodworking",
     description: "From workshop setup to a chair you'd hand down to a grandchild",
     icon: "🪚",
-    coverImage: "url('/woodworking.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "woodworking",
     subskills: [
       {
         name: "Workshop Setup & Safety",
@@ -3588,7 +3616,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Reading",
     description: "From sluggish reader to a real reading life — speed, depth, breadth, retention",
     icon: "📚",
-    coverImage: "url('/reading.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "reading",
     subskills: [
       {
         name: "Reading Habit",
@@ -3760,7 +3789,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Memory & Mnemonics",
     description: "From a normal memory to memory-athlete tools — and a richer mind for it",
     icon: "🧠",
-    coverImage: "url('/memory.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "memory",
     subskills: [
       {
         name: "Foundations",
@@ -3911,7 +3941,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "World History",
     description: "From Sumer to last year — a coherent picture of the human story",
     icon: "📜",
-    coverImage: "url('/worldhistory.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "worldhistory",
     subskills: [
       {
         name: "Historical Thinking",
@@ -4075,7 +4106,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Biology",
     description: "From the cell to the biosphere — a living understanding of life",
     icon: "🧬",
-    coverImage: "url('/biology.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "biology",
     subskills: [
       {
         name: "Foundations & Scientific Method",
@@ -4229,7 +4261,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Physics",
     description: "From dropped balls to general relativity and quantum field theory",
     icon: "⚛️",
-    coverImage: "url('/physics.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "physics",
     subskills: [
       {
         name: "Mathematical Foundations",
@@ -4413,7 +4446,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Chemistry",
     description: "From the periodic table to running real reactions",
     icon: "🧪",
-    coverImage: "url('/chemistry.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "chemistry",
     subskills: [
       {
         name: "Foundations",
@@ -4581,7 +4615,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Astronomy",
     description: "From naked-eye stars to imaging galaxies in your backyard",
     icon: "🌌",
-    coverImage: "url('/astronomy.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "astronomy",
     subskills: [
       {
         name: "Naked-Eye Sky",
@@ -4741,7 +4776,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Home Repair",
     description: "Fix anything in a house — drywall to wiring, plumbing to roofing",
     icon: "🛠️",
-    coverImage: "url('/home-repair.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "home-repair",
     subskills: [
       {
         name: "Tools & Safety",
@@ -4937,7 +4973,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Conversation",
     description: "From small talk dread to making everyone you talk to feel seen",
     icon: "💬",
-    coverImage: "url('/conversation.png') center/cover",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "conversation",
     subskills: [
       {
         name: "Foundations & Mindset",

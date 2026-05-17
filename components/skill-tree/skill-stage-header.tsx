@@ -2,7 +2,7 @@
 
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { resolveCoverImage } from "@/lib/skill-templates";
+import { SkillCoverUpload } from "./skill-cover-upload";
 import type { SkillWithPrerequisites } from "@/modules/skills/types";
 
 const STAGE_NAMES = [
@@ -18,19 +18,23 @@ const STAGE_NAMES = [
 const TOTAL_STAGES = 6;
 
 export function SkillStageHeader({
+  categoryId,
   skillName,
-  coverImage,
-  templateId,
+  resolvedCover,
+  hasCustomCover,
   icon,
   subskills,
 }: {
+  categoryId: string;
   skillName: string;
-  coverImage: string | null;
-  templateId: string | null;
+  /** Pre-resolved background string (user upload → pack → fallback). */
+  resolvedCover: string | null;
+  /** True when the user has uploaded a custom cover for this skill, so
+   *  the upload UI shows a "reset to default" affordance. */
+  hasCustomCover: boolean;
   icon: string | null;
   subskills: SkillWithPrerequisites[];
 }) {
-  const resolvedCover = resolveCoverImage({ templateId, coverImage });
   // Aggregate stats across all subskills
   const totalMilestones = subskills.reduce(
     (sum, s) => sum + s.milestones.length,
@@ -82,6 +86,12 @@ export function SkillStageHeader({
       </div>
       {/* Scrim for readability */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
+
+      {/* Cover upload — small button at top-right, overlays the gradient. */}
+      <SkillCoverUpload
+        categoryId={categoryId}
+        hasCustomCover={hasCustomCover}
+      />
 
       <div className="relative p-6 space-y-4">
         {/* Title row */}

@@ -16,6 +16,8 @@ import {
   seedRoutinesForCategory,
   markPracticeRoutinesSeeded,
 } from "@/modules/practice/actions";
+import { getUserSettings } from "@/modules/settings/queries";
+import { getSkillCoverPack, resolveSkillCover } from "@/lib/skill-covers";
 import { SkillTreeView } from "@/components/skill-tree/skill-tree-view";
 import { SkillStageHeader } from "@/components/skill-tree/skill-stage-header";
 import { AchievementsRow } from "@/components/achievements/achievements-row";
@@ -33,14 +35,30 @@ export default async function SkillTreePage({
 
   if (!category) notFound();
 
-  const [skills, achievements, linkedHabits, linkedBooks, contribution] =
-    await Promise.all([
-      getSkillsByCategory(categoryId, session.user.id),
-      getAchievementsByCategory(categoryId, session.user.id),
-      getLinkedHabitsForCategory(session.user.id, categoryId),
-      getLinkedBooksForCategory(session.user.id, categoryId),
-      getCategoryContributionStats(session.user.id, categoryId),
-    ]);
+  const [
+    skills,
+    achievements,
+    linkedHabits,
+    linkedBooks,
+    contribution,
+    settings,
+  ] = await Promise.all([
+    getSkillsByCategory(categoryId, session.user.id),
+    getAchievementsByCategory(categoryId, session.user.id),
+    getLinkedHabitsForCategory(session.user.id, categoryId),
+    getLinkedBooksForCategory(session.user.id, categoryId),
+    getCategoryContributionStats(session.user.id, categoryId),
+    getUserSettings(session.user.id),
+  ]);
+
+  const pack = getSkillCoverPack(settings.skillCoverPack);
+  const resolvedCover = resolveSkillCover(
+    {
+      coverImage: category.coverImage,
+      coverKey: category.coverKey,
+    },
+    pack
+  );
 
   // First-visit lazy-seed: if this category has a template but hasn't
   // been seeded yet, run the additive seed once. This catches both fresh
@@ -70,9 +88,10 @@ export default async function SkillTreePage({
         </Link>
       </div>
       <SkillStageHeader
+        categoryId={category.id}
         skillName={category.name}
-        coverImage={category.coverImage}
-        templateId={category.templateId}
+        resolvedCover={resolvedCover}
+        hasCustomCover={category.coverImage?.startsWith("/skills/") ?? false}
         icon={category.icon}
         subskills={skills}
       />

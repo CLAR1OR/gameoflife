@@ -134,6 +134,7 @@ export async function activateTemplate(templateId: string) {
       description: template.description,
       icon: template.icon,
       coverImage: template.coverImage,
+      coverKey: template.coverKey ?? null,
       status: "inactive",
       templateId: template.id,
     })
@@ -694,4 +695,113 @@ async function checkCategoryAchievements(
   }
 
   return newlyUnlocked;
+}
+
+// =====================
+// COVER UPLOAD (per skill)
+// =====================
+
+import { writeFile, mkdir, unlink } from "node:fs/promises";
+import path from "node:path";
+
+const SKILL_COVER_DIR = path.join(process.cwd(), "public", "skills");
+const ALLOWED_COVER_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_COVER_BYTES = 15 * 1024 * 1024;
+
+export async function uploadSkillCover(
+  categoryId: string,
+  formData: FormData
+) {
+  const session = await requireSession();
+  const row = await db.query.skillCategory.findFirst({
+    where: (c, { and: a, eq: e }) =>
+      a(e(c.id, categoryId), e(c.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Skill not found");
+
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("No file uploaded");
+  }
+  if (!ALLOWED_COVER_TYPES.has(file.type)) {
+    throw new Error("Unsupported image type — use JPG, PNG, WebP, or GIF");
+  }
+  if (file.size > MAX_COVER_BYTES) {
+    throw new Error("Image too large (max 15 MB)");
+  }
+
+  await mkdir(SKILL_COVER_DIR, { recursive: true });
+  const ext =
+    file.type === "image/png"
+      ? "png"
+      : file.type === "image/webp"
+        ? "webp"
+        : file.type === "image/gif"
+          ? "gif"
+          : "jpg";
+  const filename = `${categoryId}-${Date.now()}.${ext}`;
+  const dest = path.join(SKILL_COVER_DIR, filename);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await writeFile(dest, bytes);
+  const publicUrl = `/skills/${filename}`;
+
+  // Best-effort: delete the previous upload, if any.
+  if (row.coverImage?.startsWith("/skills/")) {
+    try {
+      await unlink(path.join(process.cwd(), "public", row.coverImage));
+    } catch {
+      /* already gone */
+    }
+  }
+
+  await db
+    .update(skillCategory)
+    .set({ coverImage: publicUrl, updatedAt: new Date() })
+    .where(eq(skillCategory.id, categoryId));
+
+  revalidatePath("/skills");
+  revalidatePath(`/skills/${categoryId}`);
+  revalidatePath("/");
+  return { coverImage: publicUrl };
+}
+
+/** Drop the user upload + revert to whatever the cover pack provides
+ *  (or the template's gradient if no pack image exists). */
+export async function resetSkillCover(categoryId: string) {
+  const session = await requireSession();
+  const row = await db.query.skillCategory.findFirst({
+    where: (c, { and: a, eq: e }) =>
+      a(e(c.id, categoryId), e(c.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Skill not found");
+
+  // If the user has a template, restore the template's gradient; else
+  // null it out (renderer falls back to a generic gradient).
+  let fallback: string | null = null;
+  if (row.templateId) {
+    const template = getTemplate(row.templateId);
+    if (template) fallback = template.coverImage;
+  }
+
+  if (row.coverImage?.startsWith("/skills/")) {
+    try {
+      await unlink(path.join(process.cwd(), "public", row.coverImage));
+    } catch {
+      /* already gone */
+    }
+  }
+
+  await db
+    .update(skillCategory)
+    .set({ coverImage: fallback, updatedAt: new Date() })
+    .where(eq(skillCategory.id, categoryId));
+
+  revalidatePath("/skills");
+  revalidatePath(`/skills/${categoryId}`);
+  revalidatePath("/");
 }

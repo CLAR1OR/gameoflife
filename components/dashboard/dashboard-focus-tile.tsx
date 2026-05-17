@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { resolveCoverImage } from "@/lib/skill-templates";
 
 type FocusSkill = {
   id: string;
@@ -13,15 +12,14 @@ type FocusSkill = {
   templateId: string | null;
   skillCount: number;
   hasHabit: boolean;
+  /** Pre-resolved cover string (user upload → pack image → fallback). */
+  resolvedCover: string | null;
 };
 
 export function DashboardFocusTile({ skill }: { skill: FocusSkill }) {
-  const cover = resolveCoverImage({
-    templateId: skill.templateId,
-    coverImage: skill.coverImage,
-  });
   const background =
-    cover || `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
+    skill.resolvedCover ||
+    `linear-gradient(160deg, #1a1b35 0%, #2a2d52 100%)`;
 
   return (
     <Link href={`/skills/${skill.id}`} className="block group">

@@ -14,6 +14,7 @@ export async function getCategoriesByUser(userId: string) {
       status: skillCategory.status,
       templateId: skillCategory.templateId,
       coverImage: skillCategory.coverImage,
+      coverKey: skillCategory.coverKey,
       sortOrder: skillCategory.sortOrder,
       createdAt: skillCategory.createdAt,
       updatedAt: skillCategory.updatedAt,

@@ -20,6 +20,11 @@ import { Badge } from "@/components/ui/badge";
 import { FeatureToggles } from "@/components/account/feature-toggles";
 import { CurrencyPicker } from "@/components/account/currency-picker";
 import { ThemePicker } from "@/components/account/theme-picker";
+import {
+  SkillCoverPackPicker,
+  type PackOption,
+} from "@/components/account/skill-cover-pack-picker";
+import { listSkillCoverPacks } from "@/lib/skill-covers";
 import { ResetFinanceButton } from "@/components/account/reset-finance-button";
 import { BackupSection } from "@/components/account/backup-section";
 import { ActivityTimeline } from "@/components/account/activity-timeline";
@@ -147,6 +152,23 @@ export default async function AccountPage() {
     ? new Date(session.user.createdAt as unknown as string | Date)
     : null;
   const daysAdventuring = daysSince(joined);
+
+  // List cover packs available on disk + build small preview strips.
+  const packs: PackOption[] = listSkillCoverPacks().map((p) => {
+    const sampleUrls: string[] = [];
+    const it = p.images.entries();
+    for (let i = 0; i < 4; i++) {
+      const next = it.next();
+      if (next.done) break;
+      const [stem, ext] = next.value;
+      sampleUrls.push(`/skill-covers/${p.name}/${stem}.${ext}`);
+    }
+    return {
+      name: p.name,
+      imageCount: p.images.size,
+      sampleUrls,
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -337,6 +359,15 @@ export default async function AccountPage() {
           Backup &amp; migration
         </h2>
         <BackupSection userEmail={session.user.email} />
+      </section>
+
+      {/* Activity timeline — moved below the settings so options are
+          reachable without scrolling past the timeline. */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Recent activity
+        </h2>
+        <ActivityTimeline events={timeline} />
       </section>
 
       {/* Danger zone */}
