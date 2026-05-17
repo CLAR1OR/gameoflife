@@ -292,14 +292,6 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      {/* Activity timeline */}
-      <section>
-        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-          Recent activity
-        </h2>
-        <ActivityTimeline events={timeline} />
-      </section>
-
       {/* Theme */}
       <section>
         <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
@@ -309,6 +301,14 @@ export default async function AccountPage() {
         <p className="text-[11px] text-muted-foreground/70 mt-2">
           Picks the colour palette for the entire app. Switches instantly.
         </p>
+      </section>
+
+      {/* Skill cover pack */}
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Skill cover pack
+        </h2>
+        <SkillCoverPackPicker packs={packs} initial={settings.skillCoverPack} />
       </section>
 
       {/* Preferences */}
