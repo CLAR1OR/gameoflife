@@ -9,6 +9,7 @@ import {
   getContactsForFriend,
   getEventsForFriend,
   getFriendMilestones,
+  getInteractionDayMapForFriend,
 } from "@/modules/friends/queries";
 import { getPlacesByUser } from "@/modules/places/queries";
 import { FriendDetailView } from "./friend-detail-view";
@@ -32,6 +33,7 @@ export default async function FriendPage({
     contacts,
     events,
     milestones,
+    interactionDayMap,
   ] = await Promise.all([
     getResidencesForFriend(id, session.user.id),
     getInteractionsForFriend(id, session.user.id),
@@ -41,7 +43,11 @@ export default async function FriendPage({
     getContactsForFriend(id, session.user.id),
     getEventsForFriend(id, session.user.id),
     getFriendMilestones(id, session.user.id),
+    getInteractionDayMapForFriend(session.user.id, id, 371),
   ]);
+
+  const interactionCounts: Record<string, number> = {};
+  for (const [date, n] of interactionDayMap.entries()) interactionCounts[date] = n;
 
   const knownPlaces = places.map((p) => ({
     id: p.id,
@@ -60,6 +66,7 @@ export default async function FriendPage({
       contacts={contacts}
       events={events}
       milestones={milestones}
+      interactionCounts={interactionCounts}
     />
   );
 }

@@ -380,6 +380,40 @@ export async function getInteractionDayMap(
   return map;
 }
 
+/** Same as `getInteractionDayMap` but scoped to a single friend — feeds
+ *  the per-friend heatmap on the friend detail page. */
+export async function getInteractionDayMapForFriend(
+  userId: string,
+  friendId: string,
+  days = 371
+): Promise<Map<string, number>> {
+  const now = new Date();
+  const cutoff = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - (days - 1)
+  );
+  const yyyy = cutoff.getFullYear();
+  const mm = String(cutoff.getMonth() + 1).padStart(2, "0");
+  const dd = String(cutoff.getDate()).padStart(2, "0");
+  const cutoffIso = `${yyyy}-${mm}-${dd}`;
+  const rows = await db
+    .select({ date: friendInteraction.occurredOn })
+    .from(friendInteraction)
+    .where(
+      and(
+        eq(friendInteraction.userId, userId),
+        eq(friendInteraction.friendId, friendId),
+        gte(friendInteraction.occurredOn, cutoffIso)
+      )
+    );
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    map.set(r.date, (map.get(r.date) ?? 0) + 1);
+  }
+  return map;
+}
+
 export async function getFriendsStats(userId: string): Promise<FriendsStats> {
   const friends = await getFriendsByUser(userId);
   const overdueCount = friends.filter(

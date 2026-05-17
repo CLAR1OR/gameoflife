@@ -115,12 +115,19 @@ export function FriendsView({
     }
     const q = search.trim().toLowerCase();
     if (q) {
-      list = list.filter(
-        (f) =>
-          f.name.toLowerCase().includes(q) ||
-          (f.nickname?.toLowerCase().includes(q) ?? false) ||
-          (f.currentPlace?.name.toLowerCase().includes(q) ?? false)
-      );
+      list = list.filter((f) => {
+        if (f.name.toLowerCase().includes(q)) return true;
+        if (f.nickname?.toLowerCase().includes(q)) return true;
+        if (f.currentPlace?.name.toLowerCase().includes(q)) return true;
+        if (f.currentPlace?.countryName?.toLowerCase().includes(q)) return true;
+        if (f.notes?.toLowerCase().includes(q)) return true;
+        if (f.howWeMet?.toLowerCase().includes(q)) return true;
+        if (f.lastInteractionNote?.toLowerCase().includes(q)) return true;
+        for (const t of f.tags) {
+          if (t.name.toLowerCase().includes(q)) return true;
+        }
+        return false;
+      });
     }
     const sorted = [...list];
     if (sort === "due") {
@@ -220,15 +227,6 @@ export function FriendsView({
       </div>
 
       {birthdays.length > 0 && <BirthdaysStrip birthdays={birthdays} />}
-
-      {stats.thisYearInteractions > 0 && (
-        <YearHeatmap
-          counts={interactionCounts}
-          accent="glow-purple"
-          title="🫂 Interactions"
-          unit="interactions"
-        />
-      )}
 
       {(friends.length > 0 || archived.length > 0) && (
         <div className="rounded-xl border bg-card p-3 space-y-3">
@@ -480,6 +478,15 @@ export function FriendsView({
             );
           })}
         </ul>
+      )}
+
+      {stats.thisYearInteractions > 0 && (
+        <YearHeatmap
+          counts={interactionCounts}
+          accent="glow-purple"
+          title="🫂 Interactions"
+          unit="interactions"
+        />
       )}
 
       <AddFriendDialog

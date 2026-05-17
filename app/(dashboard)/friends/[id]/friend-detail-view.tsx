@@ -12,6 +12,11 @@ import { FriendTagsSection } from "@/components/friends/friend-tags-section";
 import { FriendContactsSection } from "@/components/friends/friend-contacts-section";
 import { FriendEventsSection } from "@/components/friends/friend-events-section";
 import { FriendMilestonesSection } from "@/components/friends/friend-milestones-section";
+import { YearHeatmap } from "@/components/habits/year-heatmap";
+import {
+  friendStageFromCount,
+  nextFriendStage,
+} from "@/modules/friends/milestone-templates";
 import { TagChip } from "@/components/friends/tag-chip";
 import {
   updateFriend,
@@ -76,6 +81,7 @@ export function FriendDetailView({
   contacts,
   events,
   milestones,
+  interactionCounts,
 }: {
   friend: Friend;
   residences: (FriendResidence & {
@@ -88,6 +94,8 @@ export function FriendDetailView({
   contacts: FriendContact[];
   events: FriendEvent[];
   milestones: FriendMilestone[];
+  /** YYYY-MM-DD → interaction count for this friend, past ~year. */
+  interactionCounts: Record<string, number>;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -343,6 +351,12 @@ export function FriendDetailView({
         <CheckInButton friendId={friend.id} />
       </div>
 
+      <AtAGlanceCard
+        friend={friend}
+        interactions={interactions}
+        milestones={milestones}
+      />
+
       <FriendMilestonesSection
         friendId={friend.id}
         milestones={milestones}
@@ -584,6 +598,170 @@ export function FriendDetailView({
           )}
         </section>
       )}
+
+      {/* Per-friend interaction heatmap — when YOU saw THIS person. */}
+      {interactions.length > 0 && (
+        <YearHeatmap
+          counts={interactionCounts}
+          accent="glow-purple"
+          title={`🫂 Interactions with ${friend.nickname || friend.name.split(" ")[0]}`}
+          unit="interactions"
+        />
+      )}
     </div>
   );
+}
+
+/** Compact summary card on the friend detail page — stitches together
+ *  the highest-signal stats (stage, time-known, interaction count, last
+ *  seen, places met) so the page leads with the story of the
+ *  friendship rather than scattered widgets. */
+function AtAGlanceCard({
+  friend,
+  interactions,
+  milestones,
+}: {
+  friend: Friend;
+  interactions: FriendInteraction[];
+  milestones: FriendMilestone[];
+}) {
+  const completed = milestones.filter((m) => m.completed).length;
+  const total = milestones.length;
+  const stage = friendStageFromCount(completed);
+  const next = nextFriendStage(stage);
+
+  const placesSet = new Set<string>();
+  for (const i of interactions) if (i.placeId) placesSet.add(i.placeId);
+  const placesMet = placesSet.size;
+
+  const yearsKnown = yearsKnownFromMetAt(friend.metAt);
+  const lastSeenISO = mostRecentInteraction(interactions);
+  const daysSince = lastSeenISO ? daysSinceISO(lastSeenISO) : null;
+
+  const stageBadgeCls = stageColorClasses(stage.color);
+
+  return (
+    <section
+      className={`rounded-xl border p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2 ${stageBadgeCls}`}
+    >
+      <Stat
+        label="Stage"
+        value={
+          <span className="text-base">
+            {stage.icon} <span className="font-semibold">{stage.name}</span>
+          </span>
+        }
+        sub={
+          next
+            ? `${Math.max(0, next.min - completed)} more to ${next.name}`
+            : "Top tier"
+        }
+      />
+      <Stat
+        label="Milestones"
+        value={`${completed}/${total}`}
+        sub={total > 0 ? `${Math.round((completed / total) * 100)}%` : null}
+      />
+      <Stat
+        label="Known"
+        value={
+          yearsKnown == null
+            ? "—"
+            : yearsKnown < 1
+              ? "< 1 year"
+              : `${Math.floor(yearsKnown)} year${
+                  Math.floor(yearsKnown) === 1 ? "" : "s"
+                }`
+        }
+        sub={friend.metAt ?? "set on edit"}
+      />
+      <Stat
+        label="Interactions"
+        value={interactions.length.toString()}
+        sub={interactions.length === 0 ? "none yet" : "logged"}
+      />
+      <Stat
+        label="Last seen"
+        value={
+          daysSince == null
+            ? "never"
+            : daysSince === 0
+              ? "today"
+              : `${daysSince}d ago`
+        }
+        sub={
+          placesMet > 0
+            ? `met in ${placesMet} place${placesMet === 1 ? "" : "s"}`
+            : null
+        }
+      />
+    </section>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] font-mono uppercase tracking-wider opacity-70">
+        {label}
+      </div>
+      <div className="text-sm font-mono mt-0.5 tabular-nums">{value}</div>
+      {sub && (
+        <div className="text-[10px] font-mono opacity-60 mt-0.5">{sub}</div>
+      )}
+    </div>
+  );
+}
+
+function yearsKnownFromMetAt(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const m = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(iso);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = m[2] ? Number(m[2]) - 1 : 0;
+  const d = m[3] ? Number(m[3]) : 1;
+  const then = new Date(y, mo, d);
+  const ms = Date.now() - then.getTime();
+  if (ms < 0) return 0;
+  return ms / (1000 * 60 * 60 * 24 * 365.25);
+}
+
+function mostRecentInteraction(
+  interactions: FriendInteraction[]
+): string | null {
+  let max: string | null = null;
+  for (const i of interactions) {
+    if (max == null || i.occurredOn > max) max = i.occurredOn;
+  }
+  return max;
+}
+
+function daysSinceISO(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const then = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const ms = Date.now() - then.getTime();
+  if (ms < 0) return 0;
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+function stageColorClasses(color: string): string {
+  switch (color) {
+    case "glow":
+      return "border-glow/40 bg-glow/5";
+    case "glow-purple":
+      return "border-glow-purple/40 bg-glow-purple/5";
+    case "xp":
+      return "border-xp/40 bg-xp/5";
+    default:
+      return "border-border bg-card/40";
+  }
 }
