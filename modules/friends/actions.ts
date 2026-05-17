@@ -314,6 +314,14 @@ export async function updateFriend(
     .update(friend)
     .set(updates)
     .where(and(eq(friend.id, id), eq(friend.userId, session.user.id)));
+
+  // When `metAt` changes, the time-based milestones (known-1y/5y/10y)
+  // may need to flip. Re-sync that specific friend.
+  if (data.metAt !== undefined) {
+    const metAtVal = (updates.metAt ?? null) as string | null;
+    await syncTimeBasedFriendMilestonesForFriend(id, session.user.id, metAtVal);
+  }
+
   revalidatePath("/friends");
   revalidatePath(`/friends/${id}`);
 }

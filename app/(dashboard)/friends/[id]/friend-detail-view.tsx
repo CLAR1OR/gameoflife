@@ -99,6 +99,7 @@ export function FriendDetailView({
     friend.contactCadenceDays?.toString() ?? ""
   );
   const [birthday, setBirthday] = useState(friend.birthday ?? "");
+  const [metAt, setMetAt] = useState(friend.metAt ?? "");
   const [busy, setBusy] = useState(false);
 
   const [residenceQuery, setResidenceQuery] = useState("");
@@ -123,6 +124,7 @@ export function FriendDetailView({
         howWeMet: howWeMet || null,
         notes: notes || null,
         birthday: birthday || null,
+        metAt: metAt || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
       });
@@ -381,13 +383,27 @@ export function FriendDetailView({
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px]">How we met</Label>
-            <Input
-              value={howWeMet}
-              onChange={(e) => setHowWeMet(e.target.value)}
-              className="h-8 text-xs"
-            />
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px]">When we met</Label>
+              <Input
+                type="date"
+                value={metAt}
+                onChange={(e) => setMetAt(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground/60">
+                Drives the auto &quot;1 / 5 / 10 years known&quot; milestones.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">How we met</Label>
+              <Input
+                value={howWeMet}
+                onChange={(e) => setHowWeMet(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label className="text-[10px]">Notes</Label>

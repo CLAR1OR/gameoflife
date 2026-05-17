@@ -41,6 +41,9 @@ export function FriendMilestonesSection({
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  // Long checklist is collapsed by default — the stage banner above
+  // carries the at-a-glance status.
+  const [expanded, setExpanded] = useState(false);
 
   const completed = useMemo(
     () => milestones.filter((m) => m.completed).length,
@@ -145,18 +148,25 @@ export function FriendMilestonesSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
-          🤝 Friendship · {stage.name}
-        </h2>
         <button
           type="button"
-          onClick={handleReseed}
-          disabled={busy}
-          className="text-[10px] font-mono text-muted-foreground hover:text-foreground"
-          title="Re-add any universal milestones that were deleted"
+          onClick={() => setExpanded((s) => !s)}
+          className="text-xs font-mono uppercase tracking-wider text-glow hover:text-foreground transition-colors"
+          title={expanded ? "Hide milestone list" : "Show milestone list"}
         >
-          re-seed
+          {expanded ? "▾" : "▸"} 🤝 Friendship · {stage.name}
         </button>
+        {expanded && (
+          <button
+            type="button"
+            onClick={handleReseed}
+            disabled={busy}
+            className="text-[10px] font-mono text-muted-foreground hover:text-foreground"
+            title="Re-add any universal milestones that were deleted"
+          >
+            re-seed
+          </button>
+        )}
       </div>
 
       {/* Stage banner */}
@@ -197,6 +207,18 @@ export function FriendMilestonesSection({
         )}
       </div>
 
+      {!expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
+        >
+          show all {total} milestones ↓
+        </button>
+      ) : null}
+
+      {expanded && (
+      <>
       {/* Milestone list */}
       <ul className="space-y-1">
         {milestones.map((m) => {
@@ -348,6 +370,8 @@ export function FriendMilestonesSection({
           ))}
         </ul>
       </details>
+      </>
+      )}
     </section>
   );
 }

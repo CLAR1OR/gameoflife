@@ -40,6 +40,7 @@ export function AddFriendDialog({
   const [howWeMet, setHowWeMet] = useState("");
   const [cadenceDays, setCadenceDays] = useState("");
   const [birthday, setBirthday] = useState("");
+  const [metAt, setMetAt] = useState("");
   const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export function AddFriendDialog({
         currentResidenceId: residenceId || null,
         howWeMet: howWeMet || null,
         birthday: birthday || null,
+        metAt: metAt || null,
         notes: notes || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
@@ -115,6 +117,7 @@ export function AddFriendDialog({
       setHowWeMet("");
       setCadenceDays("");
       setBirthday("");
+      setMetAt("");
       setNotes("");
       setPhotoFile(null);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -274,6 +277,19 @@ export function AddFriendDialog({
                   placeholder="e.g. 30"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>When we met</Label>
+              <Input
+                type="date"
+                value={metAt}
+                onChange={(e) => setMetAt(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground/70">
+                Drives the auto &quot;1 / 5 / 10 years known&quot; milestones.
+                Pick Jan 1 if you only remember the year.
+              </p>
             </div>
 
             <div className="space-y-1">
