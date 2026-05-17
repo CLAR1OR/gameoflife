@@ -528,6 +528,25 @@ export const friendEvent = sqliteTable("friend_event", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+/** Concrete "we've done this together" checkpoints that roll up into a
+ *  friendship stage (Acquaintance → Friend → Close friend → Inner circle
+ *  → Family). Per-friend, mix of auto-seeded universal milestones
+ *  (templateKey set) + free-form custom ones (templateKey null). */
+export const friendMilestone = sqliteTable("friend_milestone", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  friendId: text("friend_id").notNull().references(() => friend.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  /** Identifies an auto-seeded universal milestone (e.g. "shared-meal").
+   *  Null for user-created custom milestones. Used for de-duping on seed
+   *  and for time-based auto-completion (known-1y / known-5y / known-10y). */
+  templateKey: text("template_key"),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 export const friendInteraction = sqliteTable("friend_interaction", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

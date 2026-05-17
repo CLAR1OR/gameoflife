@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TagChip } from "./tag-chip";
+import { friendStageFromCount } from "@/modules/friends/milestone-templates";
 import type { FriendCardData } from "@/modules/friends/types";
 
 /**
@@ -22,6 +23,8 @@ export function FriendsGallery({ friends }: { friends: FriendCardData[] }) {
           .slice(0, 2);
         const overdue = f.daysUntilDue !== null && f.daysUntilDue < 0;
         const contactLabel = formatContactLabel(f);
+        const stage = friendStageFromCount(f.milestonesCompleted);
+        const showStage = stage.key !== "acquaintance";
         return (
           <li key={f.id}>
             <Link
@@ -89,6 +92,21 @@ export function FriendsGallery({ friends }: { friends: FriendCardData[] }) {
                 )}
               </div>
 
+              {/* Stage chip (top-left, only above Acquaintance) */}
+              {showStage && (
+                <span
+                  className={`absolute top-2 left-2 rounded-full px-1.5 py-0.5 text-[10px] font-mono font-bold bg-black/70 border ${stageBadgeBorder(
+                    stage.color
+                  )}`}
+                  title={`${stage.name} · ${f.milestonesCompleted}/${f.milestonesTotal} milestones`}
+                >
+                  {stage.icon}{" "}
+                  <span className={stageBadgeText(stage.color)}>
+                    {stage.name}
+                  </span>
+                </span>
+              )}
+
               {/* Overdue dot */}
               {overdue && (
                 <span
@@ -102,6 +120,32 @@ export function FriendsGallery({ friends }: { friends: FriendCardData[] }) {
       })}
     </ul>
   );
+}
+
+function stageBadgeText(color: string): string {
+  switch (color) {
+    case "glow":
+      return "text-glow";
+    case "glow-purple":
+      return "text-glow-purple";
+    case "xp":
+      return "text-xp";
+    default:
+      return "text-muted-foreground";
+  }
+}
+
+function stageBadgeBorder(color: string): string {
+  switch (color) {
+    case "glow":
+      return "border-glow/50";
+    case "glow-purple":
+      return "border-glow-purple/50";
+    case "xp":
+      return "border-xp/50";
+    default:
+      return "border-border";
+  }
 }
 
 function formatContactLabel(f: FriendCardData): string | null {

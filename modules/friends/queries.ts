@@ -7,6 +7,7 @@ import {
   friendTagAssignment,
   friendContact,
   friendEvent,
+  friendMilestone,
   place,
 } from "@/lib/db/schema";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
@@ -17,6 +18,7 @@ import type {
   FriendTag,
   FriendContact,
   FriendEvent,
+  FriendMilestone,
   FriendCardData,
   FriendsStats,
   PersonAttentionItem,
@@ -29,6 +31,7 @@ export type {
   FriendTag,
   FriendContact,
   FriendEvent,
+  FriendMilestone,
   FriendCardData,
   FriendsStats,
   PersonAttentionItem,
@@ -149,6 +152,28 @@ export async function getFriendsByUser(
     tagsByFriend.set(a.friendId, list);
   }
 
+  // Per-friend milestone counts in one query.
+  const milestoneCounts =
+    friendIds.length > 0
+      ? await db
+          .select({
+            friendId: friendMilestone.friendId,
+            total: sql<number>`count(${friendMilestone.id})`,
+            completed: sql<number>`coalesce(sum(case when ${friendMilestone.completed} then 1 else 0 end), 0)`,
+          })
+          .from(friendMilestone)
+          .where(
+            and(
+              eq(friendMilestone.userId, userId),
+              inArray(friendMilestone.friendId, friendIds)
+            )
+          )
+          .groupBy(friendMilestone.friendId)
+      : [];
+  const milestonesByFriend = new Map(
+    milestoneCounts.map((m) => [m.friendId, m])
+  );
+
   const now = Date.now();
   const dayMs = 1000 * 60 * 60 * 24;
 
@@ -186,8 +211,30 @@ export async function getFriendsByUser(
       tags: tagsByFriend.get(f.id) ?? [],
       lastInteractionNote: latest?.notes ?? null,
       lastInteractionKind: latest?.kind ?? null,
+      milestonesCompleted: Number(
+        milestonesByFriend.get(f.id)?.completed ?? 0
+      ),
+      milestonesTotal: Number(milestonesByFriend.get(f.id)?.total ?? 0),
     };
   });
+}
+
+/** Per-friend milestone list — seeded universal milestones (templateKey
+ *  set) sit at the top, then any custom ones. */
+export async function getFriendMilestones(
+  friendId: string,
+  userId: string
+): Promise<FriendMilestone[]> {
+  return db
+    .select()
+    .from(friendMilestone)
+    .where(
+      and(
+        eq(friendMilestone.userId, userId),
+        eq(friendMilestone.friendId, friendId)
+      )
+    )
+    .orderBy(asc(friendMilestone.sortOrder), asc(friendMilestone.createdAt));
 }
 
 // =====================

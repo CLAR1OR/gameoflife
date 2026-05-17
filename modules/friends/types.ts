@@ -6,6 +6,7 @@ import {
   friendTag,
   friendContact,
   friendEvent,
+  friendMilestone,
 } from "@/lib/db/schema";
 
 export type Friend = InferSelectModel<typeof friend>;
@@ -14,6 +15,7 @@ export type FriendResidence = InferSelectModel<typeof friendResidence>;
 export type FriendTag = InferSelectModel<typeof friendTag>;
 export type FriendContact = InferSelectModel<typeof friendContact>;
 export type FriendEvent = InferSelectModel<typeof friendEvent>;
+export type FriendMilestone = InferSelectModel<typeof friendMilestone>;
 
 export type FriendCardData = Friend & {
   currentPlace: {
@@ -30,6 +32,10 @@ export type FriendCardData = Friend & {
   tags: FriendTag[];
   lastInteractionNote: string | null;
   lastInteractionKind: FriendInteraction["kind"] | null;
+  /** Number of friendship milestones completed. Drives the stage badge. */
+  milestonesCompleted: number;
+  /** Total milestones (seeded + custom) for this friend. */
+  milestonesTotal: number;
 };
 
 export type FriendsStats = {

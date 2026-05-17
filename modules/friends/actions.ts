@@ -9,9 +9,11 @@ import {
   friendTagAssignment,
   friendContact,
   friendEvent,
+  friendMilestone,
   userSettings,
 } from "@/lib/db/schema";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { FRIEND_MILESTONE_TEMPLATES } from "./milestone-templates";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
@@ -59,10 +61,235 @@ export async function createFriend(data: {
     });
   }
 
+  // Seed universal friendship milestones — auto-completes time-based
+  // ones based on metAt right away.
+  await seedFriendMilestones(row.id, session.user.id, row.metAt);
+
   revalidatePath("/friends");
   revalidatePath("/places");
   await checkFriendAchievements(session.user.id);
   return row;
+}
+
+/** Insert the universal friend-milestone template rows for `friendId`,
+ *  skipping any that already exist (so re-seeding is safe). Time-based
+ *  ones (known-1y / 5y / 10y) are pre-marked completed based on `metAt`. */
+async function seedFriendMilestones(
+  friendId: string,
+  userId: string,
+  metAt: string | null | undefined
+) {
+  const existing = await db
+    .select({ templateKey: friendMilestone.templateKey })
+    .from(friendMilestone)
+    .where(
+      and(
+        eq(friendMilestone.userId, userId),
+        eq(friendMilestone.friendId, friendId)
+      )
+    );
+  const seenKeys = new Set(
+    existing.map((e) => e.templateKey).filter((k): k is string => !!k)
+  );
+  const toInsert = FRIEND_MILESTONE_TEMPLATES.filter(
+    (t) => !seenKeys.has(t.key)
+  );
+  if (toInsert.length === 0) return;
+
+  const yearsKnown = yearsSince(metAt);
+  const now = new Date();
+  await db.insert(friendMilestone).values(
+    toInsert.map((t) => {
+      const auto = autoCompletionForTemplate(t.key, yearsKnown);
+      return {
+        userId,
+        friendId,
+        name: t.name,
+        templateKey: t.key,
+        sortOrder: t.sortOrder,
+        completed: auto,
+        completedAt: auto ? now : null,
+      };
+    })
+  );
+}
+
+function autoCompletionForTemplate(
+  key: string,
+  yearsKnown: number | null
+): boolean {
+  if (yearsKnown == null) return false;
+  if (key === "known-1y") return yearsKnown >= 1;
+  if (key === "known-5y") return yearsKnown >= 5;
+  if (key === "known-10y") return yearsKnown >= 10;
+  return false;
+}
+
+function yearsSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  // Accept YYYY-MM-DD or YYYY-MM or YYYY.
+  const m = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(iso);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = m[2] ? Number(m[2]) - 1 : 0;
+  const d = m[3] ? Number(m[3]) : 1;
+  const then = new Date(y, mo, d);
+  const ms = Date.now() - then.getTime();
+  if (ms < 0) return 0;
+  return ms / (1000 * 60 * 60 * 24 * 365.25);
+}
+
+/** Manually re-seed (idempotent). Useful if the template list grows
+ *  and the user wants new universal milestones added to an existing
+ *  friend. Also re-checks time-based auto-completion. */
+export async function reseedFriendMilestones(friendId: string) {
+  const session = await requireSession();
+  const f = await db.query.friend.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, friendId), e(row.userId, session.user.id)),
+  });
+  if (!f) throw new Error("Friend not found");
+  await seedFriendMilestones(friendId, session.user.id, f.metAt);
+  await syncTimeBasedFriendMilestonesForFriend(friendId, session.user.id, f.metAt);
+  revalidatePath(`/friends/${friendId}`);
+  revalidatePath("/friends");
+}
+
+async function syncTimeBasedFriendMilestonesForFriend(
+  friendId: string,
+  userId: string,
+  metAt: string | null | undefined
+) {
+  const yearsKnown = yearsSince(metAt);
+  if (yearsKnown == null) return;
+  const rows = await db
+    .select()
+    .from(friendMilestone)
+    .where(
+      and(
+        eq(friendMilestone.userId, userId),
+        eq(friendMilestone.friendId, friendId),
+        eq(friendMilestone.completed, false)
+      )
+    );
+  for (const r of rows) {
+    if (!r.templateKey) continue;
+    if (autoCompletionForTemplate(r.templateKey, yearsKnown)) {
+      await db
+        .update(friendMilestone)
+        .set({ completed: true, completedAt: new Date() })
+        .where(eq(friendMilestone.id, r.id));
+    }
+  }
+}
+
+/** Cheap pass that ticks any time-based milestones across all friends.
+ *  Called when the friends page loads so gallery stages stay current. */
+export async function syncTimeBasedFriendMilestones() {
+  const session = await requireSession();
+  const friends = await db
+    .select({ id: friend.id, metAt: friend.metAt })
+    .from(friend)
+    .where(eq(friend.userId, session.user.id));
+  for (const f of friends) {
+    if (!f.metAt) continue;
+    await syncTimeBasedFriendMilestonesForFriend(f.id, session.user.id, f.metAt);
+  }
+}
+
+export async function toggleFriendMilestone(id: string) {
+  const session = await requireSession();
+  const row = await db.query.friendMilestone.findFirst({
+    where: (m, { and: a, eq: e }) =>
+      a(e(m.id, id), e(m.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Milestone not found");
+  const next = !row.completed;
+  await db
+    .update(friendMilestone)
+    .set({ completed: next, completedAt: next ? new Date() : null })
+    .where(eq(friendMilestone.id, id));
+  revalidatePath(`/friends/${row.friendId}`);
+  revalidatePath("/friends");
+  await checkFriendAchievements(session.user.id);
+  return { completed: next };
+}
+
+export async function addFriendMilestone(data: {
+  friendId: string;
+  name: string;
+}) {
+  const session = await requireSession();
+  const name = data.name.trim();
+  if (!name) throw new Error("Name is required");
+  // Verify ownership of the friend.
+  const f = await db.query.friend.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, data.friendId), e(row.userId, session.user.id)),
+  });
+  if (!f) throw new Error("Friend not found");
+  // Place after existing rows; custom milestones live below template ones.
+  const max = await db
+    .select({
+      max: sql`max(${friendMilestone.sortOrder})`.as("max"),
+    } as never)
+    .from(friendMilestone)
+    .where(
+      and(
+        eq(friendMilestone.userId, session.user.id),
+        eq(friendMilestone.friendId, data.friendId)
+      )
+    );
+  const nextOrder = (Number((max[0] as { max?: number } | undefined)?.max) || 0) + 10;
+  const [row] = await db
+    .insert(friendMilestone)
+    .values({
+      userId: session.user.id,
+      friendId: data.friendId,
+      name,
+      sortOrder: nextOrder,
+    })
+    .returning();
+  revalidatePath(`/friends/${data.friendId}`);
+  revalidatePath("/friends");
+  return row;
+}
+
+export async function updateFriendMilestone(
+  id: string,
+  data: { name?: string }
+) {
+  const session = await requireSession();
+  const row = await db.query.friendMilestone.findFirst({
+    where: (m, { and: a, eq: e }) =>
+      a(e(m.id, id), e(m.userId, session.user.id)),
+  });
+  if (!row) throw new Error("Milestone not found");
+  const updates: Record<string, unknown> = {};
+  if (data.name !== undefined) {
+    const trimmed = data.name.trim();
+    if (!trimmed) throw new Error("Name is required");
+    updates.name = trimmed;
+  }
+  if (Object.keys(updates).length === 0) return row;
+  await db
+    .update(friendMilestone)
+    .set(updates)
+    .where(eq(friendMilestone.id, id));
+  revalidatePath(`/friends/${row.friendId}`);
+}
+
+export async function deleteFriendMilestone(id: string) {
+  const session = await requireSession();
+  const row = await db.query.friendMilestone.findFirst({
+    where: (m, { and: a, eq: e }) =>
+      a(e(m.id, id), e(m.userId, session.user.id)),
+  });
+  if (!row) return;
+  await db.delete(friendMilestone).where(eq(friendMilestone.id, id));
+  revalidatePath(`/friends/${row.friendId}`);
+  revalidatePath("/friends");
+  await checkFriendAchievements(session.user.id);
 }
 
 export async function updateFriend(

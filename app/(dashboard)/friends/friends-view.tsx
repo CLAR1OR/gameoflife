@@ -15,6 +15,10 @@ import { YearHeatmap } from "@/components/habits/year-heatmap";
 import { TagChip } from "@/components/friends/tag-chip";
 import { TagManagerDialog } from "@/components/friends/friend-tags-section";
 import { archiveFriend } from "@/modules/friends/actions";
+import {
+  FRIEND_STAGES,
+  friendStageFromCount,
+} from "@/modules/friends/milestone-templates";
 import { toast } from "sonner";
 import type {
   FriendCardData,
@@ -91,6 +95,7 @@ export function FriendsView({
   const [view, setView] = useState<ViewMode>("gallery");
   const [sort, setSort] = useState<SortMode>("due");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [stageFilter, setStageFilter] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
@@ -101,6 +106,12 @@ export function FriendsView({
     let list = source;
     if (tagFilter) {
       list = list.filter((f) => f.tags.some((t) => t.id === tagFilter));
+    }
+    if (stageFilter) {
+      list = list.filter(
+        (f) =>
+          friendStageFromCount(f.milestonesCompleted).key === stageFilter
+      );
     }
     const q = search.trim().toLowerCase();
     if (q) {
@@ -142,7 +153,7 @@ export function FriendsView({
       });
     }
     return sorted;
-  }, [source, tagFilter, search, sort]);
+  }, [source, tagFilter, stageFilter, search, sort]);
 
   async function handleUnarchive(friendId: string) {
     // Reuse archiveFriend by un-archiving via updateFriend would be better,
@@ -307,6 +318,49 @@ export function FriendsView({
               ))}
             </div>
           )}
+
+          {/* Row 3 — stage filter pills */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 mr-1">
+              stage
+            </span>
+            <button
+              type="button"
+              onClick={() => setStageFilter(null)}
+              className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors ${
+                stageFilter === null
+                  ? "border-glow text-glow bg-glow/10"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              all
+            </button>
+            {FRIEND_STAGES.map((s) => {
+              const count = source.filter(
+                (f) => friendStageFromCount(f.milestonesCompleted).key === s.key
+              ).length;
+              if (count === 0) return null;
+              const active = stageFilter === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() =>
+                    setStageFilter((cur) => (cur === s.key ? null : s.key))
+                  }
+                  className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors ${
+                    active
+                      ? "border-glow text-glow bg-glow/10"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                  title={`${count} friend${count === 1 ? "" : "s"}`}
+                >
+                  {s.icon} {s.name}{" "}
+                  <span className="opacity-60">({count})</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

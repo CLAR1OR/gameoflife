@@ -11,6 +11,7 @@ import { FriendPhotoUpload } from "@/components/friends/friend-photo-upload";
 import { FriendTagsSection } from "@/components/friends/friend-tags-section";
 import { FriendContactsSection } from "@/components/friends/friend-contacts-section";
 import { FriendEventsSection } from "@/components/friends/friend-events-section";
+import { FriendMilestonesSection } from "@/components/friends/friend-milestones-section";
 import { TagChip } from "@/components/friends/tag-chip";
 import {
   updateFriend,
@@ -33,6 +34,7 @@ import type {
   FriendTag,
   FriendContact,
   FriendEvent,
+  FriendMilestone,
 } from "@/modules/friends/types";
 import type { Place } from "@/modules/places/types";
 import { toast } from "sonner";
@@ -73,6 +75,7 @@ export function FriendDetailView({
   allTags,
   contacts,
   events,
+  milestones,
 }: {
   friend: Friend;
   residences: (FriendResidence & {
@@ -84,6 +87,7 @@ export function FriendDetailView({
   allTags: FriendTag[];
   contacts: FriendContact[];
   events: FriendEvent[];
+  milestones: FriendMilestone[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -336,6 +340,11 @@ export function FriendDetailView({
       <div>
         <CheckInButton friendId={friend.id} />
       </div>
+
+      <FriendMilestonesSection
+        friendId={friend.id}
+        milestones={milestones}
+      />
 
       <FriendTagsSection
         friendId={friend.id}
