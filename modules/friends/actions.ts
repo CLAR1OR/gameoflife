@@ -12,7 +12,11 @@ import {
   friendMilestone,
   userSettings,
 } from "@/lib/db/schema";
-import { FRIEND_MILESTONE_TEMPLATES } from "./milestone-templates";
+import {
+  getMilestonePack,
+  type FriendMilestoneTemplate,
+  type MilestonePackKey,
+} from "./milestone-templates";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
@@ -32,6 +36,7 @@ export async function createFriend(data: {
   howWeMet?: string | null;
   notes?: string | null;
   contactCadenceDays?: number | null;
+  milestonePack?: MilestonePackKey | null;
 }) {
   const session = await requireSession();
   const [row] = await db
@@ -46,6 +51,7 @@ export async function createFriend(data: {
       metAt: data.metAt?.trim() || null,
       howWeMet: data.howWeMet?.trim() || null,
       notes: data.notes?.trim() || null,
+      milestonePack: data.milestonePack ?? "friend",
       contactCadenceDays: data.contactCadenceDays ?? null,
     })
     .returning();
@@ -61,9 +67,9 @@ export async function createFriend(data: {
     });
   }
 
-  // Seed universal friendship milestones — auto-completes time-based
-  // ones based on metAt right away.
-  await seedFriendMilestones(row.id, session.user.id, row.metAt);
+  // Seed milestones from the chosen pack, auto-completing what we can.
+  await seedFriendMilestones(row.id, session.user.id, row.milestonePack);
+  await syncAutoMilestonesForFriend(row.id, session.user.id);
 
   revalidatePath("/friends");
   revalidatePath("/places");
@@ -71,14 +77,16 @@ export async function createFriend(data: {
   return row;
 }
 
-/** Insert the universal friend-milestone template rows for `friendId`,
- *  skipping any that already exist (so re-seeding is safe). Time-based
- *  ones (known-1y / 5y / 10y) are pre-marked completed based on `metAt`. */
+/** Insert the milestone-template rows for the chosen pack, skipping any
+ *  template keys that already exist. Auto-completion (time + interaction
+ *  based) is computed by `syncAutoMilestonesForFriend` afterward — this
+ *  function just creates the rows in their initial unchecked state. */
 async function seedFriendMilestones(
   friendId: string,
   userId: string,
-  metAt: string | null | undefined
+  packKey: string | null | undefined
 ) {
+  const pack = getMilestonePack(packKey);
   const existing = await db
     .select({ templateKey: friendMilestone.templateKey })
     .from(friendMilestone)
@@ -91,38 +99,20 @@ async function seedFriendMilestones(
   const seenKeys = new Set(
     existing.map((e) => e.templateKey).filter((k): k is string => !!k)
   );
-  const toInsert = FRIEND_MILESTONE_TEMPLATES.filter(
-    (t) => !seenKeys.has(t.key)
-  );
+  const toInsert = pack.templates.filter((t) => !seenKeys.has(t.key));
   if (toInsert.length === 0) return;
 
-  const yearsKnown = yearsSince(metAt);
-  const now = new Date();
   await db.insert(friendMilestone).values(
-    toInsert.map((t) => {
-      const auto = autoCompletionForTemplate(t.key, yearsKnown);
-      return {
-        userId,
-        friendId,
-        name: t.name,
-        templateKey: t.key,
-        sortOrder: t.sortOrder,
-        completed: auto,
-        completedAt: auto ? now : null,
-      };
-    })
+    toInsert.map((t) => ({
+      userId,
+      friendId,
+      name: t.name,
+      templateKey: t.key,
+      sortOrder: t.sortOrder,
+      completed: false,
+      completedAt: null,
+    }))
   );
-}
-
-function autoCompletionForTemplate(
-  key: string,
-  yearsKnown: number | null
-): boolean {
-  if (yearsKnown == null) return false;
-  if (key === "known-1y") return yearsKnown >= 1;
-  if (key === "known-5y") return yearsKnown >= 5;
-  if (key === "known-10y") return yearsKnown >= 10;
-  return false;
 }
 
 function yearsSince(iso: string | null | undefined): number | null {
@@ -139,9 +129,7 @@ function yearsSince(iso: string | null | undefined): number | null {
   return ms / (1000 * 60 * 60 * 24 * 365.25);
 }
 
-/** Manually re-seed (idempotent). Useful if the template list grows
- *  and the user wants new universal milestones added to an existing
- *  friend. Also re-checks time-based auto-completion. */
+/** Manually re-seed (idempotent). Re-runs auto-completion too. */
 export async function reseedFriendMilestones(friendId: string) {
   const session = await requireSession();
   const f = await db.query.friend.findFirst({
@@ -149,51 +137,171 @@ export async function reseedFriendMilestones(friendId: string) {
       a(e(row.id, friendId), e(row.userId, session.user.id)),
   });
   if (!f) throw new Error("Friend not found");
-  await seedFriendMilestones(friendId, session.user.id, f.metAt);
-  await syncTimeBasedFriendMilestonesForFriend(friendId, session.user.id, f.metAt);
+  await seedFriendMilestones(friendId, session.user.id, f.milestonePack);
+  await syncAutoMilestonesForFriend(friendId, session.user.id);
   revalidatePath(`/friends/${friendId}`);
   revalidatePath("/friends");
 }
 
-async function syncTimeBasedFriendMilestonesForFriend(
+/** Switch a friend to a different milestone pack. Removes any
+ *  template-keyed milestones from the previous pack that aren't in the
+ *  new pack (custom milestones, identified by null templateKey, stay),
+ *  then seeds the new pack and runs auto-completion. */
+export async function setFriendMilestonePack(
   friendId: string,
-  userId: string,
-  metAt: string | null | undefined
+  pack: MilestonePackKey
 ) {
-  const yearsKnown = yearsSince(metAt);
-  if (yearsKnown == null) return;
+  const session = await requireSession();
+  const f = await db.query.friend.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, friendId), e(row.userId, session.user.id)),
+  });
+  if (!f) throw new Error("Friend not found");
+
+  const newPack = getMilestonePack(pack);
+  const newKeys = new Set(newPack.templates.map((t) => t.key));
+
+  // Drop template-keyed milestones not in the new pack.
+  const stale = await db
+    .select({ id: friendMilestone.id, templateKey: friendMilestone.templateKey })
+    .from(friendMilestone)
+    .where(
+      and(
+        eq(friendMilestone.userId, session.user.id),
+        eq(friendMilestone.friendId, friendId)
+      )
+    );
+  for (const m of stale) {
+    if (m.templateKey && !newKeys.has(m.templateKey)) {
+      await db
+        .delete(friendMilestone)
+        .where(eq(friendMilestone.id, m.id));
+    }
+  }
+
+  await db
+    .update(friend)
+    .set({ milestonePack: pack, updatedAt: new Date() })
+    .where(eq(friend.id, friendId));
+
+  // Seed any missing rows from the new pack + run auto-completion.
+  await seedFriendMilestones(friendId, session.user.id, pack);
+  await syncAutoMilestonesForFriend(friendId, session.user.id);
+
+  revalidatePath(`/friends/${friendId}`);
+  revalidatePath("/friends");
+  await checkFriendAchievements(session.user.id);
+}
+
+/** Compute per-friend interaction stats used by auto-completing templates. */
+async function getFriendInteractionStats(
+  friendId: string,
+  userId: string
+): Promise<{
+  total: number;
+  meets: number;
+  distinctPlaces: number;
+}> {
+  const rows = await db
+    .select({
+      kind: friendInteraction.kind,
+      placeId: friendInteraction.placeId,
+    })
+    .from(friendInteraction)
+    .where(
+      and(
+        eq(friendInteraction.userId, userId),
+        eq(friendInteraction.friendId, friendId)
+      )
+    );
+  const total = rows.length;
+  const meets = rows.filter(
+    (r) => r.kind === "meet" || r.kind === "event" || r.kind === "trip"
+  ).length;
+  const placeSet = new Set<string>();
+  for (const r of rows) {
+    if (r.placeId) placeSet.add(r.placeId);
+  }
+  return { total, meets, distinctPlaces: placeSet.size };
+}
+
+function autoCompletedFromStats(
+  auto: FriendMilestoneTemplate["auto"],
+  yearsKnown: number | null,
+  stats: { total: number; meets: number; distinctPlaces: number }
+): boolean {
+  if (!auto) return false;
+  if (auto.kind === "time-years") {
+    return yearsKnown != null && yearsKnown >= auto.years;
+  }
+  if (auto.kind === "interactions") return stats.total >= auto.count;
+  if (auto.kind === "meets") return stats.meets >= auto.count;
+  if (auto.kind === "places") return stats.distinctPlaces >= auto.count;
+  return false;
+}
+
+/** Look at a friend's metAt + interaction log, then flip any auto-template
+ *  milestones whose conditions are now met (and un-flip ones that no
+ *  longer apply — e.g. an interaction was deleted and we dropped below
+ *  the threshold). */
+async function syncAutoMilestonesForFriend(
+  friendId: string,
+  userId: string
+) {
+  const f = await db.query.friend.findFirst({
+    where: (row, { and: a, eq: e }) =>
+      a(e(row.id, friendId), e(row.userId, userId)),
+  });
+  if (!f) return;
+  const pack = getMilestonePack(f.milestonePack);
+  const autoByKey = new Map<string, FriendMilestoneTemplate["auto"]>();
+  for (const t of pack.templates) {
+    if (t.auto) autoByKey.set(t.key, t.auto);
+  }
+  if (autoByKey.size === 0) return;
+
+  const yearsKnown = yearsSince(f.metAt);
+  const stats = await getFriendInteractionStats(friendId, userId);
+
   const rows = await db
     .select()
     .from(friendMilestone)
     .where(
       and(
         eq(friendMilestone.userId, userId),
-        eq(friendMilestone.friendId, friendId),
-        eq(friendMilestone.completed, false)
+        eq(friendMilestone.friendId, friendId)
       )
     );
   for (const r of rows) {
     if (!r.templateKey) continue;
-    if (autoCompletionForTemplate(r.templateKey, yearsKnown)) {
+    const auto = autoByKey.get(r.templateKey);
+    if (!auto) continue;
+    const shouldBe = autoCompletedFromStats(auto, yearsKnown, stats);
+    if (shouldBe && !r.completed) {
       await db
         .update(friendMilestone)
         .set({ completed: true, completedAt: new Date() })
+        .where(eq(friendMilestone.id, r.id));
+    } else if (!shouldBe && r.completed) {
+      // Drop back if a deleted interaction took us below threshold.
+      await db
+        .update(friendMilestone)
+        .set({ completed: false, completedAt: null })
         .where(eq(friendMilestone.id, r.id));
     }
   }
 }
 
-/** Cheap pass that ticks any time-based milestones across all friends.
- *  Called when the friends page loads so gallery stages stay current. */
+/** Cheap pass that re-runs auto-milestone sync for every friend. Called
+ *  when the friends list page loads so gallery stages stay current. */
 export async function syncTimeBasedFriendMilestones() {
   const session = await requireSession();
   const friends = await db
-    .select({ id: friend.id, metAt: friend.metAt })
+    .select({ id: friend.id })
     .from(friend)
     .where(eq(friend.userId, session.user.id));
   for (const f of friends) {
-    if (!f.metAt) continue;
-    await syncTimeBasedFriendMilestonesForFriend(f.id, session.user.id, f.metAt);
+    await syncAutoMilestonesForFriend(f.id, session.user.id);
   }
 }
 
@@ -315,11 +423,10 @@ export async function updateFriend(
     .set(updates)
     .where(and(eq(friend.id, id), eq(friend.userId, session.user.id)));
 
-  // When `metAt` changes, the time-based milestones (known-1y/5y/10y)
-  // may need to flip. Re-sync that specific friend.
+  // When `metAt` changes, the time-based milestones (known-Xy) may
+  // need to flip. Re-sync that specific friend.
   if (data.metAt !== undefined) {
-    const metAtVal = (updates.metAt ?? null) as string | null;
-    await syncTimeBasedFriendMilestonesForFriend(id, session.user.id, metAtVal);
+    await syncAutoMilestonesForFriend(id, session.user.id);
   }
 
   revalidatePath("/friends");
@@ -540,6 +647,10 @@ export async function logInteraction(data: {
     });
   }
 
+  // Some milestones auto-complete from interaction stats (meets-5,
+  // interactions-50, places-3, …). Re-sync this friend's milestones.
+  await syncAutoMilestonesForFriend(data.friendId, session.user.id);
+
   const [accountLevelAchievements, friendAchievements] = await Promise.all([
     checkAccountLevelAchievements(session.user.id),
     checkFriendAchievements(session.user.id),
@@ -635,6 +746,11 @@ export async function logBulkInteraction(data: {
     });
   }
 
+  // Sync auto-milestones for every friend touched by this bulk event.
+  for (const id of validIds) {
+    await syncAutoMilestonesForFriend(id, session.user.id);
+  }
+
   const [accountLevelAchievements, friendAchievements] = await Promise.all([
     checkAccountLevelAchievements(session.user.id),
     checkFriendAchievements(session.user.id),
@@ -698,6 +814,9 @@ export async function deleteInteraction(id: string) {
       updatedAt: new Date(),
     })
     .where(eq(friend.id, row.friendId));
+
+  // An interaction-based auto-milestone might now drop below threshold.
+  await syncAutoMilestonesForFriend(row.friendId, session.user.id);
 
   await checkFriendAchievements(session.user.id);
   revalidatePath("/friends");

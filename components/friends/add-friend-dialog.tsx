@@ -21,6 +21,10 @@ import {
 } from "@/modules/places/actions";
 import type { GeocodeResult } from "@/lib/geocode";
 import type { Place } from "@/modules/places/types";
+import {
+  MILESTONE_PACKS,
+  type MilestonePackKey,
+} from "@/modules/friends/milestone-templates";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -41,6 +45,8 @@ export function AddFriendDialog({
   const [cadenceDays, setCadenceDays] = useState("");
   const [birthday, setBirthday] = useState("");
   const [metAt, setMetAt] = useState("");
+  const [milestonePack, setMilestonePack] =
+    useState<MilestonePackKey>("friend");
   const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -93,6 +99,7 @@ export function AddFriendDialog({
         howWeMet: howWeMet || null,
         birthday: birthday || null,
         metAt: metAt || null,
+        milestonePack,
         notes: notes || null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
@@ -118,6 +125,7 @@ export function AddFriendDialog({
       setCadenceDays("");
       setBirthday("");
       setMetAt("");
+      setMilestonePack("friend");
       setNotes("");
       setPhotoFile(null);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -289,6 +297,31 @@ export function AddFriendDialog({
               <p className="text-[11px] text-muted-foreground/70">
                 Drives the auto &quot;1 / 5 / 10 years known&quot; milestones.
                 Pick Jan 1 if you only remember the year.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Milestone pack</Label>
+              <div className="flex items-center gap-1 flex-wrap">
+                {MILESTONE_PACKS.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setMilestonePack(p.key)}
+                    className={`text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${
+                      milestonePack === p.key
+                        ? "border-glow text-glow bg-glow/10"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={p.description}
+                  >
+                    {p.icon} {p.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground/70">
+                Seeds the friendship-milestone checklist on the friend page.
+                Switch later anytime.
               </p>
             </div>
 

@@ -312,6 +312,10 @@ export const achievement = sqliteTable("achievement", {
       "friend_interactions_count",
       "friend_countries",
       "friend_events_count",
+      "friend_friend_count",
+      "friend_close_friend_count",
+      "friend_inner_circle_count",
+      "friend_family_count",
     ],
   }).notNull().default("manual"),
   triggerSkillId: text("trigger_skill_id").references(() => skill.id, { onDelete: "cascade" }),
@@ -437,6 +441,10 @@ export const friend = sqliteTable("friend", {
   metAt: text("met_at"),
   howWeMet: text("how_we_met"),
   notes: text("notes"),
+  /** Which milestone-template pack seeds this friend's milestones —
+   *  "friend" (default), "family", "romantic", "colleague". Switching
+   *  packs replaces all template-keyed milestones (custom ones stay). */
+  milestonePack: text("milestone_pack").notNull().default("friend"),
   /** How often the user wants to reach out, in days. NULL = no reminder. */
   contactCadenceDays: integer("contact_cadence_days"),
   lastContactedAt: integer("last_contacted_at", { mode: "timestamp" }),

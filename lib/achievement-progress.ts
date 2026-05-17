@@ -5,6 +5,7 @@ import {
   friend,
   friendInteraction,
   friendEvent,
+  friendMilestone,
   financeAccount,
   financeTransaction,
   financeRecurring,
@@ -13,7 +14,8 @@ import {
   habit,
   habitCompletion,
 } from "@/lib/db/schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { FRIEND_STAGES, friendStageFromCount } from "@/modules/friends/milestone-templates";
 import { getNetWorth } from "@/modules/finance/queries";
 import { computeTotalAccountXp } from "./account-achievements";
 import { levelFromXp } from "./level";
@@ -155,6 +157,7 @@ export async function getAchievementProgress(
     friend_interactions_count: interactions.length,
     friend_countries: friendCountrySet.size,
     friend_events_count: events.length,
+    ...(await getFriendStageProgress(userId, activeFriends.map((f) => f.id))),
     finance_accounts: fAccounts.length,
     finance_transactions: fTx.length,
     finance_recurrings: fRec.length,
@@ -247,4 +250,42 @@ export function progressForAchievement(
     return null;
   }
   return global[triggerType] ?? null;
+}
+
+/** Helper used by `getAchievementProgress` — returns counts of active
+ *  friends at each stage tier or above. */
+async function getFriendStageProgress(
+  userId: string,
+  activeIds: string[]
+): Promise<Record<string, number>> {
+  const result: Record<string, number> = {
+    friend_friend_count: 0,
+    friend_close_friend_count: 0,
+    friend_inner_circle_count: 0,
+    friend_family_count: 0,
+  };
+  if (activeIds.length === 0) return result;
+  const rows = await db
+    .select({
+      friendId: friendMilestone.friendId,
+      completed: sql<number>`coalesce(sum(case when ${friendMilestone.completed} then 1 else 0 end), 0)`,
+    })
+    .from(friendMilestone)
+    .where(
+      and(
+        eq(friendMilestone.userId, userId),
+        inArray(friendMilestone.friendId, activeIds)
+      )
+    )
+    .groupBy(friendMilestone.friendId);
+  for (const r of rows) {
+    const stage = friendStageFromCount(Number(r.completed));
+    for (const s of FRIEND_STAGES) {
+      if (s.min <= stage.min && s.key !== "acquaintance") {
+        const key = `friend_${s.key}_count`;
+        result[key] = (result[key] ?? 0) + 1;
+      }
+    }
+  }
+  return result;
 }

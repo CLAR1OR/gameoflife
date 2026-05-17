@@ -10,11 +10,14 @@ import {
   updateFriendMilestone,
   deleteFriendMilestone,
   reseedFriendMilestones,
+  setFriendMilestonePack,
 } from "@/modules/friends/actions";
 import {
   FRIEND_STAGES,
+  MILESTONE_PACKS,
   friendStageFromCount,
   nextFriendStage,
+  type MilestonePackKey,
 } from "@/modules/friends/milestone-templates";
 import { toast } from "sonner";
 import type { FriendMilestone } from "@/modules/friends/types";
@@ -29,9 +32,13 @@ import type { FriendMilestone } from "@/modules/friends/types";
 export function FriendMilestonesSection({
   friendId,
   milestones: initial,
+  pack: initialPack,
 }: {
   friendId: string;
   milestones: FriendMilestone[];
+  /** Current milestone-template pack for this friend. Drives the pack
+   *  picker shown when the section is expanded. */
+  pack: string;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -44,6 +51,7 @@ export function FriendMilestonesSection({
   // Long checklist is collapsed by default — the stage banner above
   // carries the at-a-glance status.
   const [expanded, setExpanded] = useState(false);
+  const [pack, setPack] = useState(initialPack);
 
   const completed = useMemo(
     () => milestones.filter((m) => m.completed).length,
@@ -143,6 +151,27 @@ export function FriendMilestonesSection({
     setBusy(false);
   }
 
+  async function handlePackChange(nextPack: MilestonePackKey) {
+    if (nextPack === pack) return;
+    if (
+      !confirm(
+        `Switch to the ${nextPack} pack? Template milestones from the current pack will be removed (custom ones stay).`
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await setFriendMilestonePack(friendId, nextPack);
+      setPack(nextPack);
+      toast.success(`Switched to "${nextPack}" pack`);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setBusy(false);
+  }
+
   const stageColorClass = stageBadgeClass(stage.color);
 
   return (
@@ -219,6 +248,31 @@ export function FriendMilestonesSection({
 
       {expanded && (
       <>
+      {/* Pack picker — which template list seeds this friend's milestones. */}
+      <div className="rounded-md border border-border/60 bg-card/40 p-2 space-y-1">
+        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          Milestone pack
+        </div>
+        <div className="flex items-center gap-1 flex-wrap">
+          {MILESTONE_PACKS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => handlePackChange(p.key)}
+              disabled={busy}
+              className={`text-[11px] font-mono px-2.5 py-1 rounded-full border transition-colors ${
+                pack === p.key
+                  ? "border-glow text-glow bg-glow/10"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+              title={p.description}
+            >
+              {p.icon} {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Milestone list */}
       <ul className="space-y-1">
         {milestones.map((m) => {

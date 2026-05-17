@@ -346,6 +346,7 @@ export function FriendDetailView({
       <FriendMilestonesSection
         friendId={friend.id}
         milestones={milestones}
+        pack={friend.milestonePack}
       />
 
       <FriendTagsSection
