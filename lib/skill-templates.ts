@@ -1579,7 +1579,8 @@ export const SKILL_TEMPLATES: SkillTemplate[] = [
     name: "Fitness",
     description: "From first push-up to peak physical condition",
     icon: "💪",
-    coverImage: "linear-gradient(135deg, #0a0a0a 0%, #450a0a 45%, #dc2626 100%)",
+    coverImage: DEFAULT_COVER_GRADIENT,
+    coverKey: "fitness",
     subskills: [
       // =====================
       // ROOT
