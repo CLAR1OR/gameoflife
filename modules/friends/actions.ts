@@ -11,7 +11,7 @@ import {
   friendEvent,
   userSettings,
 } from "@/lib/db/schema";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { checkAccountLevelAchievements } from "@/lib/account-achievements";
@@ -316,6 +316,103 @@ export async function logInteraction(data: {
   revalidatePath("/");
   return {
     xpAwarded: FRIEND_INTERACTION_XP,
+    newAchievements: [...accountLevelAchievements, ...friendAchievements],
+  };
+}
+
+/**
+ * Log the same interaction against several friends at once. Used for
+ * events / group meetups / trips where you'd otherwise have to check
+ * each person in individually. One row per friend (so per-friend stats
+ * and achievement progress count normally), XP added once per row.
+ */
+export async function logBulkInteraction(data: {
+  friendIds: string[];
+  occurredOn: string;
+  kind: "message" | "call" | "meet" | "trip" | "event" | "letter" | "other";
+  placeId?: string | null;
+  notes?: string | null;
+}): Promise<{
+  count: number;
+  xpAwarded: number;
+  newAchievements: string[];
+}> {
+  const session = await requireSession();
+  const ids = Array.from(new Set(data.friendIds)).filter(Boolean);
+  if (ids.length === 0) {
+    return { count: 0, xpAwarded: 0, newAchievements: [] };
+  }
+
+  // Verify every id actually belongs to this user — guards against
+  // tampering. Drop any unknown ids silently.
+  const owned = await db
+    .select({ id: friend.id })
+    .from(friend)
+    .where(
+      and(eq(friend.userId, session.user.id), inArray(friend.id, ids))
+    );
+  const validIds = owned.map((f) => f.id);
+  if (validIds.length === 0) {
+    throw new Error("No matching friends");
+  }
+
+  const noteTrimmed = data.notes?.trim() || null;
+
+  await db.insert(friendInteraction).values(
+    validIds.map((friendId) => ({
+      userId: session.user.id,
+      friendId,
+      occurredOn: data.occurredOn,
+      kind: data.kind,
+      placeId: data.placeId ?? null,
+      notes: noteTrimmed,
+      xpAwarded: FRIEND_INTERACTION_XP,
+    }))
+  );
+
+  // Bump lastContactedAt for every friend in this event.
+  const stamp = new Date(`${data.occurredOn}T12:00:00`);
+  await db
+    .update(friend)
+    .set({ lastContactedAt: stamp, updatedAt: new Date() })
+    .where(
+      and(
+        eq(friend.userId, session.user.id),
+        inArray(friend.id, validIds)
+      )
+    );
+
+  // Pour XP into the user's general account — one award per friend.
+  const totalXp = FRIEND_INTERACTION_XP * validIds.length;
+  const settings = await db.query.userSettings.findFirst({
+    where: (s, { eq: e }) => e(s.userId, session.user.id),
+  });
+  const nextGeneral = (settings?.generalXp ?? 0) + totalXp;
+  if (settings) {
+    await db
+      .update(userSettings)
+      .set({ generalXp: nextGeneral, updatedAt: new Date() })
+      .where(eq(userSettings.userId, session.user.id));
+  } else {
+    await db.insert(userSettings).values({
+      userId: session.user.id,
+      generalXp: nextGeneral,
+    });
+  }
+
+  const [accountLevelAchievements, friendAchievements] = await Promise.all([
+    checkAccountLevelAchievements(session.user.id),
+    checkFriendAchievements(session.user.id),
+  ]);
+
+  revalidatePath("/friends");
+  for (const id of validIds) revalidatePath(`/friends/${id}`);
+  revalidatePath("/account");
+  revalidatePath("/");
+
+  return {
+    count: validIds.length,
+    xpAwarded: totalXp,
     newAchievements: [...accountLevelAchievements, ...friendAchievements],
   };
 }

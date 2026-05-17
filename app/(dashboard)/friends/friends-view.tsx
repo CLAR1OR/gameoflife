@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AddFriendDialog } from "@/components/friends/add-friend-dialog";
+import { BulkCheckinDialog } from "@/components/friends/bulk-checkin-dialog";
 import { CheckInButton } from "@/components/friends/check-in-button";
 import { FriendsGallery } from "@/components/friends/friends-gallery";
 import { BirthdaysStrip } from "@/components/friends/birthdays-strip";
@@ -86,6 +87,7 @@ export function FriendsView({
 }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [view, setView] = useState<ViewMode>("gallery");
   const [sort, setSort] = useState<SortMode>("due");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
@@ -190,6 +192,15 @@ export function FriendsView({
             onClick={() => setTagsManagerOpen(true)}
           >
             🏷️ Tags
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setBulkOpen(true)}
+            disabled={friends.length < 2}
+            title="Log one event as a check-in for everyone who was there"
+          >
+            🎉 Bulk check-in
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
             + Add friend
@@ -406,6 +417,12 @@ export function FriendsView({
         open={addOpen}
         onOpenChange={setAddOpen}
         knownPlaces={knownPlaces}
+      />
+
+      <BulkCheckinDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        friends={friends}
       />
 
       <TagManagerDialog
