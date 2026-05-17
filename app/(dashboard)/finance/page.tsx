@@ -1,6 +1,5 @@
 import { requireSession } from "@/lib/auth-server";
 import {
-  getRecentTransactions,
   getMonthSummary,
   getCategorySuggestions,
   getAccounts,
@@ -8,6 +7,7 @@ import {
   getRecurrings,
   getNetWorthSnapshots,
   getCategoryBreakdown,
+  getBudgets,
 } from "@/modules/finance/queries";
 import {
   processDueRecurrings,
@@ -16,15 +16,21 @@ import {
 import { getUserSettings } from "@/modules/settings/queries";
 import { todayISO } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
-import { AccountsSection } from "@/components/finance/accounts-section";
 import { RecurringSection } from "@/components/finance/recurring-section";
 import { NetWorthSparkline } from "@/components/finance/net-worth-sparkline";
 import { TransactionForm } from "@/components/finance/transaction-form";
-import { TransactionList } from "@/components/finance/transaction-list";
 import { CategoryBreakdown } from "@/components/finance/category-breakdown";
+import { FinanceTabs } from "@/components/finance/finance-tabs";
+import { MonthPicker } from "@/components/finance/month-picker";
 
 function currentYearMonth(iso: string): string {
   return iso.slice(0, 7);
+}
+
+function isValidYearMonth(s: string | undefined): s is string {
+  if (!s) return false;
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(s)) return false;
+  return true;
 }
 
 function formatMonthLabel(yearMonth: string): string {
@@ -35,11 +41,16 @@ function formatMonthLabel(yearMonth: string): string {
   });
 }
 
-export default async function FinancePage() {
+export default async function FinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ym?: string }>;
+}) {
   const session = await requireSession();
   const userId = session.user.id;
   const today = todayISO();
-  const yearMonth = currentYearMonth(today);
+  const { ym } = await searchParams;
+  const yearMonth = isValidYearMonth(ym) ? ym : currentYearMonth(today);
 
   // Process anything due first — these run every visit and are idempotent.
   await processDueRecurrings(userId, today);
@@ -50,43 +61,40 @@ export default async function FinancePage() {
     accounts,
     netWorth,
     summary,
-    transactions,
     categorySuggestions,
     recurrings,
     snapshots,
     expenseBreakdown,
     incomeBreakdown,
+    budgets,
   ] = await Promise.all([
     getUserSettings(userId),
     getAccounts(userId),
     getNetWorth(userId),
     getMonthSummary(userId, yearMonth),
-    getRecentTransactions(userId, 50),
     getCategorySuggestions(userId),
     getRecurrings(userId),
     getNetWorthSnapshots(userId, 30),
     getCategoryBreakdown(userId, yearMonth, "expense"),
     getCategoryBreakdown(userId, yearMonth, "income"),
+    getBudgets(userId),
   ]);
 
   const currency = settings.currency;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold font-mono tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           💰 Finance
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Accounts, transactions, and recurring cash flow.
+          This month at a glance · jump to{" "}
+          <span className="text-glow">Accounts</span> to manage settings.
         </p>
       </div>
 
-      <AccountsSection
-        accounts={accounts}
-        totalNetWorth={netWorth}
-        currency={currency}
-      />
+      <FinanceTabs />
 
       <NetWorthSparkline
         snapshots={snapshots}
@@ -95,9 +103,12 @@ export default async function FinancePage() {
       />
 
       <section>
-        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-          {formatMonthLabel(yearMonth)}
-        </h2>
+        <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            {formatMonthLabel(yearMonth)}
+          </h2>
+          <MonthPicker value={yearMonth} />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SummaryCard
             label="Income"
@@ -129,6 +140,7 @@ export default async function FinancePage() {
           categories={expenseBreakdown}
           total={summary.expense}
           currency={currency}
+          budgets={budgets}
           label="Expenses by category"
         />
         <CategoryBreakdown
@@ -146,29 +158,17 @@ export default async function FinancePage() {
         currency={currency}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6">
-        <section>
-          <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-            Add Transaction
-          </h2>
-          <TransactionForm
-            today={today}
-            categorySuggestions={categorySuggestions}
-            accounts={accounts}
-            currency={currency}
-          />
-        </section>
-        <section>
-          <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-            Recent
-          </h2>
-          <TransactionList
-            transactions={transactions}
-            accounts={accounts}
-            currency={currency}
-          />
-        </section>
-      </div>
+      <section>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Quick log
+        </h2>
+        <TransactionForm
+          today={today}
+          categorySuggestions={categorySuggestions}
+          accounts={accounts}
+          currency={currency}
+        />
+      </section>
     </div>
   );
 }

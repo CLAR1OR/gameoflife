@@ -6,6 +6,7 @@ import {
   financeAccount,
   financeRecurring,
   financeNetWorthSnapshot,
+  financeBudget,
   userSettings,
 } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
@@ -855,4 +856,51 @@ export async function commitCsvImport(
   revalidatePath("/");
   revalidatePath("/achievements");
   return { inserted, skipped, xpAwarded, newAchievements };
+}
+
+// =====================
+// BUDGETS
+// =====================
+
+/** Upsert a per-category monthly spending budget. Pass amount in cents
+ *  via parseMoneyInput in the UI. */
+export async function setBudget(data: {
+  category: string;
+  targetCents: number;
+}) {
+  const session = await requireSession();
+  const category = data.category.trim();
+  if (!category) throw new Error("Category is required");
+  if (!Number.isFinite(data.targetCents) || data.targetCents < 0) {
+    throw new Error("Target must be a non-negative amount");
+  }
+  const existing = await db.query.financeBudget.findFirst({
+    where: (b, { and: a, eq: e }) =>
+      a(e(b.userId, session.user.id), e(b.category, category)),
+  });
+  if (existing) {
+    await db
+      .update(financeBudget)
+      .set({ targetCents: data.targetCents, updatedAt: new Date() })
+      .where(eq(financeBudget.id, existing.id));
+  } else {
+    await db.insert(financeBudget).values({
+      userId: session.user.id,
+      category,
+      targetCents: data.targetCents,
+    });
+  }
+  revalidatePath("/finance");
+  revalidatePath("/finance/budgets");
+}
+
+export async function deleteBudget(id: string) {
+  const session = await requireSession();
+  await db
+    .delete(financeBudget)
+    .where(
+      and(eq(financeBudget.id, id), eq(financeBudget.userId, session.user.id))
+    );
+  revalidatePath("/finance");
+  revalidatePath("/finance/budgets");
 }

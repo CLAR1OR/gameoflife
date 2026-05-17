@@ -19,6 +19,7 @@ import {
   financeTransaction,
   financeRecurring,
   financeNetWorthSnapshot,
+  financeBudget,
   book,
   bookRead,
   readingList,
@@ -75,6 +76,7 @@ const TABLES = [
   { name: "financeTransaction", table: financeTransaction },
   { name: "financeRecurring", table: financeRecurring },
   { name: "financeNetWorthSnapshot", table: financeNetWorthSnapshot },
+  { name: "financeBudget", table: financeBudget },
   { name: "userSettings", table: userSettings },
 ] as const;
 
@@ -169,7 +171,8 @@ const TIMESTAMP_COLS: Partial<Record<TableName, string[]>> = {
   financeTransaction: ["createdAt"],
   financeRecurring: ["createdAt"],
   financeNetWorthSnapshot: ["createdAt"],
-  userSettings: ["updatedAt"],
+  financeBudget: ["createdAt", "updatedAt"],
+  userSettings: ["updatedAt", "onboardedAt"],
 };
 
 function hydrateTimestamps(name: TableName, row: Row): Row {

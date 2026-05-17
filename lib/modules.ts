@@ -6,5 +6,6 @@ export const APP_MODULES = [
   { name: "Books", href: "/books", icon: "📚", enabled: true },
   { name: "Places", href: "/places", icon: "🗺️", enabled: true },
   { name: "Friends", href: "/friends", icon: "🫂", enabled: true },
+  { name: "Finance", href: "/finance", icon: "💰", enabled: true },
   { name: "Achievements", href: "/achievements", icon: "🏆", enabled: true },
 ] as const;

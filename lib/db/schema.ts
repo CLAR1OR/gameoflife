@@ -175,6 +175,20 @@ export const financeNetWorthSnapshot = sqliteTable("finance_net_worth_snapshot",
   uniqueDaily: uniqueIndex("finance_snapshot_unique_daily").on(t.userId, t.takenOn),
 }));
 
+/** Per-category monthly spending budget. One row per (user, category);
+ *  enforced via a unique index. Currency cents. */
+export const financeBudget = sqliteTable("finance_budget", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  category: text("category").notNull(),
+  /** Monthly spending limit in cents. The page warns when actual exceeds. */
+  targetCents: integer("target_cents").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  uniqueCategory: uniqueIndex("finance_budget_unique_category").on(t.userId, t.category),
+}));
+
 export const quest = sqliteTable("quest", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

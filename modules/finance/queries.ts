@@ -4,8 +4,9 @@ import {
   financeAccount,
   financeRecurring,
   financeNetWorthSnapshot,
+  financeBudget,
 } from "@/lib/db/schema";
-import { and, asc, desc, eq, gte, isNull, lte, sum } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, like, lte, or, sum } from "drizzle-orm";
 import { isAccountStale } from "./shared";
 import type {
   AccountType,
@@ -16,6 +17,8 @@ import type {
   CategoryTotal,
   FinanceRecurring,
   NetWorthSnapshot,
+  FinanceBudget,
+  TransactionFilter,
 } from "./types";
 export type {
   AccountType,
@@ -26,6 +29,8 @@ export type {
   CategoryTotal,
   FinanceRecurring,
   NetWorthSnapshot,
+  FinanceBudget,
+  TransactionFilter,
 };
 
 // Re-export client-safe helpers so server callers can keep a single import.
@@ -241,4 +246,110 @@ export async function getNetWorthSnapshots(
     )
     .orderBy(asc(financeNetWorthSnapshot.takenOn));
   return rows;
+}
+
+// =====================
+// BUDGETS
+// =====================
+
+export async function getBudgets(userId: string): Promise<FinanceBudget[]> {
+  const rows = await db
+    .select({
+      id: financeBudget.id,
+      category: financeBudget.category,
+      targetCents: financeBudget.targetCents,
+    })
+    .from(financeBudget)
+    .where(eq(financeBudget.userId, userId))
+    .orderBy(asc(financeBudget.category));
+  return rows;
+}
+
+// =====================
+// FILTERED TRANSACTIONS (history page)
+// =====================
+
+/** Cheap totals for the filtered set — count, income sum, expense sum. */
+export type FilteredTransactionsResult = {
+  rows: FinanceTransaction[];
+  count: number;
+  incomeTotal: number;
+  expenseTotal: number;
+  transferTotal: number;
+};
+
+export async function getTransactionsFiltered(
+  userId: string,
+  filter: TransactionFilter
+): Promise<FilteredTransactionsResult> {
+  const clauses = [eq(financeTransaction.userId, userId)];
+  if (filter.accountId) {
+    // A transaction can be on either side of a transfer — count it if
+    // either accountId or transferToAccountId matches.
+    const accountClause = or(
+      eq(financeTransaction.accountId, filter.accountId),
+      eq(financeTransaction.transferToAccountId, filter.accountId)
+    );
+    if (accountClause) clauses.push(accountClause);
+  }
+  if (filter.type) clauses.push(eq(financeTransaction.type, filter.type));
+  if (filter.category)
+    clauses.push(eq(financeTransaction.category, filter.category));
+  if (filter.fromDate)
+    clauses.push(gte(financeTransaction.occurredOn, filter.fromDate));
+  if (filter.toDate)
+    clauses.push(lte(financeTransaction.occurredOn, filter.toDate));
+  if (filter.search) {
+    const needle = `%${filter.search.toLowerCase()}%`;
+    const searchClause = or(
+      like(financeTransaction.note, needle),
+      like(financeTransaction.category, needle)
+    );
+    if (searchClause) clauses.push(searchClause);
+  }
+
+  const orderBy =
+    filter.sort === "date_asc"
+      ? [asc(financeTransaction.occurredOn), asc(financeTransaction.createdAt)]
+      : filter.sort === "amount_desc"
+        ? [desc(financeTransaction.amount), desc(financeTransaction.occurredOn)]
+        : filter.sort === "amount_asc"
+          ? [asc(financeTransaction.amount), desc(financeTransaction.occurredOn)]
+          : [
+              desc(financeTransaction.occurredOn),
+              desc(financeTransaction.createdAt),
+            ];
+
+  const rows = await db
+    .select()
+    .from(financeTransaction)
+    .where(and(...clauses))
+    .orderBy(...orderBy);
+
+  let incomeTotal = 0;
+  let expenseTotal = 0;
+  let transferTotal = 0;
+  for (const r of rows) {
+    if (r.type === "income") incomeTotal += r.amount;
+    else if (r.type === "expense") expenseTotal += r.amount;
+    else if (r.type === "transfer") transferTotal += r.amount;
+  }
+
+  return {
+    rows: rows.map((r) => ({
+      id: r.id,
+      type: r.type,
+      amount: r.amount,
+      category: r.category,
+      note: r.note,
+      occurredOn: r.occurredOn,
+      accountId: r.accountId,
+      transferToAccountId: r.transferToAccountId,
+      createdAt: r.createdAt,
+    })),
+    count: rows.length,
+    incomeTotal,
+    expenseTotal,
+    transferTotal,
+  };
 }

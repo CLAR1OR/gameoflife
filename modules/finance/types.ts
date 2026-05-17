@@ -61,3 +61,28 @@ export type NetWorthSnapshot = {
   takenOn: string;
   netWorth: number;
 };
+
+export type FinanceBudget = {
+  id: string;
+  category: string;
+  /** Monthly spending limit, in currency cents. */
+  targetCents: number;
+};
+
+/** Filter shape for the dedicated transactions history page. */
+export type TransactionFilter = {
+  /** Restrict to a single account (or transferToAccount). */
+  accountId?: string | null;
+  /** Restrict to a transaction type. */
+  type?: TransactionType | null;
+  /** Restrict to a specific category. */
+  category?: string | null;
+  /** Inclusive lower bound YYYY-MM-DD. */
+  fromDate?: string | null;
+  /** Inclusive upper bound YYYY-MM-DD. */
+  toDate?: string | null;
+  /** Case-insensitive match on note + category. */
+  search?: string | null;
+  /** Sort order. */
+  sort?: "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
+};
