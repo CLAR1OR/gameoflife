@@ -311,17 +311,32 @@ export function FriendsView({
       )}
 
       {filtered.length === 0 && source.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-muted/20 p-8 text-center">
-          <div className="text-5xl mb-2">🫂</div>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            {showArchived
-              ? "No archived friends."
-              : "Add the first friend you want to keep in regular contact with. Set a reach-out cadence, then log every message, call, or meet — each check-in grants a little XP."}
-          </p>
-          {!showArchived && (
-            <div className="mt-4">
-              <Button onClick={() => setAddOpen(true)}>+ Add friend</Button>
-            </div>
+        <div className="rounded-xl border border-dashed bg-muted/20 p-6 sm:p-8 text-center space-y-4">
+          <div className="text-5xl">🫂</div>
+          {showArchived ? (
+            <p className="text-sm text-muted-foreground">No archived friends.</p>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <p className="text-base font-medium">
+                  Keep in touch on purpose
+                </p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Add the people you want to stay close to. Set a cadence
+                  (e.g. every 30 days), then log every message, call, or
+                  meet — overdue friends bubble to the top. Birthdays and
+                  life events surface here too.
+                </p>
+              </div>
+              <ul className="text-xs text-muted-foreground/80 max-w-sm mx-auto space-y-1 text-left inline-block">
+                <li>🎯 Each check-in earns 1 XP and resets the cadence timer</li>
+                <li>🎂 Upcoming birthdays show at the top of the page</li>
+                <li>🎉 Use Bulk check-in to log an event with several friends</li>
+              </ul>
+              <div className="flex justify-center">
+                <Button onClick={() => setAddOpen(true)}>+ Add your first friend</Button>
+              </div>
+            </>
           )}
         </div>
       ) : filtered.length === 0 ? (

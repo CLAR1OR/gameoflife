@@ -132,3 +132,50 @@ export async function setFeatureEnabled(key: FeatureKey, enabled: boolean) {
   revalidatePath("/account");
   return { key, enabled };
 }
+
+export async function markOnboarded() {
+  const session = await requireSession();
+  const existing = await db.query.userSettings.findFirst({
+    where: (s, { eq: e }) => e(s.userId, session.user.id),
+  });
+  const now = new Date();
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({ onboardedAt: now, updatedAt: now })
+      .where(eq(userSettings.userId, session.user.id));
+  } else {
+    await db.insert(userSettings).values({
+      userId: session.user.id,
+      onboardedAt: now,
+    });
+  }
+  revalidatePath("/");
+  revalidatePath("/welcome");
+}
+
+export async function setSkillCoverPack(name: string) {
+  const session = await requireSession();
+  // Tight filename allowlist — the value is rendered into image URLs.
+  if (!/^[a-z0-9._-]+$/i.test(name)) {
+    throw new Error("Invalid pack name");
+  }
+  const existing = await db.query.userSettings.findFirst({
+    where: (s, { eq: e }) => e(s.userId, session.user.id),
+  });
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({ skillCoverPack: name, updatedAt: new Date() })
+      .where(eq(userSettings.userId, session.user.id));
+  } else {
+    await db.insert(userSettings).values({
+      userId: session.user.id,
+      skillCoverPack: name,
+    });
+  }
+  revalidatePath("/");
+  revalidatePath("/account");
+  revalidatePath("/skills");
+  return { name };
+}

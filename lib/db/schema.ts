@@ -120,6 +120,13 @@ export const userSettings = sqliteTable("user_settings", {
   generalXp: integer("general_xp").notNull().default(0),
   yearlyBookGoal: integer("yearly_book_goal").notNull().default(0),
   theme: text("theme").notNull().default("forest"),
+  /** Name of the active skill-cover pack (a subdirectory under
+   *  /public/skill-covers/). "default" ships with the app. */
+  skillCoverPack: text("skill_cover_pack").notNull().default("default"),
+  /** When the user finished (or skipped) the welcome wizard. Null means
+   *  they haven't seen it yet → they'll be redirected to /welcome on
+   *  their next dashboard visit. */
+  onboardedAt: integer("onboarded_at", { mode: "timestamp" }),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 

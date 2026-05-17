@@ -194,21 +194,10 @@ export function HabitsView({
         <YearHeatmap counts={yearCounts} />
       )}
 
-      {/* Empty state */}
+      {/* Empty state — explain the module, suggest starters, then offer
+          the custom path. */}
       {habits.length === 0 && (
-        <div className="rounded-xl border border-dashed bg-muted/20 p-8 text-center space-y-4">
-          <div className="text-5xl">🎯</div>
-          <div>
-            <p className="font-medium">No habits yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Daily actions that build momentum. Each completion can give XP
-              to a linked skill, or to your general account XP.
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <Button onClick={() => setNewOpen(true)}>+ New Habit</Button>
-          </div>
-        </div>
+        <HabitsEmptyState onCustom={() => setNewOpen(true)} />
       )}
 
       {/* Filter / search row */}
@@ -551,5 +540,89 @@ function FilterPill({
     >
       {children}
     </button>
+  );
+}
+
+const STARTER_HABITS: { name: string; icon: string }[] = [
+  { name: "Read 10 minutes", icon: "📚" },
+  { name: "Stretch / mobility", icon: "🧘" },
+  { name: "Meditate", icon: "🧠" },
+  { name: "Drink water (8 glasses)", icon: "💧" },
+  { name: "Journal", icon: "✍️" },
+  { name: "No phone first hour", icon: "🚫" },
+];
+
+function HabitsEmptyState({ onCustom }: { onCustom: () => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function quickAdd(name: string, icon: string) {
+    setBusy(name);
+    try {
+      // Dynamic import: keeps the bundle for users who already have
+      // habits a little leaner.
+      const { createHabit } = await import("@/modules/habits/actions");
+      await createHabit({
+        name,
+        icon,
+        kind: "daily",
+        targetPerWeek: 7,
+        autoAchievements: [
+          { kind: "streak", days: 7 },
+          { kind: "streak", days: 30 },
+          { kind: "total", count: 50 },
+        ],
+      });
+      toast.success(`Added "${name}"`);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+    setBusy(null);
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed bg-muted/20 p-6 sm:p-8 space-y-5">
+      <div className="text-center space-y-2">
+        <div className="text-5xl">🎯</div>
+        <p className="text-base font-medium">Build a habit · earn streaks</p>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+          Tick a habit every day (or every week, if you set a flexible
+          cadence). Each completion grants XP — to a linked skill, or to
+          your general account.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground text-center">
+          Try a starter — one click to add
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-xl mx-auto">
+          {STARTER_HABITS.map((s) => (
+            <button
+              key={s.name}
+              type="button"
+              onClick={() => quickAdd(s.name, s.icon)}
+              disabled={busy !== null}
+              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-left hover:border-glow/50 transition-colors disabled:opacity-50"
+            >
+              <span className="text-xl shrink-0">{s.icon}</span>
+              <span className="font-medium truncate flex-1">{s.name}</span>
+              {busy === s.name && (
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  …
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-center">
+        <Button variant="outline" onClick={onCustom}>
+          + Build your own
+        </Button>
+      </div>
+    </div>
   );
 }

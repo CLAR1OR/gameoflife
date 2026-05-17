@@ -374,9 +374,28 @@ export function PlacesView({
         )}
 
         {places.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-            No places yet — click &ldquo;+ Add place&rdquo; to drop your first
-            pin.
+          <div className="rounded-xl border border-dashed bg-muted/20 p-6 sm:p-8 text-center space-y-4">
+            <div className="text-5xl">🗺️</div>
+            <div className="space-y-1">
+              <p className="text-base font-medium">Pin where you&apos;ve been</p>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Start with home, then add places you&apos;ve travelled to.
+                Each visit can include a date, rating, notes, and photos.
+                Hikes track distance + elevation.
+              </p>
+            </div>
+            <div className="flex justify-center gap-2 flex-wrap">
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                + Add a place by name
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAddMode(true)}
+              >
+                🎯 Pick on map
+              </Button>
+            </div>
           </div>
         ) : filteredPlaces.length === 0 ? (
           <p className="text-sm text-muted-foreground italic text-center py-3">

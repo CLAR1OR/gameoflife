@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-server";
 import { getCategoriesByUser, getTodaysQuests } from "@/modules/skills/queries";
 import {
@@ -58,6 +59,13 @@ export default async function DashboardPage() {
   const session = await requireSession();
   const userId = session.user.id;
 
+  // First-run: send brand-new users through the welcome wizard before
+  // dropping them on an empty dashboard.
+  const settingsEarly = await getUserSettings(userId);
+  if (settingsEarly.onboardedAt == null) {
+    redirect("/welcome");
+  }
+
   await ensureLevelAchievementsSeeded(userId);
   await ensureFinanceAchievementsSeeded(userId);
   await ensurePlaceAchievementsSeeded(userId);
@@ -69,7 +77,6 @@ export default async function DashboardPage() {
     habits,
     quests,
     totalAccountXp,
-    settings,
     netWorth,
     accountAttention,
     bookStats,
@@ -83,7 +90,6 @@ export default async function DashboardPage() {
     getHabitsWithStatus(userId, 30),
     getActiveQuests(userId),
     getTotalAccountXp(userId),
-    getUserSettings(userId),
     getNetWorth(userId),
     getAccountAttention(userId),
     getBookStats(userId),
