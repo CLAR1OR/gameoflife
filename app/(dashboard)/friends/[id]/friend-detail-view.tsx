@@ -241,120 +241,23 @@ export function FriendDetailView({
         </Link>
       </div>
 
-      <div className="flex items-start gap-4 flex-wrap">
-        <FriendPhotoUpload friendId={friend.id} hasPhoto={!!friend.photoUrl}>
-          {friend.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={friend.photoUrl}
-              alt=""
-              className="h-24 w-24 rounded-full object-cover border border-border"
-            />
-          ) : (
-            <div className="h-24 w-24 rounded-full border border-border bg-muted/40 flex items-center justify-center text-2xl font-bold text-glow-purple shrink-0">
-              {initials}
-            </div>
-          )}
-        </FriendPhotoUpload>
-        <div className="flex-1 min-w-0">
-          {editing ? (
-            <div className="space-y-2">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="text-2xl font-bold"
-              />
-              <Input
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="Nickname"
-                className="text-sm"
-              />
-            </div>
-          ) : (
-            <>
-              <h1 className="text-3xl font-bold leading-tight">
-                {friend.name}
-                {friend.nickname && (
-                  <span className="text-muted-foreground/60 ml-2 text-lg font-normal">
-                    “{friend.nickname}”
-                  </span>
-                )}
-              </h1>
-              <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                {currentResidence && (
-                  <Badge variant="outline" className="font-mono">
-                    📍 {currentResidence.place.name}
-                    {currentResidence.place.countryName
-                      ? ` · ${currentResidence.place.countryName}`
-                      : ""}
-                  </Badge>
-                )}
-                {friend.contactCadenceDays && (
-                  <Badge variant="outline" className="font-mono">
-                    🔔 every {friend.contactCadenceDays}d
-                  </Badge>
-                )}
-                {friend.birthday && (
-                  <Badge variant="outline" className="font-mono">
-                    🎂 {formatBirthday(friend.birthday)}
-                  </Badge>
-                )}
-                {friendTags.map((t) => (
-                  <TagChip key={t.id} tag={t} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-        <div className="flex gap-1 shrink-0">
-          {editing ? (
-            <>
-              <Button size="sm" onClick={handleSave} disabled={busy}>
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setEditing(false)}
-              >
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-                Edit
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleArchive}
-                className="text-muted-foreground"
-              >
-                Archive
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleDelete}
-                className="text-destructive"
-              >
-                Delete
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <CheckInButton friendId={friend.id} />
-      </div>
-
-      <AtAGlanceCard
+      <FriendHeroCard
         friend={friend}
-        interactions={interactions}
+        friendTags={friendTags}
+        currentResidence={currentResidence}
         milestones={milestones}
+        interactions={interactions}
+        editing={editing}
+        busy={busy}
+        name={name}
+        nickname={nickname}
+        onChangeName={setName}
+        onChangeNickname={setNickname}
+        onSave={handleSave}
+        onCancelEdit={() => setEditing(false)}
+        onStartEdit={() => setEditing(true)}
+        onArchive={handleArchive}
+        onDelete={handleDelete}
       />
 
       <FriendMilestonesSection
@@ -612,11 +515,8 @@ export function FriendDetailView({
   );
 }
 
-/** Compact summary card on the friend detail page — stitches together
- *  the highest-signal stats (stage, time-known, interaction count, last
- *  seen, places met) so the page leads with the story of the
- *  friendship rather than scattered widgets. */
-function AtAGlanceCard({
+/** Just the 5-stat grid — used inside the hero card. */
+function AtAGlanceStats({
   friend,
   interactions,
   milestones,
@@ -638,12 +538,8 @@ function AtAGlanceCard({
   const lastSeenISO = mostRecentInteraction(interactions);
   const daysSince = lastSeenISO ? daysSinceISO(lastSeenISO) : null;
 
-  const stageBadgeCls = stageColorClasses(stage.color);
-
   return (
-    <section
-      className={`rounded-xl border p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2 ${stageBadgeCls}`}
-    >
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-3">
       <Stat
         label="Stage"
         value={
@@ -673,7 +569,7 @@ function AtAGlanceCard({
                   Math.floor(yearsKnown) === 1 ? "" : "s"
                 }`
         }
-        sub={friend.metAt ?? "set on edit"}
+        sub={friend.metAt ?? "—"}
       />
       <Stat
         label="Interactions"
@@ -695,6 +591,189 @@ function AtAGlanceCard({
             : null
         }
       />
+    </div>
+  );
+}
+
+/** Hero card on the friend detail page — photo + name + meta + tags +
+ *  action buttons, divided from the at-a-glance stats grid below it,
+ *  with a check-in CTA bar at the bottom. Border + soft background tint
+ *  pick up the friend's current stage so the card visually reflects
+ *  the friendship's status. */
+function FriendHeroCard({
+  friend,
+  friendTags,
+  currentResidence,
+  milestones,
+  interactions,
+  editing,
+  busy,
+  name,
+  nickname,
+  onChangeName,
+  onChangeNickname,
+  onSave,
+  onCancelEdit,
+  onStartEdit,
+  onArchive,
+  onDelete,
+}: {
+  friend: Friend;
+  friendTags: FriendTag[];
+  currentResidence:
+    | (FriendResidence & { place: { name: string; countryName: string | null } })
+    | undefined;
+  milestones: FriendMilestone[];
+  interactions: FriendInteraction[];
+  editing: boolean;
+  busy: boolean;
+  name: string;
+  nickname: string;
+  onChangeName: (v: string) => void;
+  onChangeNickname: (v: string) => void;
+  onSave: () => void;
+  onCancelEdit: () => void;
+  onStartEdit: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  const initials = friend.name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  const completed = milestones.filter((m) => m.completed).length;
+  const stage = friendStageFromCount(completed);
+  const heroBorder = stageColorClasses(stage.color);
+
+  return (
+    <section
+      className={`rounded-2xl border overflow-hidden ${heroBorder}`}
+    >
+      {/* Top: photo + name + meta + tags + actions */}
+      <div className="p-5 sm:p-6 flex items-start gap-4 flex-wrap">
+        <FriendPhotoUpload friendId={friend.id} hasPhoto={!!friend.photoUrl}>
+          {friend.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={friend.photoUrl}
+              alt=""
+              className="h-24 w-24 sm:h-28 sm:w-28 rounded-full object-cover border border-border shrink-0"
+            />
+          ) : (
+            <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full border border-border bg-muted/40 flex items-center justify-center text-2xl font-bold text-glow-purple shrink-0">
+              {initials}
+            </div>
+          )}
+        </FriendPhotoUpload>
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <div className="space-y-2">
+              <Input
+                value={name}
+                onChange={(e) => onChangeName(e.target.value)}
+                className="text-2xl font-bold"
+              />
+              <Input
+                value={nickname}
+                onChange={(e) => onChangeNickname(e.target.value)}
+                placeholder="Nickname"
+                className="text-sm"
+              />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+                {friend.name}
+                {friend.nickname && (
+                  <span className="text-muted-foreground/60 ml-2 text-lg font-normal">
+                    “{friend.nickname}”
+                  </span>
+                )}
+              </h1>
+              <div className="flex flex-wrap gap-1.5 mt-2 text-xs">
+                {currentResidence && (
+                  <Badge variant="outline" className="font-mono">
+                    📍 {currentResidence.place.name}
+                    {currentResidence.place.countryName
+                      ? ` · ${currentResidence.place.countryName}`
+                      : ""}
+                  </Badge>
+                )}
+                {friend.birthday && (
+                  <Badge variant="outline" className="font-mono">
+                    🎂 {formatBirthday(friend.birthday)}
+                  </Badge>
+                )}
+                {friend.contactCadenceDays && (
+                  <Badge variant="outline" className="font-mono">
+                    🔔 every {friend.contactCadenceDays}d
+                  </Badge>
+                )}
+              </div>
+              {friendTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {friendTags.map((t) => (
+                    <TagChip key={t.id} tag={t} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div className="flex gap-1 shrink-0">
+          {editing ? (
+            <>
+              <Button size="sm" onClick={onSave} disabled={busy}>
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" onClick={onCancelEdit}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onClick={onStartEdit}>
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onArchive}
+                className="text-muted-foreground"
+              >
+                Archive
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onDelete}
+                className="text-destructive"
+              >
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* At-a-glance band */}
+      <div className="border-t border-border/40 px-5 sm:px-6 py-4 bg-muted/20">
+        <AtAGlanceStats
+          friend={friend}
+          interactions={interactions}
+          milestones={milestones}
+        />
+      </div>
+
+      {/* Check-in CTA */}
+      <div className="border-t border-border/40 p-3 bg-card flex items-center justify-between gap-3 flex-wrap">
+        <span className="text-[11px] font-mono text-muted-foreground">
+          Log a quick check-in to mark contact + earn XP
+        </span>
+        <CheckInButton friendId={friend.id} />
+      </div>
     </section>
   );
 }
