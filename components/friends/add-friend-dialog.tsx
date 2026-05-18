@@ -47,7 +47,6 @@ export function AddFriendDialog({
   const [metAt, setMetAt] = useState("");
   const [milestonePack, setMilestonePack] =
     useState<MilestonePackKey>("friend");
-  const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -100,7 +99,7 @@ export function AddFriendDialog({
         birthday: birthday || null,
         metAt: metAt || null,
         milestonePack,
-        notes: notes || null,
+        notes: null,
         contactCadenceDays:
           cad !== null && Number.isFinite(cad) && cad > 0 ? Math.round(cad) : null,
       });
@@ -126,7 +125,6 @@ export function AddFriendDialog({
       setBirthday("");
       setMetAt("");
       setMilestonePack("friend");
-      setNotes("");
       setPhotoFile(null);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
       setPhotoPreview(null);
@@ -334,16 +332,6 @@ export function AddFriendDialog({
               />
             </div>
 
-            <div className="space-y-1">
-              <Label>Notes</Label>
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Anything you want to remember — favourites, kids' names, in-jokes…"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button

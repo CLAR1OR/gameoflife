@@ -11,6 +11,7 @@ import { FriendPhotoUpload } from "@/components/friends/friend-photo-upload";
 import { FriendTagsButton } from "@/components/friends/friend-tags-button";
 import { FriendContactsSection } from "@/components/friends/friend-contacts-section";
 import { FriendEventsSection } from "@/components/friends/friend-events-section";
+import { FriendNotesSection } from "@/components/friends/friend-notes-section";
 import { FriendMilestonesSection } from "@/components/friends/friend-milestones-section";
 import { YearHeatmap } from "@/components/habits/year-heatmap";
 import {
@@ -102,7 +103,6 @@ export function FriendDetailView({
   const [name, setName] = useState(friend.name);
   const [nickname, setNickname] = useState(friend.nickname ?? "");
   const [howWeMet, setHowWeMet] = useState(friend.howWeMet ?? "");
-  const [notes, setNotes] = useState(friend.notes ?? "");
   const [cadence, setCadence] = useState(
     friend.contactCadenceDays?.toString() ?? ""
   );
@@ -123,7 +123,6 @@ export function FriendDetailView({
         name,
         nickname: nickname || null,
         howWeMet: howWeMet || null,
-        notes: notes || null,
         birthday: birthday || null,
         metAt: metAt || null,
         contactCadenceDays:
@@ -401,20 +400,15 @@ export function FriendDetailView({
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px]">Notes</Label>
-            <textarea
-              rows={4}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anything you want to remember — favourites, kids' names, in-jokes…"
-              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs resize-y"
-            />
-          </div>
         </div>
       )}
 
       <FriendEventsSection friendId={friend.id} events={events} />
+
+      <FriendNotesSection
+        friendId={friend.id}
+        initialNotes={friend.notes ?? null}
+      />
 
       <section className="space-y-2">
         <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
@@ -466,26 +460,12 @@ export function FriendDetailView({
         )}
       </section>
 
-      {(friend.howWeMet || friend.notes || editing) && !editing && (
-        <section className="space-y-3">
-          {friend.howWeMet && (
-            <div>
-              <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-1">
-                How we met
-              </h2>
-              <p className="text-sm whitespace-pre-wrap">{friend.howWeMet}</p>
-            </div>
-          )}
-          {friend.notes && (
-            <div>
-              <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-1">
-                Notes
-              </h2>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                {friend.notes}
-              </p>
-            </div>
-          )}
+      {friend.howWeMet && !editing && (
+        <section className="space-y-1">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            How we met
+          </h2>
+          <p className="text-sm whitespace-pre-wrap">{friend.howWeMet}</p>
         </section>
       )}
 
