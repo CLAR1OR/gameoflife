@@ -11,7 +11,8 @@ import { FriendPhotoUpload } from "@/components/friends/friend-photo-upload";
 import { FriendTagsButton } from "@/components/friends/friend-tags-button";
 import { FriendContactsSection } from "@/components/friends/friend-contacts-section";
 import { FriendEventsSection } from "@/components/friends/friend-events-section";
-import { FriendNotesSection } from "@/components/friends/friend-notes-section";
+import { FriendInlineTextSection } from "@/components/friends/friend-inline-text-section";
+import { FriendInteractionsSection } from "@/components/friends/friend-interactions-section";
 import { FriendMilestonesSection } from "@/components/friends/friend-milestones-section";
 import { YearHeatmap } from "@/components/habits/year-heatmap";
 import {
@@ -24,7 +25,6 @@ import {
   deleteFriend,
   archiveFriend,
   setFriendCurrentResidence,
-  deleteInteraction,
 } from "@/modules/friends/actions";
 import {
   searchPlaces,
@@ -62,16 +62,6 @@ function formatBirthday(iso: string): string {
   return y ? `${md}, ${y}` : md;
 }
 
-const KIND_ICON: Record<FriendInteraction["kind"], string> = {
-  message: "💬",
-  call: "📞",
-  meet: "🤝",
-  letter: "💌",
-  event: "🎉",
-  trip: "✈️",
-  other: "·",
-};
-
 export function FriendDetailView({
   friend,
   residences,
@@ -102,7 +92,6 @@ export function FriendDetailView({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(friend.name);
   const [nickname, setNickname] = useState(friend.nickname ?? "");
-  const [howWeMet, setHowWeMet] = useState(friend.howWeMet ?? "");
   const [cadence, setCadence] = useState(
     friend.contactCadenceDays?.toString() ?? ""
   );
@@ -122,7 +111,6 @@ export function FriendDetailView({
       await updateFriend(friend.id, {
         name,
         nickname: nickname || null,
-        howWeMet: howWeMet || null,
         birthday: birthday || null,
         metAt: metAt || null,
         contactCadenceDays:
@@ -207,17 +195,6 @@ export function FriendDetailView({
       toast.error(e instanceof Error ? e.message : "Failed");
     }
     setResidenceSearching(false);
-  }
-
-  async function handleDeleteInteraction(id: string) {
-    if (!confirm("Delete this interaction?")) return;
-    try {
-      await deleteInteraction(id);
-      toast.success("Deleted");
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    }
   }
 
   const currentResidence = residences.find((r) => r.isCurrent);
@@ -378,96 +355,43 @@ export function FriendDetailView({
               />
             </div>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[10px]">When we met</Label>
-              <Input
-                type="date"
-                value={metAt}
-                onChange={(e) => setMetAt(e.target.value)}
-                className="h-8 text-xs"
-              />
-              <p className="text-[10px] text-muted-foreground/60">
-                Drives the auto &quot;1 / 5 / 10 years known&quot; milestones.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px]">How we met</Label>
-              <Input
-                value={howWeMet}
-                onChange={(e) => setHowWeMet(e.target.value)}
-                className="h-8 text-xs"
-              />
-            </div>
+          <div className="space-y-1">
+            <Label className="text-[10px]">When we met</Label>
+            <Input
+              type="date"
+              value={metAt}
+              onChange={(e) => setMetAt(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground/60">
+              Drives the auto &quot;1 / 5 / 10 years known&quot; milestones.
+            </p>
           </div>
         </div>
       )}
 
       <FriendEventsSection friendId={friend.id} events={events} />
 
-      <FriendNotesSection
-        friendId={friend.id}
-        initialNotes={friend.notes ?? null}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <FriendInlineTextSection
+          friendId={friend.id}
+          field="notes"
+          label="📝 Notes"
+          initialValue={friend.notes ?? null}
+          rows={6}
+          placeholder="Anything you want to remember — favourites, kids' names, in-jokes…"
+        />
+        <FriendInlineTextSection
+          friendId={friend.id}
+          field="howWeMet"
+          label="🤝 How we met"
+          initialValue={friend.howWeMet ?? null}
+          rows={6}
+          placeholder="Where, when, the story…"
+        />
+      </div>
 
-      <section className="space-y-2">
-        <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
-          📅 Interactions ({interactions.length})
-        </h2>
-        {interactions.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
-            No interactions logged yet — use the &ldquo;Check in&rdquo; button
-            above.
-          </p>
-        ) : (
-          <ul className="space-y-1.5">
-            {interactions.map((i) => (
-              <li
-                key={i.id}
-                className="rounded-md border border-border/60 bg-card/40 px-3 py-2 flex items-start gap-3 group"
-              >
-                <span className="text-base shrink-0">{KIND_ICON[i.kind]}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-medium capitalize">
-                      {i.kind}
-                    </span>
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      {i.occurredOn}
-                    </span>
-                  </div>
-                  {i.notes && (
-                    <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">
-                      {i.notes}
-                    </p>
-                  )}
-                </div>
-                {i.xpAwarded > 0 && (
-                  <span className="text-[10px] font-mono text-xp shrink-0">
-                    +{i.xpAwarded} XP
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteInteraction(i.id)}
-                  className="text-[10px] text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {friend.howWeMet && !editing && (
-        <section className="space-y-1">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-            How we met
-          </h2>
-          <p className="text-sm whitespace-pre-wrap">{friend.howWeMet}</p>
-        </section>
-      )}
+      <FriendInteractionsSection interactions={interactions} />
 
       {/* Per-friend interaction heatmap — when YOU saw THIS person. */}
       {interactions.length > 0 && (
@@ -504,6 +428,28 @@ function AtAGlanceStats({
   const yearsKnown = yearsKnownFromMetAt(friend.metAt);
   const lastSeenISO = mostRecentInteraction(interactions);
   const daysSince = lastSeenISO ? daysSinceISO(lastSeenISO) : null;
+  const cadence = friend.contactCadenceDays;
+
+  let lastSeenColor: string | undefined;
+  let lastSeenSub: string | null =
+    placesMet > 0
+      ? `met in ${placesMet} place${placesMet === 1 ? "" : "s"}`
+      : null;
+  if (cadence) {
+    if (daysSince == null) {
+      lastSeenColor = "text-destructive";
+      lastSeenSub = `overdue · every ${cadence}d`;
+    } else if (daysSince <= cadence) {
+      lastSeenColor = "text-glow";
+      lastSeenSub = `on track · every ${cadence}d`;
+    } else if (daysSince <= cadence * 1.5) {
+      lastSeenColor = "text-xp";
+      lastSeenSub = `due · every ${cadence}d`;
+    } else {
+      lastSeenColor = "text-destructive";
+      lastSeenSub = `overdue · every ${cadence}d`;
+    }
+  }
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-3">
@@ -546,17 +492,15 @@ function AtAGlanceStats({
       <Stat
         label="Last seen"
         value={
-          daysSince == null
-            ? "never"
-            : daysSince === 0
-              ? "today"
-              : `${daysSince}d ago`
+          <span className={lastSeenColor}>
+            {daysSince == null
+              ? "never"
+              : daysSince === 0
+                ? "today"
+                : `${daysSince}d ago`}
+          </span>
         }
-        sub={
-          placesMet > 0
-            ? `met in ${placesMet} place${placesMet === 1 ? "" : "s"}`
-            : null
-        }
+        sub={lastSeenSub}
       />
     </div>
   );

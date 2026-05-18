@@ -5,29 +5,41 @@ import { useRouter } from "next/navigation";
 import { updateFriend } from "@/modules/friends/actions";
 import { toast } from "sonner";
 
-export function FriendNotesSection({
+export function FriendInlineTextSection({
   friendId,
-  initialNotes,
+  field,
+  label,
+  initialValue,
+  rows = 6,
+  placeholder,
 }: {
   friendId: string;
-  initialNotes: string | null;
+  field: "notes" | "howWeMet";
+  label: string;
+  initialValue: string | null;
+  rows?: number;
+  placeholder?: string;
 }) {
   const router = useRouter();
-  const [value, setValue] = useState(initialNotes ?? "");
-  const [savedValue, setSavedValue] = useState(initialNotes ?? "");
+  const [value, setValue] = useState(initialValue ?? "");
+  const [savedValue, setSavedValue] = useState(initialValue ?? "");
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setValue(initialNotes ?? "");
-    setSavedValue(initialNotes ?? "");
-  }, [initialNotes]);
+    setValue(initialValue ?? "");
+    setSavedValue(initialValue ?? "");
+  }, [initialValue]);
 
   async function save() {
     if (value === savedValue) return;
     setStatus("saving");
     try {
-      await updateFriend(friendId, { notes: value || null });
+      const patch =
+        field === "notes"
+          ? { notes: value || null }
+          : { howWeMet: value || null };
+      await updateFriend(friendId, patch);
       setSavedValue(value);
       setStatus("saved");
       if (savedTimer.current) clearTimeout(savedTimer.current);
@@ -45,7 +57,7 @@ export function FriendNotesSection({
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
-          📝 Notes
+          {label}
         </h2>
         <span className="text-[10px] font-mono text-muted-foreground">
           {status === "saving"
@@ -58,11 +70,11 @@ export function FriendNotesSection({
         </span>
       </div>
       <textarea
-        rows={6}
+        rows={rows}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={save}
-        placeholder="Anything you want to remember — favourites, kids' names, in-jokes…"
+        placeholder={placeholder}
         className="w-full rounded-md border border-border/60 bg-card/40 hover:border-border focus:border-glow/60 focus:bg-card transition-colors px-3 py-2 text-sm leading-relaxed resize-y outline-none whitespace-pre-wrap"
       />
     </section>
