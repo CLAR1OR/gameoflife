@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckInButton } from "@/components/friends/check-in-button";
 import { FriendPhotoUpload } from "@/components/friends/friend-photo-upload";
-import { FriendTagsSection } from "@/components/friends/friend-tags-section";
+import { FriendTagsButton } from "@/components/friends/friend-tags-button";
 import { FriendContactsSection } from "@/components/friends/friend-contacts-section";
 import { FriendEventsSection } from "@/components/friends/friend-events-section";
 import { FriendMilestonesSection } from "@/components/friends/friend-milestones-section";
@@ -114,13 +114,6 @@ export function FriendDetailView({
   const [residenceResults, setResidenceResults] = useState<GeocodeResult[]>([]);
   const [residenceSearching, setResidenceSearching] = useState(false);
   const [residencePickerOpen, setResidencePickerOpen] = useState(false);
-
-  const initials = friend.name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   async function handleSave() {
     setBusy(true);
@@ -244,6 +237,7 @@ export function FriendDetailView({
       <FriendHeroCard
         friend={friend}
         friendTags={friendTags}
+        allTags={allTags}
         currentResidence={currentResidence}
         milestones={milestones}
         interactions={interactions}
@@ -266,16 +260,100 @@ export function FriendDetailView({
         pack={friend.milestonePack}
       />
 
-      <FriendTagsSection
-        friendId={friend.id}
-        friendTags={friendTags}
-        allTags={allTags}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <FriendContactsSection friendId={friend.id} contacts={contacts} />
 
-      <FriendContactsSection
-        friendId={friend.id}
-        contacts={contacts}
-      />
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-mono uppercase tracking-wider text-glow-purple">
+              🏠 Residences
+            </h2>
+            <button
+              type="button"
+              onClick={() => setResidencePickerOpen((s) => !s)}
+              className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
+            >
+              {residencePickerOpen ? "cancel" : "+ Move / set residence"}
+            </button>
+          </div>
+
+          {residencePickerOpen && (
+            <div className="rounded-md border border-glow-purple/30 bg-glow-purple/5 p-3 space-y-2">
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) handlePickResidence(e.target.value);
+                }}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs"
+              >
+                <option value="">— pick from existing places —</option>
+                {knownPlaces.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.countryName ? ` · ${p.countryName}` : ""}
+                  </option>
+                ))}
+              </select>
+              <form onSubmit={runResidenceSearch} className="flex gap-1">
+                <Input
+                  value={residenceQuery}
+                  onChange={(e) => setResidenceQuery(e.target.value)}
+                  placeholder="…or search a new city"
+                  className="h-8 text-xs"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={residenceSearching || !residenceQuery.trim()}
+                  className="h-8 text-xs"
+                >
+                  {residenceSearching ? "…" : "🔍"}
+                </Button>
+              </form>
+              {residenceResults.map((r) => (
+                <button
+                  key={`${r.lat},${r.lng}`}
+                  type="button"
+                  onClick={() => handleAddNewPlace(r)}
+                  className="w-full text-left rounded-md border border-border bg-card/40 hover:border-glow/40 transition-colors px-2 py-1 text-xs flex justify-between items-center"
+                >
+                  <span className="line-clamp-1">{r.name}</span>
+                  <span className="text-glow shrink-0 ml-2">+ Use</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {residences.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              No residences logged yet.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {residences.map((r) => (
+                <li
+                  key={r.id}
+                  className={`rounded-md border px-3 py-2 text-xs ${
+                    r.isCurrent
+                      ? "border-glow-purple/40 bg-glow-purple/5"
+                      : "border-border/60 bg-card/40 opacity-70"
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">
+                      {r.place.name}
+                      {r.place.countryName ? ` · ${r.place.countryName}` : ""}
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {r.isCurrent ? "current" : `${r.startedOn ?? "?"} → ${r.endedOn ?? "?"}`}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
       {editing && (
         <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-3">
@@ -335,97 +413,6 @@ export function FriendDetailView({
           </div>
         </div>
       )}
-
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-glow-purple">
-            🏠 Residences
-          </h2>
-          <button
-            type="button"
-            onClick={() => setResidencePickerOpen((s) => !s)}
-            className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
-          >
-            {residencePickerOpen ? "cancel" : "+ Move / set residence"}
-          </button>
-        </div>
-
-        {residencePickerOpen && (
-          <div className="rounded-md border border-glow-purple/30 bg-glow-purple/5 p-3 space-y-2">
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) handlePickResidence(e.target.value);
-              }}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs"
-            >
-              <option value="">— pick from existing places —</option>
-              {knownPlaces.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.countryName ? ` · ${p.countryName}` : ""}
-                </option>
-              ))}
-            </select>
-            <form onSubmit={runResidenceSearch} className="flex gap-1">
-              <Input
-                value={residenceQuery}
-                onChange={(e) => setResidenceQuery(e.target.value)}
-                placeholder="…or search a new city"
-                className="h-8 text-xs"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={residenceSearching || !residenceQuery.trim()}
-                className="h-8 text-xs"
-              >
-                {residenceSearching ? "…" : "🔍"}
-              </Button>
-            </form>
-            {residenceResults.map((r) => (
-              <button
-                key={`${r.lat},${r.lng}`}
-                type="button"
-                onClick={() => handleAddNewPlace(r)}
-                className="w-full text-left rounded-md border border-border bg-card/40 hover:border-glow/40 transition-colors px-2 py-1 text-xs flex justify-between items-center"
-              >
-                <span className="line-clamp-1">{r.name}</span>
-                <span className="text-glow shrink-0 ml-2">+ Use</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {residences.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
-            No residences logged yet.
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {residences.map((r) => (
-              <li
-                key={r.id}
-                className={`rounded-md border px-3 py-2 text-xs ${
-                  r.isCurrent
-                    ? "border-glow-purple/40 bg-glow-purple/5"
-                    : "border-border/60 bg-card/40 opacity-70"
-                }`}
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium">
-                    {r.place.name}
-                    {r.place.countryName ? ` · ${r.place.countryName}` : ""}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {r.isCurrent ? "current" : `${r.startedOn ?? "?"} → ${r.endedOn ?? "?"}`}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       <FriendEventsSection friendId={friend.id} events={events} />
 
@@ -603,6 +590,7 @@ function AtAGlanceStats({
 function FriendHeroCard({
   friend,
   friendTags,
+  allTags,
   currentResidence,
   milestones,
   interactions,
@@ -620,6 +608,7 @@ function FriendHeroCard({
 }: {
   friend: Friend;
   friendTags: FriendTag[];
+  allTags: FriendTag[];
   currentResidence:
     | (FriendResidence & { place: { name: string; countryName: string | null } })
     | undefined;
@@ -712,13 +701,16 @@ function FriendHeroCard({
                   </Badge>
                 )}
               </div>
-              {friendTags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {friendTags.map((t) => (
-                    <TagChip key={t.id} tag={t} />
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {friendTags.map((t) => (
+                  <TagChip key={t.id} tag={t} />
+                ))}
+                <FriendTagsButton
+                  friendId={friend.id}
+                  friendTags={friendTags}
+                  allTags={allTags}
+                />
+              </div>
             </>
           )}
         </div>
