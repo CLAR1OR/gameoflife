@@ -116,6 +116,18 @@ export async function listTodayTasks(token: string): Promise<TodoistTask[]> {
   return (data?.results ?? []).map(mapTask);
 }
 
+/** GET /tasks?project_id=... — all open tasks in a single project. */
+export async function listTasksInProject(
+  token: string,
+  projectId: string
+): Promise<TodoistTask[]> {
+  const data = await call<Paginated<RawTask>>(
+    token,
+    `/tasks?project_id=${encodeURIComponent(projectId)}&limit=200`
+  );
+  return (data?.results ?? []).map(mapTask);
+}
+
 export async function listProjects(token: string): Promise<TodoistProject[]> {
   const data = await call<Paginated<RawProject>>(token, "/projects?limit=200");
   return (data?.results ?? []).map(mapProject);

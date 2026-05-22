@@ -51,7 +51,7 @@ export function IntegrationsSidePanel() {
         role="dialog"
         aria-label="Integrations side panel"
         aria-hidden={!open}
-        className={`fixed top-0 right-0 h-full w-[320px] sm:w-[360px] z-50 bg-background border-l border-border shadow-xl transition-transform duration-200 ease-out ${
+        className={`fixed top-0 right-0 h-full w-[320px] sm:w-[400px] lg:w-[460px] xl:w-[520px] 2xl:w-[580px] z-50 bg-background border-l border-border shadow-xl transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -59,14 +59,25 @@ export function IntegrationsSidePanel() {
           <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
             📋 Todoist
           </h2>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="text-muted-foreground hover:text-foreground transition-colors text-sm"
-            aria-label="Close panel"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-1">
+            <a
+              href="https://app.todoist.com/app/today"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors text-xs font-mono px-2 py-1 rounded border border-border/60 hover:border-foreground/40"
+              title="Open Todoist in a new tab"
+            >
+              open ↗
+            </a>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors text-sm px-1"
+              aria-label="Close panel"
+            >
+              ✕
+            </button>
+          </div>
         </header>
         <div className="p-4 overflow-y-auto h-[calc(100%-49px)]">
           {/* Only mount the panel content when open so we don't fetch

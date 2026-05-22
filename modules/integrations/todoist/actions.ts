@@ -10,6 +10,7 @@ import {
   closeTask,
   createTask,
   listProjects,
+  listTasksInProject,
   listTodayTasks,
   reopenTask,
   TodoistError,
@@ -81,7 +82,9 @@ export type TodoistPanelData = {
   error: string | null;
 };
 
-export async function loadTodoistData(): Promise<TodoistPanelData> {
+export async function loadTodoistData(
+  opts?: { projectId?: string }
+): Promise<TodoistPanelData> {
   const session = await requireSession();
   const token = await getToken(session.user.id);
   if (!token) {
@@ -89,7 +92,9 @@ export async function loadTodoistData(): Promise<TodoistPanelData> {
   }
   try {
     const [tasks, projects] = await Promise.all([
-      listTodayTasks(token),
+      opts?.projectId
+        ? listTasksInProject(token, opts.projectId)
+        : listTodayTasks(token),
       listProjects(token),
     ]);
     return { connected: true, tasks, projects, error: null };
