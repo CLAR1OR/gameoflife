@@ -7,6 +7,7 @@ import { APP_MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TodoistNavBadge } from "@/components/integrations/todoist-nav-badge";
+import { GoogleCalendarNavBadge } from "@/components/integrations/google-calendar-nav-badge";
 
 export function TopNav() {
   const pathname = usePathname();
@@ -87,6 +88,7 @@ export function TopNav() {
         </button>
 
         <TodoistNavBadge />
+        <GoogleCalendarNavBadge />
 
         <div className="h-6 w-px bg-border/60 mx-1 shrink-0" />
 

@@ -3,6 +3,7 @@ import { BrandMark } from "@/components/layout/brand-mark";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { CelebrationModal } from "@/components/celebrations/celebration-modal";
 import { IntegrationsSidePanel } from "@/components/integrations/side-panel";
+import { GoogleCalendarModal } from "@/components/integrations/google-calendar-modal";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function DashboardLayout({
@@ -22,6 +23,7 @@ export default function DashboardLayout({
       <GlobalSearch />
       <CelebrationModal />
       <IntegrationsSidePanel />
+      <GoogleCalendarModal />
       <Toaster />
     </div>
   );

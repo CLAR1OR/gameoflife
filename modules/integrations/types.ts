@@ -47,3 +47,33 @@ export type IntegrationStatus = {
   connected: boolean;
   connectedAt: Date | null;
 };
+
+/** Subset of a Google Calendar (calendarList.list response) we expose. */
+export type GoogleCalendar = {
+  id: string;
+  summary: string;
+  backgroundColor: string;
+  foregroundColor: string;
+  primary: boolean;
+  /** "reader" | "writer" | "owner" — useful to gate edits. */
+  accessRole: string;
+  selected: boolean;
+};
+
+/** Subset of a calendar event we expose to the panel. */
+export type GoogleEvent = {
+  id: string;
+  calendarId: string;
+  calendarName: string;
+  /** Hex color from the parent calendar. */
+  calendarColor: string;
+  summary: string;
+  description: string | null;
+  /** ISO 8601 with offset for timed events; YYYY-MM-DD for all-day. */
+  start: string;
+  end: string;
+  allDay: boolean;
+  location: string | null;
+  /** Direct link to open in calendar.google.com. */
+  htmlLink: string;
+};
