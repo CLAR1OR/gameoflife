@@ -1,4 +1,4 @@
-import type { TodoistProject, TodoistTask } from "../types";
+import type { TodoistProject, TodoistSection, TodoistTask } from "../types";
 
 /** Todoist unified API. REST v2 (api.todoist.com/rest/v2) returns 410
  *  Gone as of late 2025 — everything moved here. */
@@ -20,6 +20,8 @@ type RawTask = {
     datetime: string | null;
   } | null;
   project_id: string;
+  section_id: string | null;
+  parent_id: string | null;
   labels: string[];
   child_order: number;
 };
@@ -29,6 +31,13 @@ type RawProject = {
   name: string;
   color: string;
   inbox_project?: boolean;
+};
+
+type RawSection = {
+  id: string;
+  project_id: string;
+  name: string;
+  section_order?: number;
 };
 
 /** All list endpoints in v1 are paginated; cursor handling can be added
@@ -93,6 +102,8 @@ function mapTask(r: RawTask): TodoistTask {
         }
       : null,
     projectId: r.project_id,
+    sectionId: r.section_id ?? null,
+    parentId: r.parent_id ?? null,
     labels: r.labels,
     order: r.child_order,
   };
@@ -104,6 +115,15 @@ function mapProject(r: RawProject): TodoistProject {
     name: r.name,
     color: r.color,
     isInboxProject: r.inbox_project ?? false,
+  };
+}
+
+function mapSection(r: RawSection): TodoistSection {
+  return {
+    id: r.id,
+    projectId: r.project_id,
+    name: r.name,
+    order: r.section_order ?? 0,
   };
 }
 
@@ -133,6 +153,11 @@ export async function listProjects(token: string): Promise<TodoistProject[]> {
   return (data?.results ?? []).map(mapProject);
 }
 
+export async function listSections(token: string): Promise<TodoistSection[]> {
+  const data = await call<Paginated<RawSection>>(token, "/sections?limit=500");
+  return (data?.results ?? []).map(mapSection);
+}
+
 export async function closeTask(token: string, taskId: string): Promise<void> {
   await call<null>(token, `/tasks/${taskId}/close`, { method: "POST" });
 }
@@ -154,6 +179,23 @@ export async function createTask(
     }),
   });
   if (!raw) throw new Error("Todoist returned no task on create");
+  return mapTask(raw);
+}
+
+export async function updateTask(
+  token: string,
+  taskId: string,
+  patch: { content?: string; dueString?: string | null; priority?: 1 | 2 | 3 | 4 }
+): Promise<TodoistTask> {
+  const body: Record<string, unknown> = {};
+  if (patch.content !== undefined) body.content = patch.content;
+  if (patch.dueString !== undefined) body.due_string = patch.dueString;
+  if (patch.priority !== undefined) body.priority = patch.priority;
+  const raw = await call<RawTask>(token, `/tasks/${taskId}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!raw) throw new Error("Todoist returned no task on update");
   return mapTask(raw);
 }
 

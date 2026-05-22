@@ -20,6 +20,8 @@ export type TodoistTask = {
     datetime: string | null;
   } | null;
   projectId: string;
+  sectionId: string | null;
+  parentId: string | null;
   labels: string[];
   order: number;
 };
@@ -30,6 +32,13 @@ export type TodoistProject = {
   name: string;
   color: string;
   isInboxProject: boolean;
+};
+
+export type TodoistSection = {
+  id: string;
+  projectId: string;
+  name: string;
+  order: number;
 };
 
 /** Public view of an integration credential — no token leaks to the client. */

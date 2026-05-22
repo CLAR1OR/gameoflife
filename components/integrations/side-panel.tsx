@@ -32,8 +32,15 @@ export function IntegrationsSidePanel() {
         setOpen(false);
       }
     }
+    function onOpenEvent() {
+      setOpen(true);
+    }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("open-todoist-panel", onOpenEvent);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("open-todoist-panel", onOpenEvent);
+    };
   }, [open]);
 
   return (

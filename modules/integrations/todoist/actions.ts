@@ -1,21 +1,28 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { integrationCredential } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { integrationCredential, userSettings } from "@/lib/db/schema";
+import { and, eq, sql } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
+import { checkAccountLevelAchievements } from "@/lib/account-achievements";
 import { getIntegrationCredential } from "../queries";
 import {
   closeTask,
   createTask,
   listProjects,
+  listSections,
   listTasksInProject,
   listTodayTasks,
   reopenTask,
   TodoistError,
+  updateTask,
 } from "./client";
-import type { TodoistProject, TodoistTask } from "../types";
+import type {
+  TodoistProject,
+  TodoistSection,
+  TodoistTask,
+} from "../types";
 
 async function getToken(userId: string): Promise<string | null> {
   const cred = await getIntegrationCredential(userId, "todoist");
@@ -31,12 +38,32 @@ function unwrap(e: unknown): string {
   return e instanceof Error ? e.message : "Failed";
 }
 
+/** Flat XP awarded per Todoist task completion. */
+const XP_PER_TODOIST_TASK = 1;
+
+async function awardGeneralXp(userId: string, amount: number) {
+  const existing = await db.query.userSettings.findFirst({
+    where: (s, { eq: e }) => e(s.userId, userId),
+  });
+  if (existing) {
+    await db
+      .update(userSettings)
+      .set({
+        generalXp: sql`${userSettings.generalXp} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(userSettings.userId, userId));
+  } else {
+    await db.insert(userSettings).values({ userId, generalXp: amount });
+  }
+  await checkAccountLevelAchievements(userId);
+}
+
 export async function saveTodoistToken(token: string): Promise<void> {
   const session = await requireSession();
   const trimmed = token.trim();
   if (!trimmed) throw new Error("Token is empty");
 
-  // Smoke test: try one request before saving so we don't store a bad token.
   try {
     await listProjects(trimmed);
   } catch (e) {
@@ -79,6 +106,7 @@ export type TodoistPanelData = {
   connected: boolean;
   tasks: TodoistTask[];
   projects: TodoistProject[];
+  sections: TodoistSection[];
   error: string | null;
 };
 
@@ -88,23 +116,45 @@ export async function loadTodoistData(
   const session = await requireSession();
   const token = await getToken(session.user.id);
   if (!token) {
-    return { connected: false, tasks: [], projects: [], error: null };
+    return {
+      connected: false,
+      tasks: [],
+      projects: [],
+      sections: [],
+      error: null,
+    };
   }
   try {
-    const [tasks, projects] = await Promise.all([
+    const [tasks, projects, sections] = await Promise.all([
       opts?.projectId
         ? listTasksInProject(token, opts.projectId)
         : listTodayTasks(token),
       listProjects(token),
+      listSections(token),
     ]);
-    return { connected: true, tasks, projects, error: null };
+    return { connected: true, tasks, projects, sections, error: null };
   } catch (e) {
     return {
       connected: true,
       tasks: [],
       projects: [],
+      sections: [],
       error: unwrap(e),
     };
+  }
+}
+
+/** Lightweight count for the top-nav badge — never throws, returns 0 on
+ *  any failure or when not connected. */
+export async function getTodoistOpenCount(): Promise<number> {
+  try {
+    const session = await requireSession();
+    const token = await getToken(session.user.id);
+    if (!token) return 0;
+    const tasks = await listTodayTasks(token);
+    return tasks.length;
+  } catch {
+    return 0;
   }
 }
 
@@ -117,6 +167,9 @@ export async function completeTodoistTask(taskId: string): Promise<void> {
   } catch (e) {
     throw new Error(unwrap(e));
   }
+  // Reward the completion in our gamification layer.
+  await awardGeneralXp(session.user.id, XP_PER_TODOIST_TASK);
+  revalidatePath("/account");
 }
 
 export async function reopenTodoistTask(taskId: string): Promise<void> {
@@ -146,6 +199,36 @@ export async function createTodoistTask(data: {
       dueString: data.dueString,
       projectId: data.projectId,
     });
+  } catch (e) {
+    throw new Error(unwrap(e));
+  }
+}
+
+export async function rescheduleTodoistTask(
+  taskId: string,
+  dueString: string
+): Promise<TodoistTask> {
+  const session = await requireSession();
+  const token = await getToken(session.user.id);
+  if (!token) throw new Error("Todoist not connected");
+  const ds = dueString.trim();
+  try {
+    // Todoist treats an empty due_string as "no due date".
+    return await updateTask(token, taskId, { dueString: ds || null });
+  } catch (e) {
+    throw new Error(unwrap(e));
+  }
+}
+
+export async function setTodoistTaskPriority(
+  taskId: string,
+  priority: 1 | 2 | 3 | 4
+): Promise<TodoistTask> {
+  const session = await requireSession();
+  const token = await getToken(session.user.id);
+  if (!token) throw new Error("Todoist not connected");
+  try {
+    return await updateTask(token, taskId, { priority });
   } catch (e) {
     throw new Error(unwrap(e));
   }
