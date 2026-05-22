@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -17,6 +17,10 @@ const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const HIDDEN_CALS_KEY = "gcal-hidden-calendars";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Pixel-per-hour density for the time grid (24h × 36px = 864px tall). */
+const HOUR_PX = 36;
+const DAY_PX = 24 * HOUR_PX;
 
 function isTypingTarget(t: EventTarget | null): boolean {
   if (!(t instanceof HTMLElement)) return false;
@@ -100,7 +104,6 @@ function dispatchEventsChanged() {
   }
 }
 
-/** Resolve an event's start instant for sorting and overlap checks. */
 function eventStartMs(ev: GoogleEvent): number {
   if (ev.allDay) return fromIsoDate(ev.start.slice(0, 10)).getTime();
   return new Date(ev.start).getTime();
@@ -109,8 +112,6 @@ function eventEndMs(ev: GoogleEvent): number {
   if (ev.allDay) return fromIsoDate(ev.end.slice(0, 10)).getTime();
   return new Date(ev.end).getTime();
 }
-
-/** Does this event touch the given day? (start < day_end AND end > day_start) */
 function eventTouchesDay(ev: GoogleEvent, day: Date): boolean {
   const dayStart = day.getTime();
   const dayEnd = dayStart + 24 * 60 * 60 * 1000;
@@ -127,9 +128,11 @@ export function GoogleCalendarModal() {
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(() => readHiddenCalendars());
+  const [selectedEvent, setSelectedEvent] = useState<GoogleEvent | null>(null);
   const reloadRef = useRef(0);
   const wasOpenRef = useRef(false);
   const quickAddRef = useRef<HTMLInputElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     writeHiddenCalendars(hidden);
@@ -139,8 +142,6 @@ export function GoogleCalendarModal() {
     setWeekStart((prev) => isoDate(addDays(fromIsoDate(prev), days)));
   }, []);
 
-  // Global hotkeys: w toggles, Esc closes, and while-open: arrow keys
-  // for weeks, t for today, n to focus quick-add. Ignored while typing.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.defaultPrevented) return;
@@ -154,7 +155,8 @@ export function GoogleCalendarModal() {
       if (!open) return;
       if (e.key === "Escape") {
         e.preventDefault();
-        setOpen(false);
+        if (selectedEvent) setSelectedEvent(null);
+        else setOpen(false);
       } else if (!typing && e.key === "ArrowLeft") {
         e.preventDefault();
         shiftWeek(-7);
@@ -178,7 +180,7 @@ export function GoogleCalendarModal() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("open-gcal-modal", onOpenEvent);
     };
-  }, [open, shiftWeek]);
+  }, [open, shiftWeek, selectedEvent]);
 
   const refresh = useCallback(async (week: string) => {
     const id = ++reloadRef.current;
@@ -223,6 +225,26 @@ export function GoogleCalendarModal() {
     wasOpenRef.current = open;
   }, [open, refresh, weekStart]);
 
+  // Auto-scroll the time grid to ~now (or 7am if not viewing this week).
+  useLayoutEffect(() => {
+    if (!open) return;
+    const node = scrollRef.current;
+    if (!node) return;
+    const todayIso = isoDate(new Date());
+    const startIso = weekStart;
+    const endIso = isoDate(addDays(fromIsoDate(weekStart), 6));
+    const showingToday = todayIso >= startIso && todayIso <= endIso;
+    let targetTop: number;
+    if (showingToday) {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      targetTop = (minutes / 60) * HOUR_PX - 120;
+    } else {
+      targetTop = 7 * HOUR_PX;
+    }
+    node.scrollTop = Math.max(0, targetTop);
+  }, [open, weekStart]);
+
   async function handleQuickAdd(e: React.FormEvent) {
     e.preventDefault();
     const text = draft.trim();
@@ -242,9 +264,6 @@ export function GoogleCalendarModal() {
 
   function handleEventUpdate(original: GoogleEvent, updated: GoogleEvent) {
     if (!data) return;
-    // The PATCH call is owned by EventEditor; we just splice the new
-    // event into the loaded week. The event may have moved to a
-    // different day — the day-overlap filter on render handles that.
     setData({
       ...data,
       events: data.events.map((e) => (e.id === original.id ? updated : e)),
@@ -283,7 +302,6 @@ export function GoogleCalendarModal() {
   const start = fromIsoDate(weekStart);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const todayIso = isoDate(new Date());
-  const nowMs = Date.now();
 
   return (
     <div
@@ -308,7 +326,7 @@ export function GoogleCalendarModal() {
           loading={loading}
         />
 
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+        <div className="flex-1 overflow-hidden p-3 sm:p-4 flex flex-col gap-3 relative">
           {!data ? (
             <SkeletonGrid days={days} todayIso={todayIso} />
           ) : !data.connected ? (
@@ -317,7 +335,7 @@ export function GoogleCalendarModal() {
             <ErrorBox message={data.error} onRetry={() => refresh(weekStart)} />
           ) : (
             <>
-              <form onSubmit={handleQuickAdd} className="flex gap-2">
+              <form onSubmit={handleQuickAdd} className="flex gap-2 shrink-0">
                 <input
                   ref={quickAddRef}
                   value={draft}
@@ -334,13 +352,13 @@ export function GoogleCalendarModal() {
                 </button>
               </form>
 
-              <WeekGrid
+              <TimeGrid
+                scrollRef={scrollRef}
                 days={days}
                 todayIso={todayIso}
                 events={data.events.filter((e) => !hidden.has(e.calendarId))}
-                nowMs={nowMs}
-                onUpdate={handleEventUpdate}
-                onDelete={handleEventDelete}
+                onSelect={setSelectedEvent}
+                selectedId={selectedEvent?.id ?? null}
               />
 
               <CalendarLegend
@@ -348,6 +366,21 @@ export function GoogleCalendarModal() {
                 hidden={hidden}
                 onToggle={toggleCalendarVisibility}
               />
+
+              {selectedEvent && (
+                <EventEditorOverlay
+                  ev={selectedEvent}
+                  onClose={() => setSelectedEvent(null)}
+                  onSaved={(updated) => {
+                    handleEventUpdate(selectedEvent, updated);
+                    setSelectedEvent(null);
+                  }}
+                  onDelete={() => {
+                    handleEventDelete(selectedEvent);
+                    setSelectedEvent(null);
+                  }}
+                />
+              )}
             </>
           )}
         </div>
@@ -462,170 +495,442 @@ function ModalHeader({
   );
 }
 
-function WeekGrid({
+// ─── time grid ─────────────────────────────────────────────────────────────
+
+type TimedLayout = {
+  ev: GoogleEvent;
+  lane: number;
+  lanes: number;
+  topPx: number;
+  heightPx: number;
+};
+
+/** Pack overlapping timed events into side-by-side lanes within
+ *  clusters. Each cluster recomputes its width fraction so isolated
+ *  events still take the full column. */
+function layoutTimedEventsForDay(
+  events: GoogleEvent[],
+  day: Date
+): TimedLayout[] {
+  const dayStartMs = day.getTime();
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+
+  const items = events
+    .filter((ev) => !ev.allDay && eventTouchesDay(ev, day))
+    .map((ev) => ({
+      ev,
+      start: Math.max(eventStartMs(ev), dayStartMs),
+      end: Math.min(eventEndMs(ev), dayEndMs),
+    }))
+    .filter((x) => x.end > x.start)
+    .sort((a, b) => a.start - b.start || b.end - a.end);
+
+  type Item = (typeof items)[number];
+  const chunks: Item[][] = [];
+  let cur: Item[] = [];
+  let curEnd = 0;
+  for (const it of items) {
+    if (cur.length === 0 || it.start < curEnd) {
+      cur.push(it);
+      curEnd = Math.max(curEnd, it.end);
+    } else {
+      chunks.push(cur);
+      cur = [it];
+      curEnd = it.end;
+    }
+  }
+  if (cur.length) chunks.push(cur);
+
+  const layouts: TimedLayout[] = [];
+  for (const chunk of chunks) {
+    const lanes: number[] = []; // lane[i] = end of last event in lane i
+    const inChunk: { item: Item; lane: number }[] = [];
+    for (const item of chunk) {
+      let lane = lanes.findIndex((end) => end <= item.start);
+      if (lane === -1) {
+        lane = lanes.length;
+        lanes.push(item.end);
+      } else {
+        lanes[lane] = item.end;
+      }
+      inChunk.push({ item, lane });
+    }
+    const total = lanes.length;
+    for (const { item, lane } of inChunk) {
+      const topPx =
+        ((item.start - dayStartMs) / (60 * 60 * 1000)) * HOUR_PX;
+      const heightPx =
+        ((item.end - item.start) / (60 * 60 * 1000)) * HOUR_PX;
+      layouts.push({
+        ev: item.ev,
+        lane,
+        lanes: total,
+        topPx,
+        heightPx,
+      });
+    }
+  }
+  return layouts;
+}
+
+function allDayEventsForDay(events: GoogleEvent[], day: Date): GoogleEvent[] {
+  return events
+    .filter((ev) => ev.allDay && eventTouchesDay(ev, day))
+    .sort((a, b) => a.summary.localeCompare(b.summary));
+}
+
+function TimeGrid({
+  scrollRef,
   days,
   todayIso,
   events,
-  nowMs,
-  onUpdate,
-  onDelete,
+  onSelect,
+  selectedId,
+}: {
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  days: Date[];
+  todayIso: string;
+  events: GoogleEvent[];
+  onSelect: (ev: GoogleEvent) => void;
+  selectedId: string | null;
+}) {
+  // Re-render every minute to keep the now-line moving + past-events dimming fresh.
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-auto rounded-md border border-border/40 bg-card/20"
+    >
+      <div className="min-w-[760px] grid grid-cols-[44px_repeat(7,minmax(0,1fr))]">
+        {/* Sticky header band: weekday + per-day all-day events */}
+        <StickyHeaderRow days={days} todayIso={todayIso} />
+        <StickyAllDayRow
+          days={days}
+          todayIso={todayIso}
+          events={events}
+          onSelect={onSelect}
+          selectedId={selectedId}
+        />
+
+        {/* Hour gutter */}
+        <div
+          className="relative border-r border-border/40 bg-card/30"
+          style={{ height: DAY_PX }}
+        >
+          {Array.from({ length: 24 }, (_, h) => (
+            <div
+              key={h}
+              className="absolute right-1 text-[9px] font-mono text-muted-foreground/60"
+              style={{ top: h * HOUR_PX - 6 }}
+            >
+              {h === 0 ? "" : `${pad(h)}:00`}
+            </div>
+          ))}
+        </div>
+
+        {/* Day columns */}
+        {days.map((d) => {
+          const key = isoDate(d);
+          const isToday = key === todayIso;
+          const nowMs = Date.now();
+          const layouts = layoutTimedEventsForDay(events, d);
+          return (
+            <div
+              key={key}
+              className={`relative border-r border-border/40 ${
+                isToday ? "bg-glow/5" : ""
+              }`}
+              style={{ height: DAY_PX }}
+            >
+              {/* Hour gridlines */}
+              {Array.from({ length: 24 }, (_, h) => (
+                <div
+                  key={h}
+                  className={`absolute left-0 right-0 ${
+                    h % 6 === 0 ? "border-t border-border/40" : "border-t border-border/15"
+                  }`}
+                  style={{ top: h * HOUR_PX }}
+                />
+              ))}
+              {/* Event blocks */}
+              {layouts.map((layout) => {
+                const isPast =
+                  isToday &&
+                  eventEndMs(layout.ev) <= nowMs;
+                return (
+                  <EventBlock
+                    key={`${layout.ev.id}-${key}`}
+                    layout={layout}
+                    isPast={isPast}
+                    isContinuation={
+                      eventStartMs(layout.ev) < d.getTime()
+                    }
+                    selected={selectedId === layout.ev.id}
+                    onSelect={() => onSelect(layout.ev)}
+                  />
+                );
+              })}
+              {/* Now line */}
+              {isToday && <NowLine />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StickyHeaderRow({
+  days,
+  todayIso,
+}: {
+  days: Date[];
+  todayIso: string;
+}) {
+  return (
+    <>
+      <div className="sticky top-0 z-20 bg-card border-b border-border/40" />
+      {days.map((d, i) => {
+        const key = isoDate(d);
+        const isToday = key === todayIso;
+        return (
+          <div
+            key={key}
+            className={`sticky top-0 z-20 border-b border-border/40 px-2 py-1.5 text-[11px] font-mono uppercase tracking-wider flex items-center justify-between ${
+              isToday ? "bg-glow/10 text-glow" : "bg-card text-muted-foreground"
+            }`}
+          >
+            <span>{DAY_NAMES[i]}</span>
+            <span className="text-foreground font-semibold">{d.getDate()}</span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function StickyAllDayRow({
+  days,
+  todayIso,
+  events,
+  onSelect,
+  selectedId,
 }: {
   days: Date[];
   todayIso: string;
   events: GoogleEvent[];
-  nowMs: number;
-  onUpdate: (original: GoogleEvent, updated: GoogleEvent) => void;
-  onDelete: (ev: GoogleEvent) => void;
+  onSelect: (ev: GoogleEvent) => void;
+  selectedId: string | null;
 }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
-      {days.map((d, i) => {
+    <>
+      <div className="sticky top-[28px] z-20 bg-card border-b border-border/40 text-[9px] font-mono text-right pr-1 py-1 text-muted-foreground/60">
+        all-day
+      </div>
+      {days.map((d) => {
         const key = isoDate(d);
         const isToday = key === todayIso;
-        const dayEvents = events
-          .filter((ev) => eventTouchesDay(ev, d))
-          .sort((a, b) => {
-            if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
-            return eventStartMs(a) - eventStartMs(b);
-          });
-        const firstUpcomingIndex = isToday
-          ? dayEvents.findIndex((ev) => !ev.allDay && eventEndMs(ev) > nowMs)
-          : -1;
-
+        const items = allDayEventsForDay(events, d);
         return (
           <div
-            key={key}
-            className={`rounded-lg border ${
-              isToday
-                ? "border-glow/60 bg-glow/5"
-                : "border-border/60 bg-card/30"
-            } flex flex-col min-h-[14rem]`}
+            key={`ad-${key}`}
+            className={`sticky top-[28px] z-20 border-b border-border/40 px-1 py-1 space-y-0.5 ${
+              isToday ? "bg-glow/10" : "bg-card"
+            }`}
           >
-            <div
-              className={`px-2 py-1.5 border-b border-border/40 text-[11px] font-mono uppercase tracking-wider flex items-center justify-between ${
-                isToday ? "text-glow" : "text-muted-foreground"
-              }`}
-            >
-              <span>{DAY_NAMES[i]}</span>
-              <span className="text-foreground font-semibold">
-                {d.getDate()}
-              </span>
-            </div>
-            <ul className="flex-1 p-1.5 space-y-1">
-              {dayEvents.length === 0 ? (
-                <li className="text-[10px] font-mono text-muted-foreground/40 px-1 py-2">
-                  —
-                </li>
-              ) : (
-                dayEvents.map((ev, idx) => {
-                  const isPast = isToday && !ev.allDay && eventEndMs(ev) <= nowMs;
-                  const isContinuation = ev.allDay
-                    ? ev.start.slice(0, 10) < key
-                    : isoDate(new Date(ev.start)) < key;
-                  return (
-                    <li key={`${ev.id}-${key}`}>
-                      {isToday && idx === firstUpcomingIndex && idx > 0 && (
-                        <NowDivider />
-                      )}
-                      <EventCard
-                        ev={ev}
-                        isPast={isPast}
-                        isContinuation={isContinuation}
-                        onUpdate={onUpdate}
-                        onDelete={onDelete}
-                      />
-                    </li>
-                  );
-                })
-              )}
-            </ul>
+            {items.length === 0 ? (
+              <div className="h-4" />
+            ) : (
+              items.map((ev) => {
+                const isContinuation = ev.start.slice(0, 10) < key;
+                return (
+                  <AllDayChip
+                    key={`${ev.id}-${key}`}
+                    ev={ev}
+                    isContinuation={isContinuation}
+                    selected={selectedId === ev.id}
+                    onSelect={() => onSelect(ev)}
+                  />
+                );
+              })
+            )}
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
 
-function NowDivider() {
-  const time = new Date().toLocaleTimeString([], {
+function AllDayChip({
+  ev,
+  isContinuation,
+  selected,
+  onSelect,
+}: {
+  ev: GoogleEvent;
+  isContinuation: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      title={ev.summary}
+      className={`block w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate transition-colors ${
+        selected ? "ring-1 ring-glow/70" : ""
+      }`}
+      style={{
+        backgroundColor: `${ev.calendarColor}33`,
+        borderLeft: `3px solid ${ev.calendarColor}`,
+        color: ev.calendarColor,
+      }}
+    >
+      {isContinuation ? "↗ " : ""}
+      <span className="text-foreground">{ev.summary}</span>
+    </button>
+  );
+}
+
+function EventBlock({
+  layout,
+  isPast,
+  isContinuation,
+  selected,
+  onSelect,
+}: {
+  layout: TimedLayout;
+  isPast: boolean;
+  isContinuation: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const widthPct = 100 / layout.lanes;
+  const leftPct = layout.lane * widthPct;
+  const showLabel = layout.heightPx >= 24;
+  const showTime = layout.heightPx >= 36;
+
+  const timeLabel = new Date(layout.ev.start).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
+
   return (
-    <div className="flex items-center gap-1 px-1 py-1 my-0.5">
-      <div className="h-px flex-1 bg-destructive/70" />
-      <span className="text-[9px] font-mono text-destructive">{time}</span>
-      <div className="h-px flex-1 bg-destructive/70" />
+    <button
+      type="button"
+      onClick={onSelect}
+      title={`${layout.ev.summary} · ${layout.ev.calendarName}`}
+      className={`absolute overflow-hidden rounded text-left transition-opacity ${
+        isPast ? "opacity-50" : ""
+      } ${selected ? "ring-1 ring-glow/70 z-10" : ""}`}
+      style={{
+        top: layout.topPx,
+        height: Math.max(layout.heightPx - 1, 14),
+        left: `calc(${leftPct}% + 2px)`,
+        width: `calc(${widthPct}% - 4px)`,
+        backgroundColor: `${layout.ev.calendarColor}44`,
+        borderLeft: `3px solid ${layout.ev.calendarColor}`,
+      }}
+    >
+      <div className="px-1 py-0.5 text-[10px] leading-tight">
+        {showTime && (
+          <div className="font-mono text-[9px] text-muted-foreground">
+            {isContinuation ? "↗ " : ""}
+            {timeLabel}
+          </div>
+        )}
+        {showLabel && (
+          <div className="line-clamp-2 text-foreground/90">
+            {layout.ev.summary}
+          </div>
+        )}
+        {!showLabel && (
+          <div className="truncate text-foreground/90">
+            {layout.ev.summary}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function NowLine() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const top = (minutes / 60) * HOUR_PX;
+  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return (
+    <div
+      className="pointer-events-none absolute left-0 right-0 z-[5]"
+      style={{ top: top - 1 }}
+    >
+      <div className="relative">
+        <div className="h-px bg-destructive" />
+        <span className="absolute -top-2 left-1 text-[9px] font-mono text-destructive bg-card/80 px-0.5 rounded">
+          {time}
+        </span>
+      </div>
     </div>
   );
 }
 
-function EventCard({
+// ─── overlay editor ────────────────────────────────────────────────────────
+
+function EventEditorOverlay({
   ev,
-  isPast,
-  isContinuation,
-  onUpdate,
+  onClose,
+  onSaved,
   onDelete,
 }: {
   ev: GoogleEvent;
-  isPast: boolean;
-  isContinuation: boolean;
-  onUpdate: (original: GoogleEvent, updated: GoogleEvent) => void;
-  onDelete: (ev: GoogleEvent) => void;
+  onClose: () => void;
+  onSaved: (updated: GoogleEvent) => void;
+  onDelete: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-
-  const timeLabel = ev.allDay
-    ? "all-day"
-    : new Date(ev.start).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
   return (
-    <div
-      className={`rounded transition-colors ${
-        isPast ? "opacity-40" : ""
-      } ${editing ? "bg-card/70 border border-glow/40" : "hover:bg-card/60"}`}
-    >
+    <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
       <button
         type="button"
-        onClick={() => setEditing((s) => !s)}
-        className="w-full text-left px-1.5 py-1 text-[11px]"
-        title={`${ev.summary} · ${ev.calendarName}`}
-      >
-        <div className="flex items-start gap-1.5">
-          <span
-            className="mt-1 inline-block h-2 w-2 rounded-full shrink-0"
-            style={{ backgroundColor: ev.calendarColor }}
-          />
-          <div className="flex-1 min-w-0">
-            <div className="font-mono text-[10px] text-muted-foreground">
-              {isContinuation ? "↗" : ""} {timeLabel}
-            </div>
-            <div className="leading-snug break-words">{ev.summary}</div>
-            {ev.location && (
-              <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">
-                📍 {ev.location}
-              </div>
-            )}
+        onClick={onClose}
+        aria-label="Close editor"
+        className="absolute inset-0 bg-background/60 backdrop-blur-[2px] pointer-events-auto"
+      />
+      <div className="relative w-full max-w-md rounded-lg border border-glow/40 bg-card shadow-xl pointer-events-auto">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="inline-block h-3 w-3 rounded-full shrink-0"
+              style={{ backgroundColor: ev.calendarColor }}
+            />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground truncate">
+              {ev.calendarName || "Calendar"}
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors text-sm px-1"
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
-      </button>
-      {editing && (
         <EventEditor
           ev={ev}
-          onCancel={() => setEditing(false)}
-          onSaved={(updated) => {
-            setEditing(false);
-            onUpdate(ev, updated);
-          }}
-          onDelete={() => {
-            setEditing(false);
-            onDelete(ev);
-          }}
+          onCancel={onClose}
+          onSaved={onSaved}
+          onDelete={onDelete}
         />
-      )}
+      </div>
     </div>
   );
 }
@@ -645,12 +950,8 @@ function EventEditor({
   const [description, setDescription] = useState(ev.description ?? "");
   const [location, setLocation] = useState(ev.location ?? "");
   const [allDay, setAllDay] = useState(ev.allDay);
-  // For all-day Google events, end is exclusive (= day AFTER last day).
-  // Display the inclusive last day; convert back on save.
   const [startVal, setStartVal] = useState(() =>
-    ev.allDay
-      ? ev.start.slice(0, 10)
-      : isoDateTimeLocal(new Date(ev.start))
+    ev.allDay ? ev.start.slice(0, 10) : isoDateTimeLocal(new Date(ev.start))
   );
   const [endVal, setEndVal] = useState(() => {
     if (ev.allDay) {
@@ -661,7 +962,6 @@ function EventEditor({
   });
   const [saving, setSaving] = useState(false);
 
-  // When toggling all-day on/off, coerce the start/end to the right shape.
   function toggleAllDay(next: boolean) {
     if (next && !allDay) {
       setStartVal(startVal.slice(0, 10));
@@ -682,7 +982,6 @@ function EventEditor({
         location: location || null,
       };
       if (allDay) {
-        // Convert inclusive end → exclusive (Google's convention).
         const endExclusive = isoDate(addDays(fromIsoDate(endVal), 1));
         patch.start = { date: startVal };
         patch.end = { date: endExclusive };
@@ -692,31 +991,29 @@ function EventEditor({
       }
       const updated = await updateCalendarEvent(ev.calendarId, ev.id, patch);
       toast.success("Saved");
-      // Preserve the original calendar color since the patched event's
-      // calendar metadata isn't fetched.
-      onSaved({ ...updated, calendarColor: ev.calendarColor, calendarName: ev.calendarName });
+      onSaved({
+        ...updated,
+        calendarColor: ev.calendarColor,
+        calendarName: ev.calendarName,
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
     setSaving(false);
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!confirm(`Delete "${ev.summary}"?`)) return;
     onDelete();
   }
 
   return (
-    <div
-      className="border-t border-border/40 px-2 py-2 space-y-1.5 text-[11px]"
-      // Stop clicks from bubbling to the parent toggle button.
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="px-3 py-3 space-y-2 text-xs">
       <input
         value={summary}
         onChange={(e) => setSummary(e.target.value)}
         placeholder="Title"
-        className="w-full rounded border border-border/60 bg-card/60 px-1.5 py-1 outline-none focus:border-glow/60"
+        className="w-full rounded border border-border/60 bg-card/60 px-2 py-1.5 text-sm outline-none focus:border-glow/60"
       />
       <label className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
         <input
@@ -732,41 +1029,41 @@ function EventEditor({
           type={allDay ? "date" : "datetime-local"}
           value={startVal}
           onChange={(e) => setStartVal(e.target.value)}
-          className="flex-1 min-w-0 rounded border border-border/60 bg-card/60 px-1.5 py-1 text-[10px] outline-none focus:border-glow/60"
+          className="flex-1 min-w-0 rounded border border-border/60 bg-card/60 px-2 py-1.5 outline-none focus:border-glow/60"
         />
         <input
           type={allDay ? "date" : "datetime-local"}
           value={endVal}
           onChange={(e) => setEndVal(e.target.value)}
-          className="flex-1 min-w-0 rounded border border-border/60 bg-card/60 px-1.5 py-1 text-[10px] outline-none focus:border-glow/60"
+          className="flex-1 min-w-0 rounded border border-border/60 bg-card/60 px-2 py-1.5 outline-none focus:border-glow/60"
         />
       </div>
       <input
         value={location}
         onChange={(e) => setLocation(e.target.value)}
         placeholder="Location"
-        className="w-full rounded border border-border/60 bg-card/60 px-1.5 py-1 outline-none focus:border-glow/60"
+        className="w-full rounded border border-border/60 bg-card/60 px-2 py-1.5 outline-none focus:border-glow/60"
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Description"
-        rows={Math.min(6, Math.max(2, description.split("\n").length + 1))}
-        className="w-full rounded border border-border/60 bg-card/60 px-1.5 py-1 outline-none focus:border-glow/60 resize-y whitespace-pre-wrap"
+        rows={Math.min(8, Math.max(3, description.split("\n").length + 1))}
+        className="w-full rounded border border-border/60 bg-card/60 px-2 py-1.5 outline-none focus:border-glow/60 resize-y whitespace-pre-wrap"
       />
       <div className="flex flex-wrap gap-1 pt-1">
         <button
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded border border-glow/40 bg-glow/10 px-2 py-1 font-mono text-[10px] text-glow hover:bg-glow/20 disabled:opacity-40 transition-colors"
+          className="rounded border border-glow/40 bg-glow/10 px-3 py-1.5 font-mono text-[11px] text-glow hover:bg-glow/20 disabled:opacity-40 transition-colors"
         >
           {saving ? "saving…" : "save"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded border border-border/60 bg-card/40 px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+          className="rounded border border-border/60 bg-card/40 px-3 py-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
         >
           cancel
         </button>
@@ -774,7 +1071,7 @@ function EventEditor({
           href={ev.htmlLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded border border-border/60 bg-card/40 px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+          className="rounded border border-border/60 bg-card/40 px-3 py-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
           title="Open in Google Calendar"
         >
           open ↗
@@ -782,7 +1079,7 @@ function EventEditor({
         <button
           type="button"
           onClick={handleDelete}
-          className="ml-auto rounded border border-destructive/40 bg-destructive/5 px-2 py-1 font-mono text-[10px] text-destructive hover:bg-destructive/15 transition-colors"
+          className="ml-auto rounded border border-destructive/40 bg-destructive/5 px-3 py-1.5 font-mono text-[11px] text-destructive hover:bg-destructive/15 transition-colors"
         >
           delete
         </button>
@@ -790,6 +1087,8 @@ function EventEditor({
     </div>
   );
 }
+
+// ─── leftover bits ─────────────────────────────────────────────────────────
 
 function CalendarLegend({
   calendars,
@@ -803,7 +1102,7 @@ function CalendarLegend({
   if (calendars.length === 0) return null;
   const anyHidden = calendars.some((c) => hidden.has(c.id));
   return (
-    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 text-[10px] font-mono text-muted-foreground/70">
+    <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground/70 shrink-0">
       <span>Calendars:</span>
       {calendars.map((c) => {
         const off = hidden.has(c.id);
@@ -828,7 +1127,9 @@ function CalendarLegend({
       {anyHidden && (
         <button
           type="button"
-          onClick={() => calendars.forEach((c) => hidden.has(c.id) && onToggle(c.id))}
+          onClick={() =>
+            calendars.forEach((c) => hidden.has(c.id) && onToggle(c.id))
+          }
           className="ml-2 text-glow hover:underline"
         >
           show all
@@ -846,36 +1147,40 @@ function SkeletonGrid({
   todayIso: string;
 }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
-      {days.map((d, i) => {
-        const key = isoDate(d);
-        const isToday = key === todayIso;
-        return (
-          <div
-            key={key}
-            className={`rounded-lg border ${
-              isToday ? "border-glow/40 bg-glow/5" : "border-border/40 bg-card/20"
-            } flex flex-col min-h-[14rem]`}
-          >
+    <div className="flex-1 min-h-0 overflow-hidden rounded-md border border-border/40 bg-card/20">
+      <div className="grid grid-cols-[44px_repeat(7,minmax(0,1fr))] min-w-[760px]">
+        <div className="bg-card border-b border-border/40" />
+        {days.map((d, i) => {
+          const key = isoDate(d);
+          const isToday = key === todayIso;
+          return (
             <div
-              className={`px-2 py-1.5 border-b border-border/40 text-[11px] font-mono uppercase tracking-wider flex items-center justify-between ${
-                isToday ? "text-glow" : "text-muted-foreground"
+              key={key}
+              className={`border-b border-border/40 px-2 py-1.5 text-[11px] font-mono uppercase tracking-wider flex items-center justify-between ${
+                isToday ? "bg-glow/10 text-glow" : "bg-card text-muted-foreground"
               }`}
             >
               <span>{DAY_NAMES[i]}</span>
               <span className="text-foreground font-semibold">{d.getDate()}</span>
             </div>
-            <ul className="flex-1 p-1.5 space-y-1.5 animate-pulse">
-              {Array.from({ length: 3 }).map((_, j) => (
-                <li
-                  key={j}
-                  className="h-8 rounded bg-card/40 border border-border/20"
-                />
-              ))}
-            </ul>
+          );
+        })}
+        <div className="bg-card/30 border-r border-border/40" style={{ height: 240 }} />
+        {days.map((d) => (
+          <div
+            key={`sk-${isoDate(d)}`}
+            className="border-r border-border/40 p-1.5 space-y-1.5 animate-pulse"
+            style={{ height: 240 }}
+          >
+            {Array.from({ length: 3 }).map((_, j) => (
+              <div
+                key={j}
+                className="h-10 rounded bg-card/40 border border-border/20"
+              />
+            ))}
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
