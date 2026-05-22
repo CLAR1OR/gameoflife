@@ -1,15 +1,17 @@
 import type { TodoistProject, TodoistTask } from "../types";
 
-const BASE = "https://api.todoist.com/rest/v2";
+/** Todoist unified API. REST v2 (api.todoist.com/rest/v2) returns 410
+ *  Gone as of late 2025 — everything moved here. */
+const BASE = "https://api.todoist.com/api/v1";
 
-/** Raw shapes coming back from the Todoist REST v2 API — we map a few
- *  fields and drop the rest before exposing to the rest of the app. */
+/** Task object as returned by the v1 API on the wire (snake_case). Only
+ *  the fields we actually use are typed; the rest is ignored. */
 type RawTask = {
   id: string;
   content: string;
   description: string;
-  url: string;
-  is_completed: boolean;
+  checked: boolean;
+  is_deleted?: boolean;
   priority: number;
   due: {
     date: string;
@@ -19,15 +21,19 @@ type RawTask = {
   } | null;
   project_id: string;
   labels: string[];
-  order: number;
+  child_order: number;
 };
 
 type RawProject = {
   id: string;
   name: string;
   color: string;
-  is_inbox_project: boolean;
+  inbox_project?: boolean;
 };
+
+/** All list endpoints in v1 are paginated; cursor handling can be added
+ *  later if needed. For now we just take the first page. */
+type Paginated<T> = { results: T[]; next_cursor: string | null };
 
 class TodoistError extends Error {
   status: number;
@@ -66,13 +72,17 @@ async function call<T>(
   return (await res.json()) as T;
 }
 
+function taskUrl(id: string): string {
+  return `https://todoist.com/showTask?id=${id}`;
+}
+
 function mapTask(r: RawTask): TodoistTask {
   return {
     id: r.id,
     content: r.content,
     description: r.description || null,
-    url: r.url,
-    isCompleted: r.is_completed,
+    url: taskUrl(r.id),
+    isCompleted: r.checked,
     priority: r.priority as 1 | 2 | 3 | 4,
     due: r.due
       ? {
@@ -84,7 +94,7 @@ function mapTask(r: RawTask): TodoistTask {
       : null,
     projectId: r.project_id,
     labels: r.labels,
-    order: r.order,
+    order: r.child_order,
   };
 }
 
@@ -93,22 +103,22 @@ function mapProject(r: RawProject): TodoistProject {
     id: r.id,
     name: r.name,
     color: r.color,
-    isInboxProject: r.is_inbox_project,
+    isInboxProject: r.inbox_project ?? false,
   };
 }
 
-/** Hits /tasks with a `filter` so we get only today + overdue. */
+/** GET /tasks/filter?query=today|overdue — paginated, we take page 1. */
 export async function listTodayTasks(token: string): Promise<TodoistTask[]> {
-  const raw = await call<RawTask[]>(
+  const data = await call<Paginated<RawTask>>(
     token,
-    `/tasks?filter=${encodeURIComponent("today | overdue")}`
+    `/tasks/filter?query=${encodeURIComponent("today | overdue")}&limit=200`
   );
-  return (raw ?? []).map(mapTask);
+  return (data?.results ?? []).map(mapTask);
 }
 
 export async function listProjects(token: string): Promise<TodoistProject[]> {
-  const raw = await call<RawProject[]>(token, "/projects");
-  return (raw ?? []).map(mapProject);
+  const data = await call<Paginated<RawProject>>(token, "/projects?limit=200");
+  return (data?.results ?? []).map(mapProject);
 }
 
 export async function closeTask(token: string, taskId: string): Promise<void> {
