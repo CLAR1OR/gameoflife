@@ -72,8 +72,11 @@ async function call<T>(
   if (res.status === 204) return null;
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    // Include a short body snippet so 4xx errors are debuggable in the
+    // UI without having to crack open the network tab.
+    const snippet = body ? ` — ${body.slice(0, 160)}` : "";
     throw new TodoistError(
-      `Todoist API ${res.status}: ${res.statusText}`,
+      `Todoist API ${res.status} (${path})${snippet}`,
       res.status,
       body
     );
@@ -154,7 +157,7 @@ export async function listProjects(token: string): Promise<TodoistProject[]> {
 }
 
 export async function listSections(token: string): Promise<TodoistSection[]> {
-  const data = await call<Paginated<RawSection>>(token, "/sections?limit=500");
+  const data = await call<Paginated<RawSection>>(token, "/sections?limit=200");
   return (data?.results ?? []).map(mapSection);
 }
 

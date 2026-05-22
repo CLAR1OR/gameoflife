@@ -125,14 +125,26 @@ export async function loadTodoistData(
     };
   }
   try {
-    const [tasks, projects, sections] = await Promise.all([
+    // Tasks and projects must succeed — the panel can't render without
+    // them. Sections is best-effort: if it fails (e.g. an account-level
+    // quirk), we render flat instead of taking the whole panel down.
+    const [tasks, projects, sectionsResult] = await Promise.all([
       opts?.projectId
         ? listTasksInProject(token, opts.projectId)
         : listTodayTasks(token),
       listProjects(token),
-      listSections(token),
+      listSections(token).catch((e) => {
+        console.error("Todoist sections fetch failed:", e);
+        return [] as TodoistSection[];
+      }),
     ]);
-    return { connected: true, tasks, projects, sections, error: null };
+    return {
+      connected: true,
+      tasks,
+      projects,
+      sections: sectionsResult,
+      error: null,
+    };
   } catch (e) {
     return {
       connected: true,
