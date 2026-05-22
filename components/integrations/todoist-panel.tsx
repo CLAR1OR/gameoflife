@@ -8,6 +8,7 @@ import {
   createTodoistTask,
   loadTodoistData,
   rescheduleTodoistTask,
+  setTodoistTaskDescription,
   setTodoistTaskPriority,
   type TodoistPanelData,
 } from "@/modules/integrations/todoist/actions";
@@ -239,6 +240,24 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     }
   }
 
+  async function handleEditDescription(task: TodoistTask, description: string) {
+    if (!data) return;
+    if ((task.description ?? "") === description) return;
+    const prev = data;
+    setData({
+      ...data,
+      tasks: data.tasks.map((t) =>
+        t.id === task.id ? { ...t, description: description || null } : t
+      ),
+    });
+    try {
+      await setTodoistTaskDescription(task.id, description);
+    } catch (e) {
+      setData(prev);
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  }
+
   if (loading && !data) {
     return (
       <div className="text-xs font-mono text-muted-foreground py-6 text-center">
@@ -310,6 +329,7 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     onComplete: handleComplete,
     onReschedule: handleReschedule,
     onCyclePriority: handleCyclePriority,
+    onEditDescription: handleEditDescription,
   };
 
   return (
@@ -399,6 +419,7 @@ type RowHandlers = {
   onComplete: (t: TodoistTask) => void;
   onReschedule: (t: TodoistTask, due: string) => void;
   onCyclePriority: (t: TodoistTask) => void;
+  onEditDescription: (t: TodoistTask, description: string) => void;
 };
 
 /** Build a {root tasks → children} map where any task whose parent is
@@ -593,6 +614,19 @@ function TaskRow({
   const [editingDue, setEditingDue] = useState(false);
   const [dueDraft, setDueDraft] = useState("");
 
+  // Description state is per-row and survives task re-renders. Auto-
+  // expand when the task already has notes so the user sees them; for
+  // empty descriptions, clicking the 📝 button reveals the editor.
+  const hasDescription = !!(task.description && task.description.trim());
+  const [descOpen, setDescOpen] = useState(hasDescription);
+  const [descDraft, setDescDraft] = useState(task.description ?? "");
+
+  // Keep the local draft in sync if the parent's task gets replaced
+  // (e.g. after a fresh fetch overwrites optimistic state).
+  useEffect(() => {
+    setDescDraft(task.description ?? "");
+  }, [task.description]);
+
   function startEditDue() {
     setDueDraft(task.due?.string ?? "");
     setEditingDue(true);
@@ -607,6 +641,10 @@ function TaskRow({
     if ((task.due?.string ?? "") !== dueDraft) {
       handlers.onReschedule(task, dueDraft);
     }
+  }
+
+  function commitDescription() {
+    handlers.onEditDescription(task, descDraft);
   }
 
   return (
@@ -664,10 +702,38 @@ function TaskRow({
           >
             {priorityLabel(task.priority)}
           </button>
+          <button
+            type="button"
+            onClick={() => setDescOpen((s) => !s)}
+            title={hasDescription ? "Edit description" : "Add description"}
+            className={`hover:text-foreground transition-colors ${
+              hasDescription ? "text-foreground/80" : ""
+            }`}
+          >
+            📝
+            {hasDescription ? "" : "+"}
+          </button>
           {task.labels.map((l) => (
             <span key={l}>@{l}</span>
           ))}
         </div>
+        {descOpen && (
+          <textarea
+            value={descDraft}
+            onChange={(e) => setDescDraft(e.target.value)}
+            onBlur={commitDescription}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setDescDraft(task.description ?? "");
+                setDescOpen(false);
+              }
+            }}
+            placeholder="Add details, links, sub-points…"
+            rows={Math.min(8, Math.max(2, descDraft.split("\n").length + 1))}
+            className="mt-1.5 w-full rounded border border-border/60 bg-card/60 hover:border-border focus:border-glow/60 px-2 py-1.5 text-[11px] leading-snug resize-y outline-none whitespace-pre-wrap"
+          />
+        )}
       </div>
     </div>
   );

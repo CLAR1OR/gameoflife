@@ -245,3 +245,17 @@ export async function setTodoistTaskPriority(
     throw new Error(unwrap(e));
   }
 }
+
+export async function setTodoistTaskDescription(
+  taskId: string,
+  description: string
+): Promise<TodoistTask> {
+  const session = await requireSession();
+  const token = await getToken(session.user.id);
+  if (!token) throw new Error("Todoist not connected");
+  try {
+    return await updateTask(token, taskId, { description });
+  } catch (e) {
+    throw new Error(unwrap(e));
+  }
+}

@@ -188,10 +188,16 @@ export async function createTask(
 export async function updateTask(
   token: string,
   taskId: string,
-  patch: { content?: string; dueString?: string | null; priority?: 1 | 2 | 3 | 4 }
+  patch: {
+    content?: string;
+    description?: string;
+    dueString?: string | null;
+    priority?: 1 | 2 | 3 | 4;
+  }
 ): Promise<TodoistTask> {
   const body: Record<string, unknown> = {};
   if (patch.content !== undefined) body.content = patch.content;
+  if (patch.description !== undefined) body.description = patch.description;
   if (patch.dueString !== undefined) body.due_string = patch.dueString;
   if (patch.priority !== undefined) body.priority = patch.priority;
   const raw = await call<RawTask>(token, `/tasks/${taskId}`, {
