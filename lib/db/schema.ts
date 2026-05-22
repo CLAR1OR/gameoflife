@@ -137,6 +137,30 @@ export const userSettings = sqliteTable("user_settings", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
+/** Third-party integrations (Todoist, Google Calendar, …). One row per
+ *  user per provider. accessToken is the secret used to call the
+ *  provider's API; for Todoist this is the personal API token the user
+ *  pastes in. refreshToken/expiresAt/scope are only used by OAuth
+ *  providers. meta is a free-form JSON for provider-specific state. */
+export const integrationCredential = sqliteTable(
+  "integration_credential",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["todoist", "google_calendar"] }).notNull(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token"),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+    scope: text("scope"),
+    meta: text("meta", { mode: "json" }).$type<Record<string, unknown>>(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  },
+  (t) => [
+    uniqueIndex("integration_credential_user_provider_idx").on(t.userId, t.provider),
+  ]
+);
+
 export const financeAccount = sqliteTable("finance_account", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

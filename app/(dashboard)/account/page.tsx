@@ -27,6 +27,8 @@ import {
 import { listSkillCoverPacks } from "@/lib/skill-covers";
 import { ResetFinanceButton } from "@/components/account/reset-finance-button";
 import { BackupSection } from "@/components/account/backup-section";
+import { IntegrationsSection } from "@/components/account/integrations-section";
+import { getIntegrationStatuses } from "@/modules/integrations/queries";
 import { ActivityTimeline } from "@/components/account/activity-timeline";
 import {
   XpBarChart,
@@ -113,6 +115,7 @@ export default async function AccountPage() {
     dailyXp,
     habitHeatmap,
     activitySummary,
+    integrationStatuses,
   ] = await Promise.all([
     getTotalAccountXp(userId),
     getCategoriesByUser(userId),
@@ -136,6 +139,7 @@ export default async function AccountPage() {
     getDailyXp(userId, 30),
     getHabitHeatmap(userId, 365),
     getActivitySummary(userId, 30),
+    getIntegrationStatuses(userId),
   ]);
 
   const level = getLevelProgress(totalAccountXp);
@@ -351,6 +355,14 @@ export default async function AccountPage() {
           Toggle dashboard modules and status-bar widgets. Changes apply
           immediately.
         </p>
+      </section>
+
+      {/* Integrations */}
+      <section id="integrations" className="scroll-mt-20">
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+          Integrations
+        </h2>
+        <IntegrationsSection statuses={integrationStatuses} />
       </section>
 
       {/* Backup & migration */}

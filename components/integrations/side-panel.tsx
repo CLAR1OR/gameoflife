@@ -1,0 +1,79 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { TodoistPanel } from "./todoist-panel";
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
+
+/** A right-side slide-in panel that hosts third-party integrations
+ *  (currently just Todoist). Toggled with `q`; closed with `esc`. The
+ *  shortcut is ignored when the user is typing in an input/textarea so
+ *  it never steals keystrokes mid-edit. */
+export function IntegrationsSidePanel() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.defaultPrevented) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "q" && !isTypingTarget(e.target)) {
+        e.preventDefault();
+        setOpen((s) => !s);
+        return;
+      }
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        setOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <>
+      {/* Backdrop — click outside to close. Non-blocking when closed. */}
+      <div
+        onClick={() => setOpen(false)}
+        aria-hidden
+        className={`fixed inset-0 bg-background/40 backdrop-blur-sm z-40 transition-opacity ${
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      />
+
+      <aside
+        role="dialog"
+        aria-label="Integrations side panel"
+        aria-hidden={!open}
+        className={`fixed top-0 right-0 h-full w-[320px] sm:w-[360px] z-50 bg-background border-l border-border shadow-xl transition-transform duration-200 ease-out ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60">
+          <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
+            📋 Todoist
+          </h2>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+            aria-label="Close panel"
+          >
+            ✕
+          </button>
+        </header>
+        <div className="p-4 overflow-y-auto h-[calc(100%-49px)]">
+          {/* Only mount the panel content when open so we don't fetch
+              from Todoist on every page load. */}
+          {open && <TodoistPanel />}
+        </div>
+      </aside>
+    </>
+  );
+}
