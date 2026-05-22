@@ -614,11 +614,11 @@ function TaskRow({
   const [editingDue, setEditingDue] = useState(false);
   const [dueDraft, setDueDraft] = useState("");
 
-  // Description state is per-row and survives task re-renders. Auto-
-  // expand when the task already has notes so the user sees them; for
-  // empty descriptions, clicking the 📝 button reveals the editor.
+  // Description state is per-row and survives task re-renders. Always
+  // starts collapsed — the 📝 button is brighter when notes exist so
+  // the row still telegraphs "there's stuff here" at a glance.
   const hasDescription = !!(task.description && task.description.trim());
-  const [descOpen, setDescOpen] = useState(hasDescription);
+  const [descOpen, setDescOpen] = useState(false);
   const [descDraft, setDescDraft] = useState(task.description ?? "");
 
   // Keep the local draft in sync if the parent's task gets replaced
