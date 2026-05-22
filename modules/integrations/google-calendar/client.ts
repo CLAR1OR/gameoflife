@@ -198,4 +198,41 @@ export async function deleteEvent(
   );
 }
 
+export type EventPatch = {
+  summary?: string;
+  description?: string | null;
+  location?: string | null;
+  /** Either all-day (date) or timed (dateTime ISO) — supply both for start+end. */
+  start?: { date: string } | { dateTime: string };
+  end?: { date: string } | { dateTime: string };
+};
+
+/** PATCH /events/{id} — Google merges partial fields, so omitted keys
+ *  are left untouched. Returns the updated event (we don't have the
+ *  parent calendar object here, so callers should re-fetch the week
+ *  for an accurate color refresh — the inline edit path optimistically
+ *  patches in place using the calendar dot already stored on the row). */
+export async function updateEvent(
+  token: string,
+  calendarId: string,
+  eventId: string,
+  patch: EventPatch
+): Promise<GoogleEvent> {
+  const raw = await call<RawEvent>(
+    token,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: "PATCH", body: JSON.stringify(patch) }
+  );
+  if (!raw) throw new Error("Google returned no event on update");
+  return mapEvent(raw, {
+    id: calendarId,
+    summary: "",
+    backgroundColor: "#7986cb",
+    foregroundColor: "#ffffff",
+    primary: false,
+    accessRole: "owner",
+    selected: true,
+  });
+}
+
 export { GoogleCalendarError };

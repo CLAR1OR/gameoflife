@@ -13,6 +13,8 @@ import {
   listCalendars,
   listWeekEvents,
   quickAddEvent,
+  updateEvent,
+  type EventPatch,
 } from "./client";
 import {
   exchangeCode,
@@ -223,6 +225,21 @@ export async function deleteCalendarEvent(
   if (!token) throw new Error("Google Calendar not connected");
   try {
     await deleteEvent(token, calendarId, eventId);
+  } catch (e) {
+    throw new Error(unwrap(e));
+  }
+}
+
+export async function updateCalendarEvent(
+  calendarId: string,
+  eventId: string,
+  patch: EventPatch
+): Promise<GoogleEvent> {
+  const session = await requireSession();
+  const token = await getValidAccessToken(session.user.id);
+  if (!token) throw new Error("Google Calendar not connected");
+  try {
+    return await updateEvent(token, calendarId, eventId, patch);
   } catch (e) {
     throw new Error(unwrap(e));
   }
