@@ -35,6 +35,9 @@ function nextPriority(p: 1 | 2 | 3 | 4): 1 | 2 | 3 | 4 {
 }
 
 const VIEW_STORAGE_KEY = "todoist-panel-view";
+const DATA_CACHE_PREFIX = "todoist-panel-cache:";
+/** Hide cached data older than this and trigger a foreground reload. */
+const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 type View = { kind: "today" } | { kind: "project"; id: string };
 
@@ -50,6 +53,37 @@ function parseView(raw: string | null): View {
   return { kind: "today" };
 }
 
+type CacheEntry = { data: TodoistPanelData; fetchedAt: number };
+
+function readCache(view: View): CacheEntry | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DATA_CACHE_PREFIX + viewKey(view));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEntry;
+    if (!parsed.data || typeof parsed.fetchedAt !== "number") return null;
+    if (Date.now() - parsed.fetchedAt > CACHE_MAX_AGE_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(view: View, data: TodoistPanelData) {
+  if (typeof window === "undefined") return;
+  // Don't cache error states — we want the next open to retry fresh.
+  if (data.error || !data.connected) return;
+  try {
+    const entry: CacheEntry = { data, fetchedAt: Date.now() };
+    window.localStorage.setItem(
+      DATA_CACHE_PREFIX + viewKey(view),
+      JSON.stringify(entry)
+    );
+  } catch {
+    // localStorage can be disabled or full — fail quietly.
+  }
+}
+
 /** Fire-and-forget: tells the top-nav badge to refresh its count. */
 function dispatchTasksChanged() {
   if (typeof window !== "undefined") {
@@ -57,13 +91,14 @@ function dispatchTasksChanged() {
   }
 }
 
-export function TodoistPanel() {
+export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
   const [data, setData] = useState<TodoistPanelData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [view, setView] = useState<View>({ kind: "today" });
   const reloadRef = useRef(0);
+  const wasOpenRef = useRef(false);
 
   // Restore last view from localStorage on mount.
   useEffect(() => {
@@ -91,16 +126,32 @@ export function TodoistPanel() {
     setLoading(false);
   }, []);
 
-  // Reload whenever the active view changes.
+  // Persist data to localStorage whenever it changes — covers both the
+  // refresh path and optimistic mutations (complete, add, reschedule,
+  // priority). writeCache is a no-op for error/disconnected states.
   useEffect(() => {
+    if (data) writeCache(view, data);
+  }, [data, view]);
+
+  // When the view changes: hydrate from cache immediately (so the list
+  // is visible the instant the panel slides in), then refresh in the
+  // background. Cache-miss falls through to a foreground spinner.
+  useEffect(() => {
+    const cached = readCache(view);
+    if (cached) {
+      setData(cached.data);
+    } else {
+      setData(null);
+    }
     refresh(view);
   }, [refresh, view]);
 
-  // Auto-refresh when the tab/window regains focus, so re-opening the
-  // app shows current state.
+  // Auto-refresh when the tab/window regains focus — only while the
+  // panel is actually open, to avoid hammering Todoist while the user
+  // is off doing something else.
   useEffect(() => {
     function onFocus() {
-      if (document.visibilityState === "visible") refresh(view);
+      if (isOpen && document.visibilityState === "visible") refresh(view);
     }
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
@@ -108,7 +159,15 @@ export function TodoistPanel() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [refresh, view]);
+  }, [refresh, view, isOpen]);
+
+  // When the panel goes from closed → open, kick off a background
+  // refresh so the user sees today's truth shortly after opening (even
+  // though the cached list rendered immediately).
+  useEffect(() => {
+    if (isOpen && !wasOpenRef.current) refresh(view);
+    wasOpenRef.current = isOpen;
+  }, [isOpen, refresh, view]);
 
   async function handleComplete(task: TodoistTask) {
     if (!data) return;
@@ -296,8 +355,11 @@ export function TodoistPanel() {
         <button
           type="button"
           onClick={() => refresh(view)}
-          className="h-7 px-2 rounded-md border border-border/60 bg-card/40 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
-          title="Refresh"
+          disabled={loading}
+          className={`h-7 px-2 rounded-md border border-border/60 bg-card/40 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors ${
+            loading ? "animate-pulse" : ""
+          }`}
+          title={loading ? "Refreshing…" : "Refresh"}
         >
           ↻
         </button>

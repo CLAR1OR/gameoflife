@@ -87,9 +87,10 @@ export function IntegrationsSidePanel() {
           </div>
         </header>
         <div className="p-4 overflow-y-auto h-[calc(100%-49px)]">
-          {/* Only mount the panel content when open so we don't fetch
-              from Todoist on every page load. */}
-          {open && <TodoistPanel />}
+          {/* Always-mounted so the cached list is visible the instant
+              the panel slides in; the panel handles its own SWR-style
+              background refresh and focus revalidation. */}
+          <TodoistPanel isOpen={open} />
         </div>
       </aside>
     </>
