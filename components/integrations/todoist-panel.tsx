@@ -30,14 +30,11 @@ function priorityLabel(p: number): string {
 }
 
 function nextPriority(p: 1 | 2 | 3 | 4): 1 | 2 | 3 | 4 {
-  // Cycle p4(lowest) → p3 → p2 → p1(highest) → p4. API priority is
-  // inverted (4 = highest urgency), so we increment with wrap.
   return ((p % 4) + 1) as 1 | 2 | 3 | 4;
 }
 
 const VIEW_STORAGE_KEY = "todoist-panel-view";
 const DATA_CACHE_PREFIX = "todoist-panel-cache:";
-/** Hide cached data older than this and trigger a foreground reload. */
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 type View = { kind: "today" } | { kind: "project"; id: string };
@@ -72,7 +69,6 @@ function readCache(view: View): CacheEntry | null {
 
 function writeCache(view: View, data: TodoistPanelData) {
   if (typeof window === "undefined") return;
-  // Don't cache error states — we want the next open to retry fresh.
   if (data.error || !data.connected) return;
   try {
     const entry: CacheEntry = { data, fetchedAt: Date.now() };
@@ -80,28 +76,30 @@ function writeCache(view: View, data: TodoistPanelData) {
       DATA_CACHE_PREFIX + viewKey(view),
       JSON.stringify(entry)
     );
-  } catch {
-    // localStorage can be disabled or full — fail quietly.
-  }
+  } catch {}
 }
 
-/** Fire-and-forget: tells the top-nav badge to refresh its count. */
 function dispatchTasksChanged() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("todoist-tasks-changed"));
   }
 }
 
-export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
+export function TodoistPanel({
+  isOpen,
+  quickAddOpen,
+  onCloseQuickAdd,
+}: {
+  isOpen: boolean;
+  quickAddOpen: boolean;
+  onCloseQuickAdd: () => void;
+}) {
   const [data, setData] = useState<TodoistPanelData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState("");
   const [view, setView] = useState<View>({ kind: "today" });
   const reloadRef = useRef(0);
   const wasOpenRef = useRef(false);
 
-  // Restore last view from localStorage on mount.
   useEffect(() => {
     const raw =
       typeof window !== "undefined"
@@ -110,7 +108,6 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     setView(parseView(raw));
   }, []);
 
-  // Persist view changes.
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(VIEW_STORAGE_KEY, viewKey(view));
@@ -127,29 +124,17 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     setLoading(false);
   }, []);
 
-  // Persist data to localStorage whenever it changes — covers both the
-  // refresh path and optimistic mutations (complete, add, reschedule,
-  // priority). writeCache is a no-op for error/disconnected states.
   useEffect(() => {
     if (data) writeCache(view, data);
   }, [data, view]);
 
-  // When the view changes: hydrate from cache immediately (so the list
-  // is visible the instant the panel slides in), then refresh in the
-  // background. Cache-miss falls through to a foreground spinner.
   useEffect(() => {
     const cached = readCache(view);
-    if (cached) {
-      setData(cached.data);
-    } else {
-      setData(null);
-    }
+    if (cached) setData(cached.data);
+    else setData(null);
     refresh(view);
   }, [refresh, view]);
 
-  // Auto-refresh when the tab/window regains focus — only while the
-  // panel is actually open, to avoid hammering Todoist while the user
-  // is off doing something else.
   useEffect(() => {
     function onFocus() {
       if (isOpen && document.visibilityState === "visible") refresh(view);
@@ -162,9 +147,6 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     };
   }, [refresh, view, isOpen]);
 
-  // When the panel goes from closed → open, kick off a background
-  // refresh so the user sees today's truth shortly after opening (even
-  // though the cached list rendered immediately).
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) refresh(view);
     wasOpenRef.current = isOpen;
@@ -184,27 +166,22 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     }
   }
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    const content = draft.trim();
-    if (!content) return;
-    setAdding(true);
+  async function handleQuickAddSubmit(content: string) {
+    const trimmed = content.trim();
+    if (!trimmed) return;
     try {
       const created = await createTodoistTask({
-        content,
+        content: trimmed,
         dueString: view.kind === "today" ? "today" : undefined,
         projectId: view.kind === "project" ? view.id : undefined,
       });
-      setDraft("");
-      if (data) {
-        setData({ ...data, tasks: [created, ...data.tasks] });
-      }
+      if (data) setData({ ...data, tasks: [created, ...data.tasks] });
       toast.success("Added");
       dispatchTasksChanged();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
+      throw e;
     }
-    setAdding(false);
   }
 
   async function handleReschedule(task: TodoistTask, dueString: string) {
@@ -224,7 +201,6 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
   async function handleCyclePriority(task: TodoistTask) {
     if (!data) return;
     const np = nextPriority(task.priority);
-    // Optimistic
     const prev = data;
     setData({
       ...data,
@@ -258,159 +234,276 @@ export function TodoistPanel({ isOpen }: { isOpen: boolean }) {
     }
   }
 
-  if (loading && !data) {
-    return (
-      <div className="text-xs font-mono text-muted-foreground py-6 text-center">
-        loading…
-      </div>
-    );
-  }
-  if (!data) return null;
+  const sortedProjects = useMemo(() => {
+    if (!data) return [];
+    return [...data.projects].sort((a, b) => {
+      if (a.isInboxProject !== b.isInboxProject)
+        return a.isInboxProject ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [data]);
 
-  if (!data.connected) {
-    return (
-      <div className="rounded-md border border-border/60 bg-card/40 p-4 text-sm space-y-2">
-        <p className="font-medium">Todoist not connected</p>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Paste your personal API token on the integrations settings to see
-          your tasks here.
-        </p>
-        <Link
-          href="/account#integrations"
-          className="inline-block text-xs font-mono text-glow hover:underline"
-        >
-          → Open settings
-        </Link>
-      </div>
-    );
-  }
+  const projectsById = useMemo(
+    () => new Map(sortedProjects.map((p) => [p.id, p])),
+    [sortedProjects]
+  );
 
-  if (data.error) {
-    return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs space-y-2">
-        <p className="text-destructive font-medium">Todoist error</p>
-        <p className="text-muted-foreground">{data.error}</p>
-        <button
-          type="button"
-          onClick={() => refresh(view)}
-          className="text-glow font-mono hover:underline"
-        >
-          retry
-        </button>
-      </div>
-    );
-  }
-
-  const sortedProjects = [...data.projects].sort((a, b) => {
-    if (a.isInboxProject !== b.isInboxProject) return a.isInboxProject ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-  const projectsById = new Map(sortedProjects.map((p) => [p.id, p]));
-  const today = new Date().toISOString().slice(0, 10);
-
-  // If the persisted project view points to a project that no longer
-  // exists (deleted, archived, etc.), gracefully fall back to Today.
-  if (view.kind === "project" && !projectsById.has(view.id)) {
-    return (
-      <div className="text-xs font-mono text-muted-foreground py-6 text-center">
-        Saved project unavailable — switching to Today…
-        <button
-          type="button"
-          onClick={() => setView({ kind: "today" })}
-          className="block mx-auto mt-2 text-glow hover:underline"
-        >
-          continue
-        </button>
-      </div>
-    );
-  }
-
-  const handlers = {
-    onComplete: handleComplete,
-    onReschedule: handleReschedule,
-    onCyclePriority: handleCyclePriority,
-    onEditDescription: handleEditDescription,
-  };
+  const addContextLabel =
+    view.kind === "today"
+      ? "Adds to Today (due: today)"
+      : `Adds to ${projectsById.get(view.id)?.name ?? "project"}`;
 
   return (
-    <div className="space-y-3">
-      <form onSubmit={handleAdd} className="flex gap-1.5">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={
-            view.kind === "today"
-              ? "+ Quick add (for today)…"
-              : `+ Add to ${projectsById.get(view.id)?.name ?? "project"}…`
-          }
-          className="flex-1 rounded-md border border-border/60 bg-card/40 px-2 py-1.5 text-xs outline-none focus:border-glow/60"
-        />
-        <button
-          type="submit"
-          disabled={adding || !draft.trim()}
-          className="rounded-md border border-glow/40 bg-glow/10 px-3 py-1.5 text-xs font-mono text-glow hover:bg-glow/20 disabled:opacity-40 transition-colors"
-        >
-          {adding ? "…" : "add"}
-        </button>
-      </form>
+    <div className="relative h-full overflow-hidden">
+      <div className="h-full overflow-y-auto p-4 space-y-3">
+        {!data && loading ? (
+          <p className="text-xs font-mono text-muted-foreground py-6 text-center">
+            loading…
+          </p>
+        ) : !data ? null : !data.connected ? (
+          <NotConnectedHint />
+        ) : data.error ? (
+          <ErrorBox error={data.error} onRetry={() => refresh(view)} />
+        ) : view.kind === "project" && !projectsById.has(view.id) ? (
+          <ProjectMissing onContinue={() => setView({ kind: "today" })} />
+        ) : (
+          <>
+            <ViewSelector
+              view={view}
+              setView={setView}
+              count={data.tasks.length}
+              sortedProjects={sortedProjects}
+              loading={loading}
+              onRefresh={() => refresh(view)}
+            />
 
-      <div className="flex items-center gap-1.5">
-        <select
-          value={view.kind === "today" ? "__today" : view.id}
-          onChange={(e) => {
-            const v = e.target.value;
-            setView(
-              v === "__today" ? { kind: "today" } : { kind: "project", id: v }
-            );
-          }}
-          className="flex-1 h-7 rounded-md border border-border/60 bg-card/40 px-2 text-xs font-mono outline-none focus:border-glow/60"
-        >
-          <option value="__today">📅 Today + overdue ({data.tasks.length})</option>
-          {sortedProjects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.isInboxProject ? "📥" : "#"} {p.name}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={() => refresh(view)}
-          disabled={loading}
-          className={`h-7 px-2 rounded-md border border-border/60 bg-card/40 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors ${
-            loading ? "animate-pulse" : ""
-          }`}
-          title={loading ? "Refreshing…" : "Refresh"}
-        >
-          ↻
-        </button>
+            {data.tasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic py-6 text-center">
+                {view.kind === "today"
+                  ? "Nothing on today's list. 🎉"
+                  : "No open tasks in this project."}
+              </p>
+            ) : view.kind === "today" ? (
+              <GroupedByProject
+                tasks={data.tasks}
+                projects={sortedProjects}
+                sections={data.sections}
+                today={new Date().toISOString().slice(0, 10)}
+                handlers={{
+                  onComplete: handleComplete,
+                  onReschedule: handleReschedule,
+                  onCyclePriority: handleCyclePriority,
+                  onEditDescription: handleEditDescription,
+                }}
+              />
+            ) : (
+              <ProjectView
+                tasks={data.tasks}
+                sections={data.sections.filter((s) => s.projectId === view.id)}
+                today={new Date().toISOString().slice(0, 10)}
+                handlers={{
+                  onComplete: handleComplete,
+                  onReschedule: handleReschedule,
+                  onCyclePriority: handleCyclePriority,
+                  onEditDescription: handleEditDescription,
+                }}
+              />
+            )}
+          </>
+        )}
       </div>
 
-      {data.tasks.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic py-6 text-center">
-          {view.kind === "today"
-            ? "Nothing on today's list. 🎉"
-            : "No open tasks in this project."}
-        </p>
-      ) : view.kind === "today" ? (
-        <GroupedByProject
-          tasks={data.tasks}
-          projects={sortedProjects}
-          sections={data.sections}
-          today={today}
-          handlers={handlers}
-        />
-      ) : (
-        <ProjectView
-          tasks={data.tasks}
-          sections={data.sections.filter((s) => s.projectId === view.id)}
-          today={today}
-          handlers={handlers}
+      {quickAddOpen && (
+        <QuickAddOverlay
+          contextLabel={addContextLabel}
+          onSubmit={handleQuickAddSubmit}
+          onClose={onCloseQuickAdd}
         />
       )}
+    </div>
+  );
+}
 
-      <p className="text-[10px] font-mono text-muted-foreground/50 text-center pt-2 border-t border-border/30">
-        press <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">q</kbd> or <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">esc</kbd> to close · +1 XP per completion
+function ViewSelector({
+  view,
+  setView,
+  count,
+  sortedProjects,
+  loading,
+  onRefresh,
+}: {
+  view: View;
+  setView: (v: View) => void;
+  count: number;
+  sortedProjects: TodoistProject[];
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        value={view.kind === "today" ? "__today" : view.id}
+        onChange={(e) => {
+          const v = e.target.value;
+          setView(
+            v === "__today" ? { kind: "today" } : { kind: "project", id: v }
+          );
+        }}
+        className="flex-1 h-7 rounded-md border border-border/60 bg-card/40 px-2 text-xs font-mono outline-none focus:border-glow/60"
+      >
+        <option value="__today">📅 Today + overdue ({count})</option>
+        {sortedProjects.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.isInboxProject ? "📥" : "#"} {p.name}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={loading}
+        className={`h-7 px-2 rounded-md border border-border/60 bg-card/40 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors ${
+          loading ? "animate-pulse" : ""
+        }`}
+        title={loading ? "Refreshing…" : "Refresh"}
+      >
+        ↻
+      </button>
+    </div>
+  );
+}
+
+function QuickAddOverlay({
+  contextLabel,
+  onSubmit,
+  onClose,
+}: {
+  contextLabel: string;
+  onSubmit: (content: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const value = draft.trim();
+    if (!value) return;
+    setBusy(true);
+    try {
+      await onSubmit(value);
+      setDraft("");
+      onClose();
+    } catch {
+      // Toast already raised in the parent handler.
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="absolute inset-0 z-30 flex items-start justify-center p-6 pointer-events-none">
+      <button
+        type="button"
+        aria-label="Close quick add"
+        onClick={onClose}
+        className="absolute inset-0 bg-background/60 backdrop-blur-[2px] pointer-events-auto"
+      />
+      <form
+        onSubmit={handleSubmit}
+        className="relative w-full max-w-md mt-6 rounded-lg border border-glow/40 bg-card shadow-xl pointer-events-auto p-4 space-y-2"
+      >
+        <h3 className="text-[10px] font-mono uppercase tracking-wider text-glow">
+          Quick add
+        </h3>
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Read paper, call mom tomorrow, …"
+          className="w-full rounded-md border border-border/60 bg-card/40 px-3 py-2 text-sm outline-none focus:border-glow/60"
+        />
+        <p className="text-[10px] font-mono text-muted-foreground/70">
+          {contextLabel} ·{" "}
+          <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">
+            enter
+          </kbd>{" "}
+          adds ·{" "}
+          <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">
+            esc
+          </kbd>{" "}
+          cancels
+        </p>
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-border/60 bg-card/40 px-3 py-1.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+          >
+            cancel
+          </button>
+          <button
+            type="submit"
+            disabled={busy || !draft.trim()}
+            className="rounded border border-glow/40 bg-glow/10 px-4 py-1.5 text-xs font-mono text-glow hover:bg-glow/20 disabled:opacity-40 transition-colors"
+          >
+            {busy ? "adding…" : "add"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function NotConnectedHint() {
+  return (
+    <div className="rounded-md border border-border/60 bg-card/40 p-4 text-sm space-y-2">
+      <p className="font-medium">Todoist not connected</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Paste your personal API token on the integrations settings to see
+        your tasks here.
       </p>
+      <Link
+        href="/account#integrations"
+        className="inline-block text-xs font-mono text-glow hover:underline"
+      >
+        → Open settings
+      </Link>
+    </div>
+  );
+}
+
+function ErrorBox({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs space-y-2">
+      <p className="text-destructive font-medium">Todoist error</p>
+      <p className="text-muted-foreground">{error}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="text-glow font-mono hover:underline"
+      >
+        retry
+      </button>
+    </div>
+  );
+}
+
+function ProjectMissing({ onContinue }: { onContinue: () => void }) {
+  return (
+    <div className="text-xs font-mono text-muted-foreground py-6 text-center">
+      Saved project unavailable — switching to Today…
+      <button
+        type="button"
+        onClick={onContinue}
+        className="block mx-auto mt-2 text-glow hover:underline"
+      >
+        continue
+      </button>
     </div>
   );
 }
@@ -422,8 +515,6 @@ type RowHandlers = {
   onEditDescription: (t: TodoistTask, description: string) => void;
 };
 
-/** Build a {root tasks → children} map where any task whose parent is
- *  NOT in the list is treated as a root (otherwise we'd lose orphans). */
 function buildHierarchy(tasks: TodoistTask[]): {
   roots: TodoistTask[];
   childrenOf: Map<string, TodoistTask[]>;
@@ -440,7 +531,6 @@ function buildHierarchy(tasks: TodoistTask[]): {
       roots.push(t);
     }
   }
-  // Sort children by Todoist's own child_order.
   for (const arr of childrenOf.values()) arr.sort((a, b) => a.order - b.order);
   return { roots, childrenOf };
 }
@@ -493,8 +583,6 @@ function GroupedByProject({
   );
 }
 
-/** A single project's tasks, grouped by section. Used both inside the
- *  per-project view and inside the today-grouped-by-project view. */
 function ProjectView({
   tasks,
   sections,
@@ -512,7 +600,9 @@ function ProjectView({
 
   const sortedSections = useMemo(
     () =>
-      [...sections].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)),
+      [...sections].sort(
+        (a, b) => a.order - b.order || a.name.localeCompare(b.name)
+      ),
     [sections]
   );
 
@@ -526,16 +616,12 @@ function ProjectView({
   for (const arr of bySection.values()) arr.sort((a, b) => a.order - b.order);
 
   const blocks: { label: string | null; tasks: TodoistTask[] }[] = [];
-  // Null-section ("project root") tasks first, then named sections in order.
   const rootBlock = bySection.get(null);
   if (rootBlock && rootBlock.length) blocks.push({ label: null, tasks: rootBlock });
   for (const s of sortedSections) {
     const arr = bySection.get(s.id);
     if (arr && arr.length) blocks.push({ label: s.name, tasks: arr });
   }
-
-  // If a section exists in the data but isn't in our `sections` list
-  // (shouldn't normally happen, but be defensive), append at the end.
   const knownSectionIds = new Set(sortedSections.map((s) => s.id));
   for (const [sid, arr] of bySection.entries()) {
     if (sid && !knownSectionIds.has(sid)) {
@@ -612,35 +698,23 @@ function TaskRow({
 }) {
   const overdue = !!(task.due?.date && task.due.date < today);
   const [editingDue, setEditingDue] = useState(false);
-  const [dueDraft, setDueDraft] = useState("");
-
-  // Description state is per-row and survives task re-renders. Always
-  // starts collapsed — the 📝 button is brighter when notes exist so
-  // the row still telegraphs "there's stuff here" at a glance.
   const hasDescription = !!(task.description && task.description.trim());
-  const [descOpen, setDescOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [descDraft, setDescDraft] = useState(task.description ?? "");
 
-  // Keep the local draft in sync if the parent's task gets replaced
-  // (e.g. after a fresh fetch overwrites optimistic state).
   useEffect(() => {
     setDescDraft(task.description ?? "");
   }, [task.description]);
 
-  function startEditDue() {
-    setDueDraft(task.due?.string ?? "");
-    setEditingDue(true);
-  }
-  function cancelEditDue() {
+  function handlePickDate(value: string) {
     setEditingDue(false);
-    setDueDraft("");
-  }
-  function commitEditDue() {
-    if (!editingDue) return;
-    setEditingDue(false);
-    if ((task.due?.string ?? "") !== dueDraft) {
-      handlers.onReschedule(task, dueDraft);
+    if ((task.due?.date ?? "") !== value) {
+      handlers.onReschedule(task, value);
     }
+  }
+  function handleClearDate() {
+    setEditingDue(false);
+    if (task.due) handlers.onReschedule(task, "");
   }
 
   function commitDescription() {
@@ -648,91 +722,125 @@ function TaskRow({
   }
 
   return (
-    <div className="rounded-md border border-border/60 bg-card/40 px-2.5 py-2 text-xs flex items-start gap-2">
+    <div
+      className={`rounded-md border bg-card/40 px-2.5 py-2 text-xs flex items-start gap-2 transition-colors ${
+        expanded ? "border-glow/40" : "border-border/60"
+      }`}
+    >
       <button
         type="button"
-        onClick={() => handlers.onComplete(task)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handlers.onComplete(task);
+        }}
         aria-label="Complete (+1 XP)"
-        title={`Complete · +1 XP`}
+        title="Complete · +1 XP"
         className={`h-4 w-4 rounded-full border shrink-0 mt-0.5 hover:bg-glow/20 transition-colors ${PRIORITY_COLOR[task.priority]}`}
       />
       <div className="flex-1 min-w-0">
-        <a
-          href={task.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block leading-snug hover:text-glow transition-colors break-words"
+        <button
+          type="button"
+          onClick={() => setExpanded((s) => !s)}
+          className="block w-full text-left leading-snug hover:text-glow transition-colors break-words"
+          title={expanded ? "Collapse" : "Expand"}
         >
           {task.content}
-        </a>
+          {hasDescription && !expanded && (
+            <span className="ml-1.5 text-[10px] text-muted-foreground/60">
+              📝
+            </span>
+          )}
+        </button>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[10px] font-mono text-muted-foreground/70">
           {editingDue ? (
-            <input
-              autoFocus
-              value={dueDraft}
-              onChange={(e) => setDueDraft(e.target.value)}
-              onBlur={commitEditDue}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitEditDue();
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  cancelEditDue();
-                }
-              }}
-              placeholder="e.g. tomorrow, next mon, jan 5"
-              className="h-5 rounded border border-glow/40 bg-card/60 px-1 text-[10px] outline-none focus:border-glow/60 min-w-[10rem]"
-            />
+            <span
+              className="inline-flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                autoFocus
+                type="date"
+                defaultValue={task.due?.date ?? ""}
+                onChange={(e) => handlePickDate(e.target.value)}
+                onBlur={() => setEditingDue(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setEditingDue(false);
+                  }
+                }}
+                className="h-5 rounded border border-glow/40 bg-card/60 px-1 text-[10px] outline-none focus:border-glow/60"
+              />
+              {task.due && (
+                <button
+                  type="button"
+                  onClick={handleClearDate}
+                  className="text-muted-foreground hover:text-destructive"
+                  title="Clear due date"
+                >
+                  ✕
+                </button>
+              )}
+            </span>
           ) : (
             <button
               type="button"
-              onClick={startEditDue}
-              title="Click to reschedule"
-              className={`hover:text-foreground transition-colors ${overdue ? "text-destructive" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingDue(true);
+              }}
+              title="Click to pick a date"
+              className={`hover:text-foreground transition-colors ${
+                overdue ? "text-destructive" : ""
+              }`}
             >
               ⏱ {task.due?.string ?? "no date"}
             </button>
           )}
           <button
             type="button"
-            onClick={() => handlers.onCyclePriority(task)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handlers.onCyclePriority(task);
+            }}
             title="Cycle priority"
             className={`hover:text-foreground transition-colors px-1 rounded border ${PRIORITY_COLOR[task.priority]}`}
           >
             {priorityLabel(task.priority)}
           </button>
-          <button
-            type="button"
-            onClick={() => setDescOpen((s) => !s)}
-            title={hasDescription ? "Edit description" : "Add description"}
-            className={`hover:text-foreground transition-colors ${
-              hasDescription ? "text-foreground/80" : ""
-            }`}
-          >
-            📝
-            {hasDescription ? "" : "+"}
-          </button>
           {task.labels.map((l) => (
             <span key={l}>@{l}</span>
           ))}
         </div>
-        {descOpen && (
-          <textarea
-            value={descDraft}
-            onChange={(e) => setDescDraft(e.target.value)}
-            onBlur={commitDescription}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setDescDraft(task.description ?? "");
-                setDescOpen(false);
-              }
-            }}
-            placeholder="Add details, links, sub-points…"
-            rows={Math.min(8, Math.max(2, descDraft.split("\n").length + 1))}
-            className="mt-1.5 w-full rounded border border-border/60 bg-card/60 hover:border-border focus:border-glow/60 px-2 py-1.5 text-[11px] leading-snug resize-y outline-none whitespace-pre-wrap"
-          />
+        {expanded && (
+          <div className="mt-1.5 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+            <textarea
+              value={descDraft}
+              onChange={(e) => setDescDraft(e.target.value)}
+              onBlur={commitDescription}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setDescDraft(task.description ?? "");
+                  setExpanded(false);
+                }
+              }}
+              placeholder="Add details, links, sub-points…"
+              rows={Math.min(8, Math.max(2, descDraft.split("\n").length + 1))}
+              className="w-full rounded border border-border/60 bg-card/60 hover:border-border focus:border-glow/60 px-2 py-1.5 text-[11px] leading-snug resize-y outline-none whitespace-pre-wrap"
+            />
+            <div className="flex justify-end">
+              <a
+                href={task.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono text-muted-foreground hover:text-glow transition-colors"
+                title="Open in Todoist"
+              >
+                open in Todoist ↗
+              </a>
+            </div>
+          </div>
         )}
       </div>
     </div>
