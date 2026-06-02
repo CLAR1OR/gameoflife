@@ -12,21 +12,42 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /** Centered floating modal that hosts the Todoist panel. Mirrors the
- *  Google Calendar modal shape (backdrop + card) instead of the older
- *  right-side slide-in. Press `q` once to open, `q` again to surface
- *  the quick-add dialogue. Esc closes the quick-add first, then the
- *  panel. */
+ *  Google Calendar modal shape (backdrop + card). The modal stays
+ *  mounted at all times — visibility is toggled with opacity +
+ *  pointer-events so the Todoist panel's SWR cache + component state
+ *  survive open/close cycles. Press `q` once to open, `q` again to
+ *  surface the quick-add dialogue. `Esc` or `Shift+Q` close (quick-add
+ *  first, then the modal). */
 export function IntegrationsSidePanel() {
   const [open, setOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  // Lock background scrolling while the modal is open so scroll
+  // events stay inside the panel instead of moving the page behind it.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === "q" && !isTypingTarget(e.target)) {
+      const typing = isTypingTarget(e.target);
+      const key = e.key.toLowerCase();
+      if (key === "q" && !typing) {
         e.preventDefault();
-        if (!open) {
+        if (e.shiftKey) {
+          // Shift+Q closes the panel (and the quick-add overlay, if any).
+          if (open) {
+            setQuickAddOpen(false);
+            setOpen(false);
+          }
+        } else if (!open) {
           setOpen(true);
         } else if (!quickAddOpen) {
           setQuickAddOpen(true);
@@ -50,26 +71,15 @@ export function IntegrationsSidePanel() {
     };
   }, [open, quickAddOpen]);
 
-  if (!open) {
-    // Keep the panel mounted off-screen so its cache + state survive
-    // close/open cycles — same trick we use for instant reopens.
-    return (
-      <div aria-hidden className="hidden">
-        <TodoistPanel
-          isOpen={false}
-          quickAddOpen={false}
-          onCloseQuickAdd={() => setQuickAddOpen(false)}
-        />
-      </div>
-    );
-  }
-
   return (
     <div
       role="dialog"
-      aria-modal="true"
+      aria-modal={open}
       aria-label="Todoist"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
+      aria-hidden={!open}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 transition-opacity duration-150 ${
+        open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
     >
       <button
         type="button"
@@ -78,7 +88,7 @@ export function IntegrationsSidePanel() {
         className="absolute inset-0 bg-background/70 backdrop-blur-sm"
       />
       <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl shadow-black/40">
-        <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60">
+        <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60 shrink-0">
           <h2 className="text-xs font-mono uppercase tracking-wider text-glow">
             📋 Todoist
           </h2>
@@ -117,8 +127,13 @@ export function IntegrationsSidePanel() {
             onCloseQuickAdd={() => setQuickAddOpen(false)}
           />
         </div>
-        <footer className="px-4 py-2 border-t border-border/60 text-[10px] font-mono text-muted-foreground/50 text-center">
-          <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">q</kbd> add · <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">esc</kbd> close · +1 XP per completion
+        <footer className="px-4 py-2 border-t border-border/60 text-[10px] font-mono text-muted-foreground/50 text-center shrink-0">
+          <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">q</kbd>{" "}
+          add ·{" "}
+          <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">⇧Q</kbd>
+          /
+          <kbd className="px-1 py-0.5 rounded bg-card/60 border border-border/40">esc</kbd>{" "}
+          close · +1 XP per completion
         </footer>
       </div>
     </div>
