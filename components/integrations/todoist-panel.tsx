@@ -254,8 +254,8 @@ export function TodoistPanel({
       : `Adds to ${projectsById.get(view.id)?.name ?? "project"}`;
 
   return (
-    <div className="relative h-full overflow-hidden">
-      <div className="h-full overflow-y-auto overscroll-contain p-4 space-y-3">
+    <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
         {!data && loading ? (
           <p className="text-xs font-mono text-muted-foreground py-6 text-center">
             loading…

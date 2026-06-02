@@ -120,7 +120,7 @@ export function IntegrationsSidePanel() {
             </button>
           </div>
         </header>
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <TodoistPanel
             isOpen={open}
             quickAddOpen={quickAddOpen}
