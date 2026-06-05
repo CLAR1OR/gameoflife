@@ -46,10 +46,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# Safety net: Next's standalone tracing sometimes misses better-sqlite3's
+# prebuilt `.node` binary because it's loaded dynamically. Overlay the
+# whole package so the runtime always finds it.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+
 # Persistent directories: SQLite DB + user-uploaded photos. Compose mounts
 # host volumes here so data survives container rebuilds.
-RUN mkdir -p ./data ./public/places ./public/friends \
-    && chown -R nextjs:nodejs ./data ./public/places ./public/friends
+RUN mkdir -p ./data ./public/places ./public/friends ./public/skills \
+    && chown -R nextjs:nodejs ./data ./public/places ./public/friends ./public/skills
 
 USER nextjs
 

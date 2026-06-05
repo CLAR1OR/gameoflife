@@ -9,16 +9,46 @@ services:
     image: gameoflife:latest
     container_name: gameoflife
     restart: unless-stopped
+    # Forwards SIGTERM/SIGINT properly so Node shuts down cleanly.
+    init: true
+    # Run as the host user so bind-mounted ./data and ./uploads stay
+    # writable. Default 1000:1000 matches the typical first Linux user;
+    # override via `UID=2000 GID=2000 docker compose up` if your host
+    # user has a different id.
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${HOST_PORT:-3000}:3000"
     environment:
       # Server secrets — read from the .env file alongside compose.
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      # Copy .env.example → .env and fill in the values.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      # Used by the Google OAuth callback to build the redirect-back URL.
+      NEXT_PUBLIC_BASE_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      # Google Calendar OAuth. Leave blank if you don't use that integration —
+      # the panel just shows "not connected" instead of erroring.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALENDAR_REDIRECT_URI: ${GOOGLE_CALENDAR_REDIRECT_URI:-}
     volumes:
       # SQLite DB (data/gameoflife.db). The schema is created on first
       # boot via lib/db/index.ts.
       - ./data:/app/data
-      # User-uploaded photos.
+      # User-uploaded photos. Bind-mounts hide whatever shipped in the
+      # image; for a fresh deploy that's exactly what we want.
       - ./uploads/places:/app/public/places
       - ./uploads/friends:/app/public/friends
+      - ./uploads/skills:/app/public/skills
+    healthcheck:
+      # Hit the login page (always reachable, no auth required) and
+      # accept either a 200 or a redirect. Uses node's built-in fetch
+      # so we don't need curl/wget in the image.
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.status<400?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
